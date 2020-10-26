@@ -3,5 +3,6 @@
 .RData
 .Ruserdata
 
-#netcdffiles
 *.nc
+*.grd
+etopo_shelf_df.rds
