@@ -19,21 +19,31 @@ Pulling in LMEs
 
 LME_spdf <- readOGR("LME66/LMEs66.shp")
 
-plot(LME_spdf)
 
 ```
+Continental Shelves
+
+Shelf shapefiles downloaded from [Blue Habitat](bluehabitats.org) May 20th 2020 by Becca Selden.  
+
+```{r continental shelves}
+continentalshelf_spdf <- readOGR("Shelf_BlueHabitats/Shelf.shp")
+
+plot(continentalshelf_spdf)
+```
+
 
 Download TOPO1 bedrock grid centered netcdf from [here](https://www.ngdc.noaa.gov/mgg/global/).
 
 ```{r opening bathymetry file (very big!)}
 
-r <- raster("ETOPO1_Bed_g_gdal.grd")
+r <- raster("ETOPO1_Bed_g_geotiff.tif")
 
-r_shelf <- mask
-#make mask
-r[r>0 ][r<-2000] <- NA
+plot(r)
 
-#get rid of all bathy not between 0m and -2000m
+r_shelf <- mask(r, continentalshelf_spdf)
+
+head(continentalshelf_spdf)
+
 ```
 
 Clip raster to LMEs (so we only have bathymetry within LMEs)
@@ -46,14 +56,6 @@ fr <- rasterize(LME_spdf, cr)
 lr <- mask(x=cr, mask=fr)
 ```
 
-
-Continental Shelves
-
-Shelf shapefiles downloaded from [Blue Habitat](bluehabitats.org) May 20th 2020 by Becca Selden.  
-
-```{r continental shelves}
-continentalshelf_spdf <- readOGR("Shelf_BlueHabitats/Shelf.shp")
-```
 
 ************
 

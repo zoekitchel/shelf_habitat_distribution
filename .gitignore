@@ -5,4 +5,5 @@
 
 *.nc
 *.grd
+*.tif
 etopo_shelf_df.rds
