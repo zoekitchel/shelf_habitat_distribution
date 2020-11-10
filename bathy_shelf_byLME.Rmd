@@ -14,6 +14,7 @@ library(diptest)
 library(moments)
 library(viridis) #colors
 library(data.table)
+library(hydroTSM) #hypsometric curves
 
 etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/etopo_shelf_df.rds")
 #bring in bathy for shelf regions
@@ -47,34 +48,47 @@ dev.off()
 
 ```
 
-Extract bathy for single LME for practice
-```{r bathy baltic}
+Clip raster to each individual polygon
 
-baltic_bathy <- raster::extract(x=etopo_shelf_raster, y=LME_baltic_points_xy, df = T)
+```{r clip raster to polygon}
+#crop bathy layer to LME subset
+bathy_baltic_extent <- crop(etopo_shelf_raster, extent(LME_baltic))
 
-baltic_bathy_coordinates <- data.table(cbind(LME_baltic_points_xy, baltic_bathy))
+#which areas of raster fall within borders?
+bathy_baltic_mask <- mask(bathy_baltic_extent, LME_baltic)
 
-baltic_bathy_coordinates[,depth := -(layer)]
+#convert to df for plotting
 
+  # First, to a SpatialPointsDataFrame
+  bathy_baltic_pts <- rasterToPoints(bathy_baltic_mask, spatial = TRUE)
+  # Then to a 'conventional' dataframe
+  bathy_baltic_dt  <- data.table(data.frame(bathy_baltic_pts))
 
-ggplot(data = baltic_bathy_coordinates[!is.na(depth),], aes(x = x, y = y, color = depth)) +
-  geom_point(shape = 20, size = 0.5) +
-  scale_color_viridis(direction = -1) +
+#keep depth positive  
+bathy_baltic_dt[,depth := -(layer)]
+
+ggplot(bathy_baltic_dt, aes(x = x, y = y, fill = depth)) +
+  geom_tile() +
+  scale_fill_viridis(direction = -1) +
   theme_classic() +
-  labs(x = "Longitude", y = "Latitude", color = "Depth (m)") +
-  guides(color = guide_colorbar(reverse = T))
-
-plot(LME_baltic)
-
+  labs(x = "Longitude", y = "Latitude", fill = "Depth (m)") +
+  guides(fill = guide_colorbar(reverse = T))
 ```
 
-Histograms of digital elevation models
-```{r histogram}
-ggplot(data = baltic_bathy_coordinates[!is.na(depth),], aes(x = depth, fill = depth)) +
+Hypsometric Curves
+```{r hyposometric curves}
+
+bathy_baltic_SGDF <- as(bathy_baltic_mask, 'SpatialGridDataFrame') # as spatial grid data frame
+hypsometric(bathy_baltic_SGDF)
+
+(plot <- ggplot(data = bathy_baltic_dt[!is.na(depth),], aes(x = depth, fill=..x..)) +
   geom_histogram(binwidth = 5) +
-  scale_fill_viridis() +
   theme_classic() +
-  labs(x = "Depth (m)", y = "Frequency")
+  labs(x = "Depth (m)", y = "Frequency") +
+  scale_fill_gradientn(colors = rev(viridis(5))) +
+  guides(fill = guide_colorbar(reverse = T)))
+
+ggsave(plot, filename = "Baltic_Sea.png")
 ```
 
 
@@ -96,7 +110,7 @@ Skew: In probability theory and statistics, skewness is a measure of the asymmet
 ```{r dip test for unimodality}
 #Computes Hartigans’ dip test statistic for testing unimodality, and additionally the modal interval.
 
-diptest <- dip.test(baltic_bathy_coordinates$layer, simulate.p.value = FALSE, B = 2000)
+diptest <- dip.test(bathy_baltic_dt$depth, simulate.p.value = FALSE, B = 2000)
 
 
 ```
@@ -107,7 +121,7 @@ Skew
 * If skewness is between -1 and -0.5 or between 0.5 and 1, the distribution is moderately skewed.
 * If skewness is between -0.5 and 0.5, the distribution is approximately symmetric.
 ```{r skew}
-skew <- skewness(baltic_bathy_coordinates$layer, na.rm = T)
+skew <- skewness(bathy_baltic_dt$depth, na.rm = T)
 ```
 
 
@@ -115,7 +129,7 @@ Maybe kurtosis too?
 
 Kurtosis is a statistical measure that defines how heavily the tails of a distribution differ from the tails of a normal distribution. In other words, kurtosis identifies whether the tails of a given distribution contain extreme values.
 ```{r kurtosis}
-kurtosis <- kurtosis(baltic_bathy_coordinates$layer, na.rm = T)
+kurtosis <- kurtosis(bathy_baltic_dt$depth, na.rm = T)
 ```
 
 Maybe then do a MDS including kurtosis, skew, and modality measures for every LME
@@ -127,3 +141,7 @@ Mid-Dominant: Relatively normal (low skew, kurtosis = 0, unimodal)
 Deep-Dominant: High negative skew, unimodal
 Uniform: kurtosis < -1.2, unimodal, little skew
 Hourglass: Bimodality
+
+
+--------
+Now let's make a loop!!
