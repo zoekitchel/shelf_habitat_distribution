@@ -54,30 +54,29 @@ baltic_bathy <- raster::extract(x=etopo_shelf_raster, y=LME_baltic_points_xy, df
 
 baltic_bathy_coordinates <- data.table(cbind(LME_baltic_points_xy, baltic_bathy))
 
+baltic_bathy_coordinates[,depth := -(layer)]
 
-ggplot(data = baltic_bathy_coordinates[!is.na(layer),], aes(x = x, y = y, color = layer)) +
+
+ggplot(data = baltic_bathy_coordinates[!is.na(depth),], aes(x = x, y = y, color = depth)) +
   geom_point(shape = 20, size = 0.5) +
-  scale_color_viridis() +
+  scale_color_viridis(direction = -1) +
   theme_classic() +
-  labs(x = "Longitude", y = "Latitude", color = "Depth (m)")
+  labs(x = "Longitude", y = "Latitude", color = "Depth (m)") +
+  guides(color = guide_colorbar(reverse = T))
 
 plot(LME_baltic)
 
 ```
 
-
-```{r split etoposhelf_df by LME}
-
-#XY shelf bathy coordinates to SPDF
-etopo_shelf_df_point <- st_as_sf(x = etopo_shelf_df, 
-                        coords = c("x", "y"),
-                        crs = "+proj=longlat +datum=WGS84 +no_defs")
-
-LME_spdf_sf <- st_as_sf(LME_spdf)
-
-
-output <- st_intersection(etopo_shelf_df_point, LME_spdf_sf)
+Histograms of digital elevation models
+```{r histogram}
+ggplot(data = baltic_bathy_coordinates[!is.na(depth),], aes(x = depth, fill = depth)) +
+  geom_histogram(binwidth = 5) +
+  scale_fill_viridis() +
+  theme_classic() +
+  labs(x = "Depth (m)", y = "Frequency")
 ```
+
 
 How to classify different LMES? Dip (Modality) & Skew
  "distributions with a dip value >0.01 and with significant (p<0.05) deviations from unimodality to the hourglass classification. 
@@ -97,7 +96,9 @@ Skew: In probability theory and statistics, skewness is a measure of the asymmet
 ```{r dip test for unimodality}
 #Computes Hartigans’ dip test statistic for testing unimodality, and additionally the modal interval.
 
-diptest <- dip.test(x, simulate.p.value = FALSE, B = 2000)
+diptest <- dip.test(baltic_bathy_coordinates$layer, simulate.p.value = FALSE, B = 2000)
+
+
 ```
 
 Skew
@@ -106,7 +107,7 @@ Skew
 * If skewness is between -1 and -0.5 or between 0.5 and 1, the distribution is moderately skewed.
 * If skewness is between -0.5 and 0.5, the distribution is approximately symmetric.
 ```{r skew}
-skewness()
+skew <- skewness(baltic_bathy_coordinates$layer, na.rm = T)
 ```
 
 
@@ -114,7 +115,7 @@ Maybe kurtosis too?
 
 Kurtosis is a statistical measure that defines how heavily the tails of a distribution differ from the tails of a normal distribution. In other words, kurtosis identifies whether the tails of a given distribution contain extreme values.
 ```{r kurtosis}
-kurtosis()
+kurtosis <- kurtosis(baltic_bathy_coordinates$layer, na.rm = T)
 ```
 
 Maybe then do a MDS including kurtosis, skew, and modality measures for every LME
