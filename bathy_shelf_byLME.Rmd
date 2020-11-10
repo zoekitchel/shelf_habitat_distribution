@@ -1,0 +1,128 @@
+---
+title: "Starting with Bathy for Shelves"
+output: html_notebook
+---
+
+```{r setup}
+library(raster)
+library(rgdal)
+library(sf)
+library(ncdf4)
+library(rmapshaper)
+library(tidyverse)
+library(diptest)
+library(moments)
+library(viridis) #colors
+library(data.table)
+
+etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/etopo_shelf_df.rds")
+#bring in bathy for shelf regions
+
+#LMEs
+LME_spdf <- readOGR("LME66/LMEs66.shp")
+head(LME_spdf)
+```
+
+Let's just start with one LME to get started
+```{r LME_baltic}
+LME_baltic <- LME_spdf[1,]
+plot(LME_baltic)
+
+#rather than a spatial polygon, we need points within that polygon
+LME_baltic_points <- spsample(LME_baltic, n = 30000, type = "regular")
+LME_baltic_points_xy <- geom(LME_baltic_points)[,2:3]
+
+```
+
+
+Make bathy layer into raster
+```{r rasterize}
+proj <- crs(LME_spdf)
+etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = proj)
+
+#make figure of shelves
+png("etopo_shelf_bathy.png", height=5, width=7, units="in", res=300)
+plot(etopo_shelf_raster)
+dev.off()
+
+```
+
+Extract bathy for single LME for practice
+```{r bathy baltic}
+
+baltic_bathy <- raster::extract(x=etopo_shelf_raster, y=LME_baltic_points_xy, df = T)
+
+baltic_bathy_coordinates <- data.table(cbind(LME_baltic_points_xy, baltic_bathy))
+
+
+ggplot(data = baltic_bathy_coordinates[!is.na(layer),], aes(x = x, y = y, color = layer)) +
+  geom_point(shape = 20, size = 0.5) +
+  scale_color_viridis() +
+  theme_classic() +
+  labs(x = "Longitude", y = "Latitude", color = "Depth (m)")
+
+plot(LME_baltic)
+
+```
+
+
+```{r split etoposhelf_df by LME}
+
+#XY shelf bathy coordinates to SPDF
+etopo_shelf_df_point <- st_as_sf(x = etopo_shelf_df, 
+                        coords = c("x", "y"),
+                        crs = "+proj=longlat +datum=WGS84 +no_defs")
+
+LME_spdf_sf <- st_as_sf(LME_spdf)
+
+
+output <- st_intersection(etopo_shelf_df_point, LME_spdf_sf)
+```
+
+How to classify different LMES? Dip (Modality) & Skew
+ "distributions with a dip value >0.01 and with significant (p<0.05) deviations from unimodality to the hourglass classification. 
+ 
+ For distributions with a dip value ≤0.01, we assigned those with a Type-I skewness ≥0.5 to pyramid, 
+ 
+ those with skewness ≤ −0.5 to inverse pyramid, 
+ 
+ and the remainder to diamond, representing those with approximately normal distributions. 
+ 
+ We chose skew cutoffs of 0.5 and −0.5 to capture right- and left-skewed distributions, respectively, and to bound distributions approximating symmetry."
+ 
+Modality: In mathematics, unimodality means possessing a unique mode. More generally, unimodality means there is only a single highest value, somehow defined, of some mathematical object. (Wikipedia)
+
+Skew: In probability theory and statistics, skewness is a measure of the asymmetry of the probability distribution of a real-valued random variable about its mean. The skewness value can be positive, zero, negative, or undefined. (Wikipedia)
+ 
+```{r dip test for unimodality}
+#Computes Hartigans’ dip test statistic for testing unimodality, and additionally the modal interval.
+
+diptest <- dip.test(x, simulate.p.value = FALSE, B = 2000)
+```
+
+Skew
+
+* If skewness is less than -1 or greater than 1, the distribution is highly skewed.
+* If skewness is between -1 and -0.5 or between 0.5 and 1, the distribution is moderately skewed.
+* If skewness is between -0.5 and 0.5, the distribution is approximately symmetric.
+```{r skew}
+skewness()
+```
+
+
+Maybe kurtosis too?
+
+Kurtosis is a statistical measure that defines how heavily the tails of a distribution differ from the tails of a normal distribution. In other words, kurtosis identifies whether the tails of a given distribution contain extreme values.
+```{r kurtosis}
+kurtosis()
+```
+
+Maybe then do a MDS including kurtosis, skew, and modality measures for every LME
+
+See how many groups it goes into?
+
+Shallow dominant: High positive skew, unimodal
+Mid-Dominant: Relatively normal (low skew, kurtosis = 0, unimodal)
+Deep-Dominant: High negative skew, unimodal
+Uniform: kurtosis < -1.2, unimodal, little skew
+Hourglass: Bimodality
