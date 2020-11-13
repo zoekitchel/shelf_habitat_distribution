@@ -29,9 +29,6 @@ Let's just start with one LME to get started
 LME_baltic <- LME_spdf[1,]
 plot(LME_baltic)
 
-#rather than a spatial polygon, we need points within that polygon
-LME_baltic_points <- spsample(LME_baltic, n = 30000, type = "regular")
-LME_baltic_points_xy <- geom(LME_baltic_points)[,2:3]
 
 ```
 
@@ -67,12 +64,18 @@ bathy_baltic_mask <- mask(bathy_baltic_extent, LME_baltic)
 #keep depth positive  
 bathy_baltic_dt[,depth := -(layer)]
 
-ggplot(bathy_baltic_dt, aes(x = x, y = y, fill = depth)) +
-  geom_tile() +
+#fortify to plot shapefile on top
+LME_baltic_df <- fortify(LME_baltic)
+
+ggplot(bathy_baltic_dt) +
+  geom_tile(aes(x = x, y = y, fill = depth)) +
   scale_fill_viridis(direction = -1) +
   theme_classic() +
   labs(x = "Longitude", y = "Latitude", fill = "Depth (m)") +
-  guides(fill = guide_colorbar(reverse = T))
+  guides(fill = guide_colorbar(reverse = T)) +
+  geom_path(data = LME_baltic_df, aes(x = long, y = lat, group = group), fill = NA, color = "black")
+
+summary(bathy_baltic_dt)
 ```
 
 Hypsometric Curves
@@ -81,12 +84,49 @@ Hypsometric Curves
 bathy_baltic_SGDF <- as(bathy_baltic_mask, 'SpatialGridDataFrame') # as spatial grid data frame
 hypsometric(bathy_baltic_SGDF)
 
-(plot <- ggplot(data = bathy_baltic_dt[!is.na(depth),], aes(x = depth, fill=..x..)) +
-  geom_histogram(binwidth = 5) +
+#dimensions of raster?
+dim(bathy_baltic_mask)
+
+#total number of cells?
+cells <- dim(bathy_baltic_mask)[1]*dim(bathy_baltic_mask)[2]
+
+
+#cells of each depth value in data table
+bathy_baltic_bydepth <- data.table(freq(bathy_baltic_mask))
+
+#NA cells
+na_cell_count <- bathy_baltic_bydepth[is.na(value),]$count
+
+#filled cells
+
+cells_filled <- cells-na_cell_count
+
+bathy_baltic_bydepth_complete <- bathy_baltic_bydepth[!is.na(value)]
+
+#calculate percent of total area in polygon
+bathy_baltic_bydepth_complete[,percent_area := count/sum(count)]
+
+#but, now, what is the total area? (still unclear)
+#it seems like it makes sense to go by LME (although problematic because there are some NA values within LME)
+
+baltic_sa <- LME_baltic$SUM_GIS_KM
+
+bathy_baltic_bydepth_complete[,area := percent_area*baltic_sa][,depth := -value]
+
+
+#bin by every 10 m in 2000km (unsure if I have to do this)
+
+dim(bathy_baltic_mask)
+
+
+(plot <- ggplot(data = bathy_baltic_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
+  geom_col(width = 1) +
   theme_classic() +
-  labs(x = "Depth (m)", y = "Frequency") +
-  scale_fill_gradientn(colors = rev(viridis(5))) +
-  guides(fill = guide_colorbar(reverse = T)))
+  labs(x = "Depth (m)", y = "Area (km^2)", fill = "Depth (m)") +
+  scale_y_continuous(expand = c(0, 0)) +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_fill_gradientn(colors = rev(viridis(5)), limits = c(0, 2000)) +
+  guides(position = "bottom", fill = guide_colorbar(reverse = T)))
 
 ggsave(plot, filename = "Baltic_Sea.png")
 ```
@@ -110,8 +150,8 @@ Skew: In probability theory and statistics, skewness is a measure of the asymmet
 ```{r dip test for unimodality}
 #Computes Hartigans’ dip test statistic for testing unimodality, and additionally the modal interval.
 
-diptest <- dip.test(bathy_baltic_dt$depth, simulate.p.value = FALSE, B = 2000)
-
+diptest <- dip.test(bathy_baltic_bydepth_complete$depth, simulate.p.value = FALSE, B = 2000)
+diptest$statistic
 
 ```
 
@@ -121,7 +161,7 @@ Skew
 * If skewness is between -1 and -0.5 or between 0.5 and 1, the distribution is moderately skewed.
 * If skewness is between -0.5 and 0.5, the distribution is approximately symmetric.
 ```{r skew}
-skew <- skewness(bathy_baltic_dt$depth, na.rm = T)
+skew <- skewness(bathy_baltic_bydepth_complete$depth, na.rm = T)
 ```
 
 
@@ -129,7 +169,12 @@ Maybe kurtosis too?
 
 Kurtosis is a statistical measure that defines how heavily the tails of a distribution differ from the tails of a normal distribution. In other words, kurtosis identifies whether the tails of a given distribution contain extreme values.
 ```{r kurtosis}
-kurtosis <- kurtosis(bathy_baltic_dt$depth, na.rm = T)
+kurtosis <- kurtosis(bathy_baltic_bydepth_complete$depth, na.rm = T)
+```
+
+Mean depth value
+```{r mean depth}
+mean <- mean(bathy_baltic_bydepth_complete$depth)
 ```
 
 Maybe then do a MDS including kurtosis, skew, and modality measures for every LME
@@ -142,6 +187,39 @@ Deep-Dominant: High negative skew, unimodal
 Uniform: kurtosis < -1.2, unimodal, little skew
 Hourglass: Bimodality
 
+Text to add to plot:
+ - class
+ - skew
+ - dip
+ - mean
+ - bottleneck
+
+```{r full plot}
+
+plot +
+  annotate("text", x = 300, y = 4000, label = paste0("Dip Test: ", signif(diptest$statistic,2))) +
+  annotate("text", x = 300, y = 3700, label = paste0("Skew: ", round(skew,2))) +
+  annotate("text", x = 300, y = 3400, label = paste0("Kurtosis: ",round(kurtosis,2))) +
+  annotate("text", x = 300, y = 3100, label = paste0("Mean: ",round(mean,2), " m")) +
+  geom_vline(xintercept = mean, color = "red")
+```
 
 --------
 Now let's make a loop!!
+
+```{r loop}
+#subset by LME
+
+LMEs <- LME_spdf$LME_NUMBER
+
+#plot map, plot hypsograph, plot histogram
+
+LME_bathymetry <- data.table(dip_test, skew, kurtosis, mean_elev, bottleneck, elev)
+
+for i in length(1:nrow()) {
+LME_baltic <- LME_spdf[1,]
+
+
+}
+```
+
