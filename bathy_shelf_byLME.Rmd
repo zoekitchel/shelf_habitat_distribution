@@ -65,7 +65,17 @@ bathy_baltic_mask <- mask(bathy_baltic_extent, LME_baltic)
 bathy_baltic_dt[,depth := -(layer)]
 
 #fortify to plot shapefile on top
-LME_baltic_df <- fortify(LME_baltic)
+#LME_baltic_df <- fortify(LME_baltic) (don't need because indstead I make polygon to surround raster)
+
+#To get a polygon that surrounds cells that are not NA
+
+  # make all values the same.
+  r <- reclassify(bathy_baltic_mask, cbind(-Inf, Inf, 1))
+  
+  # convert to polygons (you need to have package 'rgeos' installed for this to work)
+  pp <- rasterToPolygons(r, dissolve=TRUE)
+  
+  LME_reduced_baltic_df <- fortify(pp)
 
 ggplot(bathy_baltic_dt) +
   geom_tile(aes(x = x, y = y, fill = depth)) +
@@ -73,9 +83,20 @@ ggplot(bathy_baltic_dt) +
   theme_classic() +
   labs(x = "Longitude", y = "Latitude", fill = "Depth (m)") +
   guides(fill = guide_colorbar(reverse = T)) +
-  geom_path(data = LME_baltic_df, aes(x = long, y = lat, group = group), fill = NA, color = "black")
+  geom_path(data = LME_reduced_baltic_df, aes(x = long, y = lat, group = group), fill = NA, color = "black")
 
 summary(bathy_baltic_dt)
+
+#how to get area of raster
+
+  #get sizes of all cells in raster [km2]
+  cell_size<-area(bathy_baltic_mask, na.rm=TRUE, weights=FALSE)
+  #delete NAs from vector of all raster cells
+  ##NAs lie outside of the rastered region, can thus be omitted
+  cell_size<-cell_size[!is.na(cell_size)]
+  #compute area [km2] of all cells in geo_raster
+  bathy_raster_area<-length(cell_size)*median(cell_size)
+
 ```
 
 Hypsometric Curves
@@ -106,17 +127,9 @@ bathy_baltic_bydepth_complete <- bathy_baltic_bydepth[!is.na(value)]
 #calculate percent of total area in polygon
 bathy_baltic_bydepth_complete[,percent_area := count/sum(count)]
 
-#but, now, what is the total area? (still unclear)
-#it seems like it makes sense to go by LME (although problematic because there are some NA values within LME)
 
-baltic_sa <- LME_baltic$SUM_GIS_KM
+bathy_baltic_bydepth_complete[,area := percent_area*bathy_raster_area][,depth := -value]
 
-bathy_baltic_bydepth_complete[,area := percent_area*baltic_sa][,depth := -value]
-
-
-#bin by every 10 m in 2000km (unsure if I have to do this)
-
-dim(bathy_baltic_mask)
 
 
 (plot <- ggplot(data = bathy_baltic_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
@@ -151,7 +164,7 @@ Skew: In probability theory and statistics, skewness is a measure of the asymmet
 #Computes Hartigans’ dip test statistic for testing unimodality, and additionally the modal interval.
 
 diptest <- dip.test(bathy_baltic_bydepth_complete$depth, simulate.p.value = FALSE, B = 2000)
-diptest$statistic
+p.value <- diptest$p.value
 
 ```
 
@@ -197,7 +210,7 @@ Text to add to plot:
 ```{r full plot}
 
 plot +
-  annotate("text", x = 300, y = 4000, label = paste0("Dip Test: ", signif(diptest$statistic,2))) +
+  annotate("text", x = 300, y = 4000, label = paste0("Dip Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value))) +
   annotate("text", x = 300, y = 3700, label = paste0("Skew: ", round(skew,2))) +
   annotate("text", x = 300, y = 3400, label = paste0("Kurtosis: ",round(kurtosis,2))) +
   annotate("text", x = 300, y = 3100, label = paste0("Mean: ",round(mean,2), " m")) +
@@ -216,9 +229,91 @@ LMEs <- LME_spdf$LME_NUMBER
 
 LME_bathymetry <- data.table(dip_test, skew, kurtosis, mean_elev, bottleneck, elev)
 
-for i in length(1:nrow()) {
-LME_baltic <- LME_spdf[1,]
+for i in length(1:length(LMEs)) {
+LME_single <- LME_spdf[i,]
 
+#clip raster to LME
+LME_extent <- crop(etopo_shelf_raster, extent(LME_single))
+
+#which areas of raster fall within borders?
+LME_mask <- mask(LME_extent, LME_single)
+
+#conver to df for plotting
+  # First, to a SpatialPointsDataFrame
+  LME_points <- rasterToPoints(LME_mask, spatial = TRUE)
+  # Then to a 'conventional' dataframe
+  LME_dt  <- data.table(data.frame(LME_points))
+
+#keep depth positive  
+LME_dt[,depth := -(layer)]
+
+#size of raster  
+#get sizes of all cells in raster [km2]
+  cell_size<-area(LME_mask, na.rm=TRUE, weights=FALSE)
+  #delete NAs from vector of all raster cells
+  ##NAs lie outside of the rastered region, can thus be omitted
+  cell_size<-cell_size[!is.na(cell_size)]
+  #compute area [km2] of all cells in geo_raster
+  bathy_raster_area<-length(cell_size)*median(cell_size)
+  
+#To get a polygon that surrounds cells that are not NA
+
+  # make all values the same.
+  r <- reclassify(LME_mask, cbind(-Inf, Inf, 1))
+  
+  # convert to polygons (you need to have package 'rgeos' installed for this to work)
+  pp <- rasterToPolygons(r, dissolve=TRUE)
+  
+  LME_reduced_df <- fortify(pp)
+
+ggplot(LME_dt) +
+  geom_tile(aes(x = x, y = y, fill = depth)) +
+  scale_fill_viridis(direction = -1) +
+  theme_classic() +
+  labs(x = "Longitude", y = "Latitude", fill = "Depth (m)") +
+  guides(fill = guide_colorbar(reverse = T)) +
+  geom_path(data = LME_reduced_df, aes(x = long, y = lat, group = group), fill = NA, color = "black")
+
+#cells of each depth value in data table
+LME_bathy_bydepth <- data.table(freq(LME_mask))
+
+LME_bathy_bydepth_complete <- LME_bathy_bydepth[!is.na(value)]
+
+#calculate percent of total area in polygon
+LME_bathy_bydepth_complete[,percent_area := count/sum(count)]
+
+
+LME_bathy_bydepth_complete[,area := percent_area*raster_area][,depth := -value]
+
+
+
+(plot <- ggplot(data = LME_bathy_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
+  geom_col(width = 1) +
+  theme_classic() +
+  labs(x = "Depth (m)", y = "Area (km^2)", fill = "Depth (m)") +
+  scale_y_continuous(expand = c(0, 0)) +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_fill_gradientn(colors = rev(viridis(5)), limits = c(0, 2000)) +
+  guides(position = "bottom", fill = guide_colorbar(reverse = T)))
+
+ggsave(plot, filename = "LME_2.png")
+
+#unimodality
+#Computes Hartigans’ dip test statistic for testing unimodality, and additionally the modal interval.
+
+diptest <- dip.test(LME_bathy_bydepth_complete$depth, simulate.p.value = FALSE, B = 2000)
+p.value <- diptest$p.value
+skew <- skewness(LME_bathy_bydepth_complete$depth, na.rm = T)
+kurtosis <- kurtosis(LME_bathy_bydepth_complete$depth, na.rm = T)
+mean <- mean(LME_bathy_bydepth_complete$depth)
+
+#full plot
+plot +
+  annotate("text", x=Inf, y = Inf, vjust=1, hjust=1, label = paste0("Dip Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value))) +
+  annotate("text", x=Inf, y = Inf, vjust=1, hjust=0.9, label = paste0("Skew: ", round(skew,2))) +
+  annotate("text", x=Inf, y = Inf, vjust=1, hjust=0.8, label = paste0("Kurtosis: ",round(kurtosis,2))) +
+  annotate("text", x=Inf, y = Inf, vjust=1, hjust=0.7, label = paste0("Mean: ",round(mean,2), " m")) +
+  geom_vline(xintercept = mean, color = "red")
 
 }
 ```
