@@ -15,6 +15,8 @@ library(moments)
 library(viridis) #colors
 library(data.table)
 library(hydroTSM) #hypsometric curves
+library(gridExtra)
+library(ggfortify)
 
 etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/etopo_shelf_df.rds")
 #bring in bathy for shelf regions
@@ -143,17 +145,6 @@ ggplot(bathy_aleutian_dt) +
   labs(x = "Longitude (˚E)", y = "Latitude", fill = "Depth (m)") +
   guides(fill = guide_colorbar(reverse = T)) +
   geom_path(data = LME_reduced_aleutian_df, aes(x = long_shift, y = lat, group = group), fill = NA, color = "black")
-
-
-#how to get area of raster
-
-  #get sizes of all cells in raster [km2]
-  cell_size<-area(bathy_baltic_mask, na.rm=TRUE, weights=FALSE)
-  #delete NAs from vector of all raster cells
-  ##NAs lie outside of the rastered region, can thus be omitted
-  cell_size<-cell_size[!is.na(cell_size)]
-  #compute area [km2] of all cells in geo_raster
-  bathy_raster_area<-length(cell_size)*median(cell_size)
 
 ```
 
@@ -340,8 +331,9 @@ LME_bathy_statistics[, V1 := NULL]
 
 lme_maps <- vector("list", length = nrow(LME_spdf))
 lme_densityplots <- vector("list", length = nrow(LME_spdf))
+lme_areaplots <- vector("list", length = nrow(LME_spdf))
 
-for (i in 1:nrow(LME_bathy_statistics)) {
+for (i in 61:nrow(LME_bathy_statistics)) {
   LME_single <- LME_spdf_ordered[i,]
   LME_bathy_statistics[i, "lme_name"] <- LME_single$LME_NAME
   LME_bathy_statistics[i, "lme_number"] <- LME_single$LME_NUMBER
@@ -401,6 +393,14 @@ for (i in 1:nrow(LME_bathy_statistics)) {
     geom_path(data = LME_reduced_df, aes(x = long_shift, y = lat, group = group), color = "black") +
     annotate("text", x=Inf, y = max(LME_reduced_df$lat)+1, hjust=1, label = paste0("LME ", LME_bathy_statistics[i,lme_number], ": ", LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 4)
   
+  
+    #list of values within raster
+  LME_bathy_depth_list <- getValues(LME_mask)
+  LME_bathy_depth_list <- LME_bathy_depth_list[!is.na(LME_bathy_depth_list)]
+  
+  LME_bathy_depth_list_pos <- -1*LME_bathy_depth_list
+
+
   #cells of each depth value in data table
   LME_bathy_bydepth <- data.table(freq(LME_mask))
   
@@ -414,62 +414,70 @@ for (i in 1:nrow(LME_bathy_statistics)) {
   
   
   
-  (plot <- ggplot(data = LME_bathy_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
+  plot <- ggplot(data = LME_bathy_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
     geom_col(width = 1) +
     theme_classic() +
     labs(x = "Depth (m)", y = "Area (km^2)", fill = "Depth (m)") +
     scale_y_continuous(expand = c(0, 0)) +
     scale_x_continuous(expand = c(0,0)) +
     scale_fill_gradientn(colors = rev(viridis(5)), limits = c(0, 2000)) +
-    guides(position = "bottom", fill = guide_colorbar(reverse = T)))
+    guides(position = "bottom", fill = guide_colorbar(reverse = T))
   
   
   #unimodality
   #Computes Hartigans’ dip test statistic for testing unimodality, and additionally the modal interval.
   
-  diptest <- dip.test(LME_bathy_bydepth_complete$depth, simulate.p.value = TRUE, B = 2000)
+  diptest <- dip.test(LME_bathy_depth_list_pos, simulate.p.value = TRUE, B = 2000)
   LME_bathy_statistics[i,"dip_test"] <- diptest$statistic[1]
   p.value <- diptest$p.value
   LME_bathy_statistics[i,"dip_p_value"] <- p.value
-  skew <- skewness(LME_bathy_bydepth_complete$depth, na.rm = T)
+  skew <- skewness(LME_bathy_depth_list_pos, na.rm = T)
   LME_bathy_statistics[i,"skew"] <- skew
-  kurtosis <- kurtosis(LME_bathy_bydepth_complete$depth, na.rm = T)
+  kurtosis <- kurtosis(LME_bathy_depth_list_pos, na.rm = T)
   LME_bathy_statistics[i,"kurtosis"] <- kurtosis
-  mean <- -1*cellStats(LME_mask, "mean", na.rm = T)
+  mean <- mean(LME_bathy_depth_list_pos)
   LME_bathy_statistics[i,"mean_elev"] <- mean
   
   max_area <- max(LME_bathy_bydepth_complete$area)
   
   #full plot
-  lme_densityplots[[i]] <- plot +
-    annotate("text", x=Inf, y = max_area-max_area/20, hjust=1, label = paste0(LME_bathy_statistics[i,lme_name]), fontface = "bold") +
-    annotate("text", x=Inf, y = max_area-2*(max_area/20), hjust=1, label = paste0("Dip Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value))) +
-    annotate("text", x=Inf, y = max_area-3*(max_area/20), hjust=1, label = paste0("Skew: ", round(skew,2))) +
-    annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2))) +
-    annotate("text", x=Inf, y = max_area-5*(max_area/20), hjust=1, label = paste0("Mean: ",round(mean,2), " m")) +
+  lme_areaplots[[i]] <- plot +
+    annotate("text", x=Inf, y = max_area-max_area/20, hjust=1, label = paste0(LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 3) +
+    annotate("text", x=Inf, y = max_area-2*(max_area/20), hjust=1, label = paste0("Dip Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value, 2)), size = 3) +
+    annotate("text", x=Inf, y = max_area-3*(max_area/20), hjust=1, label = paste0("Skew: ", round(skew,2)), size = 3) +
+    annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2)), size = 3) +
+    annotate("text", x=Inf, y = max_area-5*(max_area/20), hjust=1, label = paste0("Mean: ",round(mean,2), " m"), size = 3) +
     geom_vline(xintercept = mean, color = "red")
+  
+  lme_densityplots[[i]] <- ggplot() +
+    geom_density(aes(LME_bathy_depth_list_pos)) +
+    theme_classic() +
+    labs(x = "Depth (m)", y = "Density")
+  
+    print(paste(i, nrow(LME_bathy_statistics), sep = "/"))
+  
 
 }
 
 saveRDS(LME_bathy_statistics, file = "LME_bathy_statistics.RData")
 saveRDS(lme_densityplots, file = "lme_densityplots.Rdata")
+saveRDS(lme_areaplots, file = "lme_areaplots.Rdata")
 saveRDS(lme_maps, file = "lme_maps.Rdata")
 
 #plots to pdf
-library(gridExtra)
-ggsave("arranged_maps.pdf", marrangeGrob(grobs = lme_maps, ncol=2, nrow = 3))
+ggsave("arranged_maps.pdf", marrangeGrob(lme_maps, ncol=2, nrow = 2))
 ggsave("arranged_densityplots.pdf", marrangeGrob(grobs = lme_densityplots, ncol=2, nrow = 3))
+ggsave("arranged_areaplots.pdf", marrangeGrob(grobs = lme_areaplots, ncol=2, nrow = 3))
 ```
 
 PCA
 ```{r PCA}
-library(ggfortify)
+
 LME.pca <- prcomp(LME_bathy_statistics[,c(4,6,7)])
 LME.plot <- autoplot(LME.pca)
 ```
 
 TO DO:
-if LME spans -180-+180, we need to find better way to plot (multiply by -1?)
 make plots into curves instead of actual data** GAM, or kernel density? maybe neither
 
 Add classifications to data frame
@@ -480,21 +488,34 @@ Add classifications to data frame
 
 distributions with a dip value >0.01 and with significant (p<0.05) deviations from unimodality to the hourglass classification. 
 
-For distributions with a dip value ≤0.01, we assigned those with a Type-I skewness ≥0.5 to pyramid, those with skewness ≤ −0.5 to inverse pyramid, and the remainder to diamond, representing those with approximately normal distributions. 
+For distributions with a dip value ≤0.01, we assigned those with a Type-I skewness ≥0.5 to shallow dominant, those with skewness ≤ −0.5 to deep dominant, and the remainder to diamond, representing those with approximately normal distributions. 
 
 ```{r expanded dataframe}
 LME_bathy_statistics[, skew_descriptor := ifelse(abs(skew) > 1, "high_skew", ifelse(abs(skew) < 0.5, "symmetric", "mod_skew"))]
 
 LME_bathy_statistics[, hourglass := ifelse(dip_test > 0.01, ifelse(p.value < 0.05, T, F), F)]
 
-LME_bathy_statistics[, deep_dominant := ifelse(skew >= 0.5, T, F)]
+LME_bathy_statistics[, deep_dominant := ifelse(dip_test <= 0.01, 
+                                               ifelse(skew <= -0.5, T, F), F)]
 
-LME_bathy_statistics[, shallow_dominant := ifelse(skew <= -0.5, T, F)]
+LME_bathy_statistics[, shallow_dominant := ifelse(dip_test <= 0.01, 
+                                                  ifelse(skew >= 0.5, T, F), F)]
 
-LME_bathy_statistics[, mid_dominant := ifelse(abs(skew) <0.05, T, F)]
+LME_bathy_statistics[, mid_dominant := ifelse(abs(skew) <0.5, T, F)]
 
 #negative kurtosis (no tails)
-LME_bathy_statistics[, uniform := ifelse(kurtosis < -1, T, F)]
+LME_bathy_statistics[, uniform := ifelse(kurtosis < 0, T, F)]
 
 ```
 
+Are all regions labeled by type?
+```{r labeling check}
+LME_bathy_statistics[,type := ifelse(hourglass == T, "hourglass",
+                                    ifelse(deep_dominant == T, "deep_dominant",
+                                           ifelse(shallow_dominant == T, "shallow_dominant",
+                                                  ifelse(mid_dominant == T, "mid_dominant", 
+                                                         ifelse(uniform == T, "uniform", "none")))))]
+```
+
+BIG Qs to ASK MALIN
+ - do I need to limit LMEs to continental shelf regions? does blue habitat seem like a good limiter?

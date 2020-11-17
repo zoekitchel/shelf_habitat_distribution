@@ -1,0 +1,59 @@
+---
+title: "Degree shifts"
+output: html_notebook
+---
+
+Degree shifts
+
+Second part of paper, if we move away from equator by 1 degree, how much habitat do we gain or lost
+
+I need to look at shelf area by degrees latitude
+
+```{r setup}
+library(raster)
+library(rgdal)
+library(sf)
+library(ncdf4)
+library(rmapshaper)
+library(tidyverse)
+library(diptest)
+library(moments)
+library(viridis) #colors
+library(data.table)
+library(hydroTSM) #hypsometric curves
+library(gridExtra)
+
+etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/etopo_shelf_df.rds")
+#bring in bathy for shelf regions
+
+#LMEs
+LME_spdf <- readOGR("LME66/LMEs66.shp")
+head(LME_spdf)
+```
+
+Make bathy layer into raster
+```{r bathy to raster}
+proj <- crs(LME_spdf)
+etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = proj)
+
+```
+
+Crop bathy layer to LMEs
+```{r}
+
+#crop bathy layer to LME subset
+LMEs_extent <- crop(etopo_shelf_raster, extent(LME_spdf))
+
+#which areas of raster fall within borders?
+bathy_mask <- mask(LMEs_extent, LME_spdf)
+
+```
+
+Qs 
+
+- how to calculate area when it changes in size as you go across latiudes? maybe, better to look at every 100km (~200 bands)
+
+```{r}
+
+```
+
