@@ -41,9 +41,9 @@ proj <- crs(LME_spdf)
 etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = proj)
 
 #make figure of shelves
-png("etopo_shelf_bathy.png", height=5, width=7, units="in", res=300)
-plot(etopo_shelf_raster)
-dev.off()
+  #png("etopo_shelf_bathy.png", height=5, width=7, units="in", res=300)
+  #plot(etopo_shelf_raster)
+  #dev.off()
 
 ```
 
@@ -208,7 +208,7 @@ What if we model instead of use true data? Instead, I need a density curve!!!
 ```{r model versus data}
 ggplot(data = bathy_baltic_bydepth_complete, aes(x = depth, y = count, fill = depth)) +
   #geom_col(width = 1) +
-  geom_density()
+  geom_density() +
   geom_smooth(method = "gam", se = F) +
   theme_classic() +
   labs(x = "Depth (m)", y = "Area (km^2)", fill = "Depth (m)") +
@@ -333,7 +333,7 @@ lme_maps <- vector("list", length = nrow(LME_spdf))
 lme_densityplots <- vector("list", length = nrow(LME_spdf))
 lme_areaplots <- vector("list", length = nrow(LME_spdf))
 
-for (i in 61:nrow(LME_bathy_statistics)) {
+for (i in 1:nrow(LME_bathy_statistics)) {
   LME_single <- LME_spdf_ordered[i,]
   LME_bathy_statistics[i, "lme_name"] <- LME_single$LME_NAME
   LME_bathy_statistics[i, "lme_number"] <- LME_single$LME_NUMBER
@@ -519,3 +519,4 @@ LME_bathy_statistics[,type := ifelse(hourglass == T, "hourglass",
 
 BIG Qs to ASK MALIN
  - do I need to limit LMEs to continental shelf regions? does blue habitat seem like a good limiter?
+ - should I instead go with 200 m like Hailey did?
