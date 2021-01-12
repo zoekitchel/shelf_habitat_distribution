@@ -25,6 +25,9 @@ library(maptools)
 library(rgdal)
 library(rgeos)
 library(SpaDES)
+library(rnaturalearth)
+library(rnaturalearthdata)
+
 
 etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/etopo_shelf_df.rds")
 #bring in bathymetry data frame for shelf regions
@@ -780,6 +783,43 @@ area_latitude_west_pac <- ggplot(west_pac_shelf_areas, aes(latitude_start, area)
 Now, I should make maps for each of these regions
 
 ```{r map regions}
+library(ggspatial)
+install.packages("sf")
 
+  world <- ne_countries(scale = "medium", returnclass = "sf")
+  #shift world file for some regions
+world_shift <- st_shift_longitude(world)
+
+region_maps <- list()
+
+for (i in 1:length(region_names)) {
+  
+  region_spdf <- get(region_names[i])
+  
+  region_spdf_ext <- extent(region_spdf)
+  
+  #convert to plottable data frame
+  region_spdf@data$id <- rownames(region_spdf@data)
+  region_spdf.points <- fortify(region_spdf, region="id")
+  region_spdf.df <- merge(region_spdf.points, region_spdf@data, by="id")
+  
+  
+  region_maps[[i]] <- ggplot() +
+      geom_sf(data = world_shift) +
+  #    annotation_scale(location = "bl", width_hint = 0.5) + #too big of space for scale
+  #    annotation_north_arrow(location = "bl", which_north = "true", 
+  #        pad_x = unit(0.75, "in"), pad_y = unit(0.5, "in"),
+  #        style = north_arrow_fancy_orienteering) +
+    xlim(c(0, 359.9953)) +
+    geom_polygon(data = region_spdf.df, aes(x=long, y = lat, group = group), lwd = 0, fill = "darksalmon") +
+      coord_sf(xlim = c(region_spdf_ext[1], region_spdf_ext[2]), ylim = c(region_spdf_ext[3], region_spdf_ext[4])) +
+    geom_abline(intercept = 0, slope = 0) +
+    labs( x = "Longitude", y = "Latitude") +
+    theme_classic()
+  
+  filename <- paste0(region_names[i], "_map.jpg")
+  ggsave(plot = region_maps[[i]], filename = filename)
+
+}
 ```
 
