@@ -27,21 +27,21 @@ library(rgeos)
 library(SpaDES)
 
 etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/etopo_shelf_df.rds")
-#bring in bathy for shelf regions
+#bring in bathymetry data frame for shelf regions
 
 #LMEs
-LME_spdf <- readOGR("LME66/LMEs66.shp")
+LME_spdf <- readOGR("LME66/LMEs66.shp") #spatial points data frame with all 66 LMEs
 head(LME_spdf)
 ```
 
-Make bathy layer into raster
+Make bathymetry data frame into raster (this takes a bit)
 ```{r bathy to raster}
 proj <- crs(LME_spdf)
 etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = proj)
 
 ```
 
-Crop bathy layer to LMEs (not sure if this is necessary, may just be able to use etopo shelf raster)
+Crop bathymetry raster to LME spdf (not sure if this is necessary, may just be able to use etopo shelf raster)
 ```{r}
 
 #crop bathy layer to LME subset
@@ -53,28 +53,28 @@ LMEs_extent <- crop(etopo_shelf_raster, extent(LME_spdf))
 ```
 
 Should go by projections of where species are moving:
-"Marine organisms have, on average, expanded the leading edges of their distributions by 72.0 ± 13.5 km per decade (generally polewards), while marine phenology in spring has advanced by 4.4 ± 1.1 days decade (Poloczanska et al., 2013)." Poloczanska et al. 2016
+"Marine species (~80% being ectotherms in the database; Extended Data Fig. 2) have moved towards the poles at a mean (±s.e.m.) pace of 5.92 ± 0.94 km yr−1 (one-sample Student’s t-test: t=6.26; d.f. residuals=23; P=2.20×10–6), which is almost six times faster than terrestrial species (one-way analysis of variance (ANOVA): F=12.68; d.f. factor=1; d.f. residuals=45; P=8.88×10–4)." Lenoir 2020
 
-72 km is how many degrees?
+5.92 km * 10 = 59.2 km in 10 years
+
+59.2 km is how many degrees?
 
 1° = 111 km
 
 so, 
 
 ```{r quick conversion}
-72/111*1
+59.2/111*1
 
 ```
 
-0.6486˚ is representative of decadal shifts
+0.5333˚ is representative of decadal shifts
 
-I will put areas into 0.65 ˚ Bins (180 total degrees, so 180/0.65=276.9231)
---0.33 degree bins conveniently done by raster, so I'll bin in units of two 0.33 degree bins
+I will put areas into 0.5˚ Bins (180 total degrees, so 180/0.5=360)
+
 ```{r}
-180/0.65
+180/0.5
 ```
-
-Or, should I put area into 0.65*5 = ~3.25˚ bins representative of 50 years? I'll play around with it. 
 
 How does continental shelf habitat change with latitude?
 
@@ -83,16 +83,17 @@ Plot Latitude by Area
 Northern Hemisphere
 
 ```{r use data table to get bins}
-etopo_shelf_dt <- as.data.table(etopo_shelf_df)
-etopo_shelf_dt_north <- etopo_shelf_dt[y >= 0,][,habitat := ifelse(is.na(layer), 0,1)]
+etopo_shelf_dt <- as.data.table(etopo_shelf_df) #bathymetry into data table
+etopo_shelf_dt_north <- etopo_shelf_dt[y >= 0,][,habitat := ifelse(is.na(layer), 0,1)] #if in northern hemisphere
 setorder(etopo_shelf_dt_north, y)
-etopo_shelf_dt_south <- etopo_shelf_dt[y <= 0,][,habitat := ifelse(is.na(layer), 0,1)]
+etopo_shelf_dt_south <- etopo_shelf_dt[y <= 0,][,habitat := ifelse(is.na(layer), 0,1)] #if in southern hemisphere
 setorder(etopo_shelf_dt_south, -y)
 ```
-Binning data
+
+Binning data by 0.5 ˚
 ```{r}
-etopo_shelf_dt_north_binned <- etopo_shelf_dt_north[,sum(habitat) , .(gr=cut(y,breaks=seq(0,90,by = (2/3))))]
-etopo_shelf_dt_south_binned <- etopo_shelf_dt_south[,sum(habitat) , .(gr=cut(y,breaks=seq(0,-90,by = (-2/3))))]
+etopo_shelf_dt_north_binned <- etopo_shelf_dt_north[,sum(habitat) , .(gr=cut(y,breaks=seq(0,90,by = (0.5))))]
+etopo_shelf_dt_south_binned <- etopo_shelf_dt_south[,sum(habitat) , .(gr=cut(y,breaks=seq(0,-90,by = (-0.5))))]
 ```
 
 Keep above because it's interesting global perspective (how does total shelf area vary by latitude)
@@ -140,11 +141,11 @@ east_ind_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% east_ind,]
 
 #for subregions that span 360, we need to change CRS a bit
 newCRS_west <- "+proj=longlat +datum=WGS84 +lon_wrap=180"
-west_pac_spdf_shift <- spTransform(west_pac_spdf, CRS(newCRS))
+west_pac_spdf_shift <- spTransform(west_pac_spdf, CRS(newCRS_west))
 west_pac_spdf_shift <- gBuffer(west_pac_spdf_shift, byid=TRUE, width=0) #gets rid of buffers, allows for union
 
 newCRS_east <- "+proj=longlat +datum=WGS84 +lon_wrap=180"
-east_pac_spdf_shift <- spTransform(east_pac_spdf, CRS(newCRS_west))
+east_pac_spdf_shift <- spTransform(east_pac_spdf, CRS(newCRS_east))
 east_pac_spdf_shift <- gBuffer(east_pac_spdf_shift, byid=TRUE, width=0) #gets rid of buffers, allows for union
 #rotate raster for bathymetry (guided by extent of etoposhelf raster,  that's why wacky #s)
 x1 <- crop(etopo_shelf_raster, extent(-180.0167, -0.0167, -90.01667, 90.01667))
@@ -160,7 +161,7 @@ region_names <- c("west_pac_spdf_shift", "east_pac_spdf_shift", "west_atl_spdf",
 
 
 
-#dissolve all polygons
+#dissolve all polygons by region
 for (i in 1:length(region_names)) {
   name <- paste0(region_names[i], "_agg")
   assign(name, gUnaryUnion(get(region_names[i]))) #dissolve polygons into one
@@ -169,12 +170,12 @@ for (i in 1:length(region_names)) {
 ```
 
 
-Extract bathy data from polygon only to make sure we're limiting to shelf regions above 2000 meters
+Extract bathymetry data from polygon only to make sure we're limiting to shelf regions above 2000 meters
 
 ```{r polygon to raster}
 
 for (i in 1:length(region_names[3:6])) {
-#crop bathy layer to LME subset
+#crop bathymetry layer to LME subset
   raster_extent <-
        crop(etopo_shelf_raster, extent(get(paste0(region_names[i], "_agg"))))
 
@@ -198,7 +199,7 @@ for (i in 1:length(region_names[1:2])) {
 
 ```
 
-Splitting raster into many
+Splitting raster into many to plot individually
 
 Western Pacific
 ```{r split raster for western pacific}
@@ -212,8 +213,8 @@ west_pac_spdf_shift_agg_south <- crop(west_pac_spdf_shift_mask, extent(south_ext
 #unfortunately, I think I may have to just do this manually (ugly, I know)
 
 #all chunks for west pacific
-west_pac_north_latitudes <- seq(0, ymax(west_pac_spdf_shift_mask), by = 0.66)
-west_pac_south_latitudes <- seq(-0.66, ymin(west_pac_spdf_shift_mask), by = -0.66)
+west_pac_north_latitudes <- seq(0, ymax(west_pac_spdf_shift_mask), by = 0.5)
+west_pac_south_latitudes <- seq(-0.5, ymin(west_pac_spdf_shift_mask), by = -0.5)
 
 west_pac_shelf_areas <- as.data.table(matrix(nrow = (length(west_pac_north_latitudes)-1+length(west_pac_south_latitudes)-1)))
                                       
@@ -283,7 +284,8 @@ for (i in 1:(length(west_pac_south_latitudes)-1)) {
 
 Eastern Pacific
 
-region_names <- c("west_pac_spdf_shift", "east_pac_spdf_shift", "west_atl_spdf", "west_ind_spdf", "east_atl_spdf_nobuf", "east_ind_spdf")
+east_pac_spdf_shift
+
 ```{r split raster for eastern pacific}
 north_extent <- c(xmin(east_pac_spdf_shift_mask), xmax(east_pac_spdf_shift_mask), 0, ymax(east_pac_spdf_shift_mask))
 south_extent <- c(xmin(east_pac_spdf_shift_mask), xmax(east_pac_spdf_shift_mask), ymin(east_pac_spdf_shift_mask), 0)
@@ -295,8 +297,8 @@ east_pac_spdf_shift_agg_south <- crop(east_pac_spdf_shift_mask, extent(south_ext
 #unfortunately, I think I may have to just do this manually (ugly, I know)
 
 #all chunks for east pacific
-east_pac_north_latitudes <- seq(0, ymax(east_pac_spdf_shift_mask), by = 0.66)
-east_pac_south_latitudes <- seq(-0.66, ymin(east_pac_spdf_shift_mask), by = -0.66)
+east_pac_north_latitudes <- seq(0, ymax(east_pac_spdf_shift_mask), by = 0.5)
+east_pac_south_latitudes <- seq(-0.5, ymin(east_pac_spdf_shift_mask), by = -0.5)
 
 east_pac_shelf_areas <- as.data.table(matrix(nrow = (length(east_pac_north_latitudes)-1+length(east_pac_south_latitudes)-1)))
                                       
@@ -366,10 +368,11 @@ for (i in 1:(length(east_pac_south_latitudes)-1)) {
 
 Western Atlantic
 
-region_names <- c("west_pac_spdf_shift", "east_pac_spdf_shift", "west_atl_spdf", "west_ind_spdf", "east_atl_spdf_nobuf", "east_ind_spdf")
+west_atl_spdf_mask
 
 ```{r split raster for western atlantic}
-north_extent <- c(xmin(west_atl_spdf_mask), xmax(west_atl_spdf_mask), 0, ymax(west_atl_spdf_mask))
+north_extent <- c(xmin(west_atl_spdf), xmax(west_atl_spdf_mask), 0, ymax(west_atl_spdf_mask))
+                  
 south_extent <- c(xmin(west_atl_spdf_mask), xmax(west_atl_spdf_mask), ymin(west_atl_spdf_mask), 0)
 
 #crop into above and below 0
@@ -379,8 +382,8 @@ west_atl_agg_south <- crop(west_atl_spdf_mask, extent(south_extent))
 #unfortunately, I think I may have to just do this manually (ugly, I know)
 
 #all chunks for east pacific
-west_atl_north_latitudes <- seq(0, ymax(west_atl_spdf_mask), by = 0.66)
-west_atl_south_latitudes <- seq(-0.66, ymin(west_atl_spdf_mask), by = -0.66)
+west_atl_north_latitudes <- seq(0, ymax(west_atl_spdf_mask), by = 0.5)
+west_atl_south_latitudes <- seq(-0.5, ymin(west_atl_spdf_mask), by = -0.5)
 
 west_atl_shelf_areas <- as.data.table(matrix(nrow = (length(west_atl_north_latitudes)-1+length(west_atl_south_latitudes)-1)))
                                       
@@ -450,7 +453,7 @@ for (i in 1:(length(west_atl_south_latitudes)-1)) {
 
 Eastern Atlantic
 
-region_names <- c("west_pac_spdf_shift", "east_pac_spdf_shift", "west_atl_spdf", "west_ind_spdf", "east_atl_spdf_nobuf", "east_ind_spdf")
+east_atl_spdf_nobuf_mask
 
 ```{r split raster for eastern atlantic}
 north_extent <- c(xmin(east_atl_spdf_nobuf_mask), xmax(east_atl_spdf_nobuf_mask), 0, ymax(east_atl_spdf_nobuf_mask))
@@ -463,8 +466,8 @@ east_atl_agg_south <- crop(east_atl_spdf_nobuf_mask, extent(south_extent))
 #unfortunately, I think I may have to just do this manually (ugly, I know)
 
 #all chunks for east pacific
-east_atl_north_latitudes <- seq(0, ymax(east_atl_spdf_nobuf_mask), by = 0.66)
-east_atl_south_latitudes <- seq(-0.66, ymin(east_atl_spdf_nobuf_mask), by = -0.66)
+east_atl_north_latitudes <- seq(0, ymax(east_atl_spdf_nobuf_mask), by = 0.5)
+east_atl_south_latitudes <- seq(-0.5, ymin(east_atl_spdf_nobuf_mask), by = -0.5)
 
 east_atl_shelf_areas <- as.data.table(matrix(nrow = (length(east_atl_north_latitudes)-1+length(east_atl_south_latitudes)-1)))
                                       
@@ -534,7 +537,7 @@ for (i in 1:(length(east_atl_south_latitudes)-1)) {
 
 Western Indian
 
-region_names <- c("west_pac_spdf_shift", "east_pac_spdf_shift", "west_atl_spdf", "west_ind_spdf", "east_atl_spdf_nobuf", "east_ind_spdf")
+west_ind_spdf_mask
 
 ```{r split raster for western indian}
 north_extent <- c(xmin(west_ind_spdf_mask), xmax(west_ind_spdf_mask), 0, ymax(west_ind_spdf_mask))
@@ -547,8 +550,8 @@ west_ind_agg_south <- crop(west_ind_spdf_mask, extent(south_extent))
 #unfortunately, I think I may have to just do this manually (ugly, I know)
 
 #all chunks for east pacific
-west_ind_north_latitudes <- seq(0, ymax(west_ind_spdf_mask), by = 0.66)
-west_ind_south_latitudes <- seq(-0.66, ymin(west_ind_spdf_mask), by = -0.66)
+west_ind_north_latitudes <- seq(0, ymax(west_ind_spdf_mask), by = 0.5)
+west_ind_south_latitudes <- seq(-0.5, ymin(west_ind_spdf_mask), by = -0.5)
 
 west_ind_shelf_areas <- as.data.table(matrix(nrow = (length(west_ind_north_latitudes)-1+length(west_ind_south_latitudes)-1)))
                                       
@@ -619,7 +622,7 @@ for (i in 1:(length(west_ind_south_latitudes)-1)) {
 
 Eastern Indian
 
-region_names <- c("west_pac_spdf_shift", "east_pac_spdf_shift", "west_atl_spdf", "west_ind_spdf", "east_atl_spdf_nobuf", "east_ind_spdf")
+east_ind_spdf_mask
 
 ```{r split raster for eastern indian}
 north_extent <- c(xmin(east_ind_spdf_mask), xmax(east_ind_spdf_mask), 0, ymax(east_ind_spdf_mask))
@@ -632,8 +635,8 @@ east_ind_agg_south <- crop(east_ind_spdf_mask, extent(south_extent))
 #unfortunately, I think I may have to just do this manually (ugly, I know)
 
 #all chunks for east pacific
-east_ind_north_latitudes <- seq(0, ymax(east_ind_spdf_mask), by = 0.66)
-east_ind_south_latitudes <- seq(-0.66, ymin(east_ind_spdf_mask), by = -0.66)
+east_ind_north_latitudes <- seq(0, ymax(east_ind_spdf_mask), by = 0.5)
+east_ind_south_latitudes <- seq(-0.5, ymin(east_ind_spdf_mask), by = -0.5)
 
 east_ind_shelf_areas <- as.data.table(matrix(nrow = (length(east_ind_north_latitudes)-1+length(east_ind_south_latitudes)-1)))
                                       
@@ -699,11 +702,12 @@ for (i in 1:(length(east_ind_south_latitudes)-1)) {
   } 
 }
 
-save(east_ind_shelf_areas, west_ind_shelf_areas, east_atl_shelf_areas, west_atl_shelf_areas, east_pac_shelf_areas, west_pac_shelf_areas ,file = "shelf_areas_by_0.66latitude.RData")
+save(east_ind_shelf_areas, west_ind_shelf_areas, east_atl_shelf_areas, west_atl_shelf_areas, east_pac_shelf_areas, west_pac_shelf_areas ,file = "shelf_areas_by_0.5latitude.RData")
 
 ```
 
-Plots
+Plots of latitude versus habitat availability
+
 ```{r plots}
 area_latitude_east_ind <- ggplot(east_ind_shelf_areas, aes(latitude_start, area)) +
   geom_point(shape =18) + 
@@ -770,6 +774,12 @@ area_latitude_west_pac <- ggplot(west_pac_shelf_areas, aes(latitude_start, area)
   theme_classic()
 
   ggsave(area_latitude_west_pac, filename = "area_latitude_west_pac.jpg")
+
+```
+
+Now, I should make maps for each of these regions
+
+```{r map regions}
 
 ```
 
