@@ -35,6 +35,35 @@ etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_ha
 #LMEs
 LME_spdf <- readOGR("LME66/LMEs66.shp") #spatial points data frame with all 66 LMEs
 head(LME_spdf)
+
+#function to go from coordinates to minutes symbols in plots
+scale_x_longitude <- function(xmin=-180, xmax=180, step=0.002, ...) {
+  xbreaks <- seq(xmin,xmax,step)
+  xlabels <- unlist(
+    lapply(xbreaks, function(x){
+      ifelse(x < 0, parse(text=paste0(paste0(abs(dms(x)$d), expression("*{degree}*")),
+                                      paste0(abs(dms(x)$m), expression("*{minute}*")),
+                                      paste0(abs(dms(x)$s)), expression("*{second}*W"))), 
+             ifelse(x > 0, parse(text=paste0(paste0(abs(dms(x)$d), expression("*{degree}*")),
+                                             paste0(abs(dms(x)$m), expression("*{minute}*")),
+                                             paste0(abs(dms(x)$s)), expression("*{second}*E"))),
+                    abs(dms(x))))}))
+  return(scale_x_continuous("Longitude", breaks = xbreaks, labels = xlabels, expand = c(0, 0), ...))
+}
+
+scale_y_latitude <- function(ymin=-90, ymax=90, step=0.002, ...) {
+  ybreaks <- seq(ymin,ymax,step)
+  ylabels <- unlist(
+    lapply(ybreaks, function(x){
+      ifelse(x < 0, parse(text=paste0(paste0(abs(dms(x)$d), expression("*{degree}*")),
+                                      paste0(abs(dms(x)$m), expression("*{minute}*")),
+                                      paste0(abs(dms(x)$s)), expression("*{second}*S"))), 
+             ifelse(x > 0, parse(text=paste0(paste0(abs(dms(x)$d), expression("*{degree}*")),
+                                             paste0(abs(dms(x)$m), expression("*{minute}*")),
+                                             paste0(abs(dms(x)$s)), expression("*{second}*N"))),
+                    abs(dms(x))))}))
+  return(scale_y_continuous("Latitude", breaks = ybreaks, labels = ylabels, expand = c(0, 0), ...))
+} 
 ```
 
 Make bathymetry data frame into raster (this takes a bit)
@@ -177,26 +206,32 @@ Extract bathymetry data from polygon only to make sure we're limiting to shelf r
 
 ```{r polygon to raster}
 
-for (i in 1:length(region_names[3:6])) {
+region_names_shift <- region_names[1:2]
+
+
+region_names_noshift <- region_names[3:6]
+
+
+for (i in 1:length(region_names_noshift)) {
 #crop bathymetry layer to LME subset
   raster_extent <-
-       crop(etopo_shelf_raster, extent(get(paste0(region_names[i], "_agg"))))
+       crop(etopo_shelf_raster, extent(get(paste0(region_names_noshift[i], "_agg"))))
 
 #which areas of raster fall within borders?
-  assign(paste0(region_names[i], "_mask"),
-       mask(raster_extent, get(paste0(region_names[i], "_agg"))))
+  assign(paste0(region_names_noshift[i], "_mask"),
+       mask(raster_extent, get(paste0(region_names_noshift[i], "_agg"))))
 
 }
 
 #edit for east_pac_spdf_shift and west_pac_spdf_shift
-for (i in 1:length(region_names[1:2])) {
+for (i in 1:length(region_names_shift[1:2])) {
 #crop bathy layer to LME subset
   raster_extent <-
-       crop(etopo_shelf_raster_180, extent(get(paste0(region_names[i], "_agg"))))
+       crop(etopo_shelf_raster_180, extent(get(paste0(region_names_shift[i], "_agg"))))
 
 #which areas of raster fall within borders?
-  assign(paste0(region_names[i], "_mask"),
-       mask(raster_extent, get(paste0(region_names[i], "_agg"))))
+  assign(paste0(region_names_shift[i], "_mask"),
+       mask(raster_extent, get(paste0(region_names_shift[i], "_agg"))))
 
 }
 
@@ -718,6 +753,7 @@ area_latitude_east_ind <- ggplot(east_ind_shelf_areas, aes(latitude_start, area)
   labs(x = "Latitude", y = "Area (km^2)") +
   annotate("text", x =25, y = 100000, label = "Eastern Indian Ocean") +
   geom_vline(xintercept = 0) +
+  
   coord_flip() +
   theme_classic()
 
@@ -805,12 +841,12 @@ for (i in 1:length(region_names)) {
   
   
   region_maps[[i]] <- ggplot() +
-      geom_sf(data = world_shift) +
+      geom_sf(data = world) +
   #    annotation_scale(location = "bl", width_hint = 0.5) + #too big of space for scale
   #    annotation_north_arrow(location = "bl", which_north = "true", 
   #        pad_x = unit(0.75, "in"), pad_y = unit(0.5, "in"),
   #        style = north_arrow_fancy_orienteering) +
-    xlim(c(0, 359.9953)) +
+   # xlim(c(0, 359.9953)) +
     geom_polygon(data = region_spdf.df, aes(x=long, y = lat, group = group), lwd = 0, fill = "darksalmon") +
       coord_sf(xlim = c(region_spdf_ext[1], region_spdf_ext[2]), ylim = c(region_spdf_ext[3], region_spdf_ext[4])) +
     geom_abline(intercept = 0, slope = 0) +
