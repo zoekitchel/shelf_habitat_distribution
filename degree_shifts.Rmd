@@ -79,8 +79,6 @@ Crop bathymetry raster to LME spdf (not sure if this is necessary, may just be a
 #crop bathy layer to LME subset
 LMEs_extent <- crop(etopo_shelf_raster, extent(LME_spdf))
 
-#which areas of raster fall within borders of LMEs? (Don't know if I have to make LME specific)
-#bathy_mask <- mask(LMEs_extent, LME_spdf)
 
 ```
 
@@ -128,7 +126,7 @@ etopo_shelf_dt_north_binned <- etopo_shelf_dt_north[,sum(habitat) , .(gr=cut(y,b
 etopo_shelf_dt_south_binned <- etopo_shelf_dt_south[,sum(habitat) , .(gr=cut(y,breaks=seq(0,-90,by = (-0.5))))]
 ```
 
-Keep above because it's interesting global perspective (how does total shelf area vary by latitude)
+Keep above because it's interesting global perspective (how does total shelf area vary by latitude?)
 
 However, makes more sense to look at by contiguous coast lines AND we don't actually need depth info TBH!
 
@@ -213,13 +211,17 @@ region_names_noshift <- region_names[3:6]
 
 
 for (i in 1:length(region_names_noshift)) {
-#crop bathymetry layer to LME subset
+#crop bathymetry layer to LME subset (continental shelf habitat in LMEs)
   raster_extent <-
        crop(etopo_shelf_raster, extent(get(paste0(region_names_noshift[i], "_agg"))))
 
 #which areas of raster fall within borders?
   assign(paste0(region_names_noshift[i], "_mask"),
        mask(raster_extent, get(paste0(region_names_noshift[i], "_agg"))))
+  
+  assign(paste0(region_names_noshift[i], "_mask_1s"),
+         reclassify(get(paste0(region_names_noshift[i], "_mask")), cbind(-Inf, Inf, 1)))
+  
 
 }
 
@@ -232,6 +234,9 @@ for (i in 1:length(region_names_shift[1:2])) {
 #which areas of raster fall within borders?
   assign(paste0(region_names_shift[i], "_mask"),
        mask(raster_extent, get(paste0(region_names_shift[i], "_agg"))))
+  
+    assign(paste0(region_names_shift[i], "_mask_1s"),
+       reclassify(get(paste0(region_names_shift[i], "_mask")), cbind(-Inf, Inf, 1)))
 
 }
 
@@ -746,7 +751,7 @@ save(east_ind_shelf_areas, west_ind_shelf_areas, east_atl_shelf_areas, west_atl_
 
 Plots of latitude versus habitat availability
 
-```{r plots}
+```{r plots latitude habitat availability}
 area_latitude_east_ind <- ggplot(east_ind_shelf_areas, aes(latitude_start, area)) +
   geom_point(shape =18) + 
   geom_line() +
@@ -840,7 +845,7 @@ class(NE_countries) # is a SpatialPolygonsDataFrame object
 # ~~~~~~~~~~~ Split world map by "split line" ~~~~~~~~~~~ #
 
 # shift central/prime meridian towards west – positive values only
-shift <- 180+30
+shift <- 180 +30
 
 # create "split line" to split country polygons
 WGS84 <- CRS("+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0")
@@ -920,8 +925,8 @@ Country.DT_shift[, c("X","Y") := data.table(project(cbind(long.new, lat), proj=P
 # ~~~~~~~~~~~ Plot map ~~~~~~~~~~~ #
 ggplot() + 
     # add projected countries
-    geom_polygon(data = Country.DT, 
-                 aes(x = X, y = Y, group = group), 
+    geom_polygon(data = Country.DT_shift, 
+                 aes(x = long.new+150, y = lat, group = group), 
                  colour = "gray70", 
                  fill = "gray90", 
                  size = 0.25) +
@@ -948,35 +953,70 @@ ggplot() +
 ```{r mapping each region}
 
 region_maps <- list()
+regions_shift_projection <- c("west_pac_spdf_shift", "east_pac_spdf_shift", "west_atl_spdf")
 
 for (i in 1:length(region_names)) {
   
-  region_spdf <- get(region_names[i])
+  region_spdf <- get(paste0(region_names[i], "_mask"))
   
-  region_spdf_ext <- extent(region_spdf)
+  ifelse(region_names[i] %in% regions_shift_projection,
   
-  #convert to plottable data frame
-  region_spdf@data$id <- rownames(region_spdf@data)
-  region_spdf.points <- fortify(region_spdf, region="id")
-  region_spdf.df <- merge(region_spdf.points, region_spdf@data, by="id")
+  #pacific centered projection
+  
+  region_spdf_mask_1s_extent <- extent(get(paste0(region_names[i],"_mask_1s"))) # take extent of region
+  
+  #convert rasters to dfs data frame
+  region_spdf <- as(get(paste0(region_names[i],"_mask_1s")), "SpatialPixelsDataFrame")
+  region_df <- as.data.frame(region_spdf)
+  colnames(region_df) <- c("value", "x", "y")
   
   
-  region_maps[[i]] <- ggplot() +
-      geom_sf(data = world) +
-  #    annotation_scale(location = "bl", width_hint = 0.5) + #too big of space for scale
-  #    annotation_north_arrow(location = "bl", which_north = "true", 
-  #        pad_x = unit(0.75, "in"), pad_y = unit(0.5, "in"),
-  #        style = north_arrow_fancy_orienteering) +
-   # xlim(c(0, 359.9953)) +
-    geom_polygon(data = region_spdf.df, aes(x=long, y = lat, group = group), lwd = 0, fill = "darksalmon") +
-      coord_sf(xlim = c(region_spdf_ext[1], region_spdf_ext[2]), ylim = c(region_spdf_ext[3], region_spdf_ext[4])) +
+  (region_maps[[i]] <- ggplot() + 
+    # add projected countries
+    geom_polygon(data = Country.DT_shift, 
+                 aes(x = long.new+150, y = lat, group = group), 
+                 colour = "gray70", 
+                 fill = "gray90", 
+                 size = 0.25) +
+    geom_tile(data = region_df, aes(x = x, y = y, fill = value), color = "seagreen4") +
+    coord_sf(x = c(region_spdf_mask_1s_extent[1], region_spdf_mask_1s_extent[2]), y = c(region_spdf_mask_1s_extent[3], region_spdf_mask_1s_extent[4])) +
+    labs( x = "Longitude (˚E)", y = "Latitude (˚N)") +
     geom_abline(intercept = 0, slope = 0) +
-    labs( x = "Longitude", y = "Latitude") +
-    theme_classic()
+    theme_classic() +
+    theme(legend.position = "none"))
   
   filename <- paste0(region_names[i], "_map.jpg")
   ggsave(plot = region_maps[[i]], filename = filename)
+  
+,
+  #atlantic centered projection
+  region_spdf_mask_1s_extent <- extent(get(paste0(region_names[i],"_mask_1s"))) # take extent of region
+  
+  #convert rasters to dfs data frame
+  region_spdf <- as(get(paste0(region_names[i],"_mask_1s")), "SpatialPixelsDataFrame")
+  region_df <- as.data.frame(region_spdf)
+  colnames(region_df) <- c("value", "x", "y")
+  
+  
+  (region_maps[[i]] <- ggplot() + 
+    # add projected countries
+    geom_polygon(data = Country.DT, 
+                 aes(x = long, y = lat, group = group), 
+                 colour = "gray70", 
+                 fill = "gray90", 
+                 size = 0.25) +
+    geom_tile(data = region_df, aes(x = x, y = y, fill = value), color = "seagreen4") +
+    coord_sf(x = c(region_spdf_mask_1s_extent[1], region_spdf_mask_1s_extent[2]), y = c(region_spdf_mask_1s_extent[3], region_spdf_mask_1s_extent[4])) +
+    labs( x = "Longitude (˚E)", y = "Latitude (˚N)") +
+    geom_abline(intercept = 0, slope = 0) +
+    theme_classic() +
+    theme(legend.position = "none"))
+  
+  filename <- paste0(region_names[i], "_map.jpg")
+  ggsave(plot = region_maps[[i]], filename = filename)
+  
 
-}
+  )
+  }
 ```
 
