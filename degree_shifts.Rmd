@@ -909,14 +909,14 @@ area_latitude_east_pac  <- ggplot() +
 
 ```
 
+How many experience 'significant' changes in habitat (at least 40% change from one bin to another from Yin et al 2017: Overall, we suggest the maximum permissible habitat loss threshold to be between 0–40%, depending on the pre-disturbed occupancy (or abundance) of a species.)
+
 Bin shifts --> contractions (loss of 40%) versus expansions (gain of 40%) versus neutral
 ```{r bin shift categorization}
-
-library(scales)
-
 #call all objects in environment with "stats" string
-stats_string<-grep("stats",names(.GlobalEnv),value=TRUE)
+stats_string<-grep("_stats",names(.GlobalEnv),value=TRUE)
 stats_string_list<-do.call("list",mget(stats_string))
+names(stats_string_list) <- c("Eastern Indian Ocean" ,"Western Pacific Ocean" ,"Eastern Pacific Ocean" ,"Western Atlantic Ocean" ,"Western Indian Ocean" ,"Eastern Atlantic Ocean")
 
 significant_changes <- as.data.table(rbind(stats_string_list[[1]],stats_string_list[[2]],stats_string_list[[3]],stats_string_list[[4]],stats_string_list[[5]],stats_string_list[[6]]))
 
@@ -940,13 +940,14 @@ blank_theme <- theme_minimal()+
 ggplot(data = significant_changes.long, aes(x="", y = value, fill = change_type)) +
   geom_bar(stat = "identity", width = 1) +
   coord_polar("y", start=0) +
-  scale_fill_manual(values = c("darksalmon", "azure2", "cyan3")) +
+  scale_fill_manual(values = c("darksalmon", "azure2", "cyan3"), name = "Habitat Change", labels = c(">= 40% Contraction", "<40% Change", ">= 40% Expansion")) +
   facet_wrap(~region) +
-  geom_text(aes(y = value-(value/3), 
-                label = percent(value)), size=5) +
+  geom_text(aes(label = paste0(round(value*100,1),"%")), position = position_stack(vjust = 0.6), size = 2.5) +
+  scale_x_discrete(expand = c(0,0)) +
   blank_theme +
   theme(axis.text.x=element_blank())
 
+ggsave(filename = "habitatloss_gain_4-.pdf")
 ```
 
 Now, I should make maps for each of these regions
@@ -1181,7 +1182,7 @@ library(ggpubr)
           nrow = 1,
           top = T))
 
-ggsave(plot = west_pacific_merge_map_plot, filename = "west_pacific_merge_map_plot.pdf", width = 7, height = 3, units = "in")
+ggsave(plot = west_pacific_merge_map_plot, filename = "west_pacific_merge_map_plot.jpg", width = 7, height = 3, units = "in")
 
 #east pacific
 (east_pacific_merge_map_plot <- egg::ggarrange(region_maps[[2]], 
@@ -1194,6 +1195,8 @@ ggsave(plot = west_pacific_merge_map_plot, filename = "west_pacific_merge_map_pl
 
           nrow = 1,
           top = T))
+
+ggsave(plot = east_pacific_merge_map_plot, filename = "east_pacific_merge_map_plot.jpg", width = 7, height = 3, units = "in")
 
 
 #west atlantic
@@ -1208,6 +1211,8 @@ ggsave(plot = west_pacific_merge_map_plot, filename = "west_pacific_merge_map_pl
           nrow = 1,
           top = T))
 
+ggsave(plot = west_atlantic_merge_map_plot, filename = "west_atlantic_merge_map_plot.jpg", width = 7, height = 3, units = "in")
+
 #west indian
 (west_indian_merge_map_plot <- egg::ggarrange(region_maps[[4]], 
           area_latitude_west_ind 
@@ -1219,6 +1224,8 @@ ggsave(plot = west_pacific_merge_map_plot, filename = "west_pacific_merge_map_pl
 
           nrow = 1,
           top = T))
+
+ggsave(plot = west_indian_merge_map_plot, filename = "west_indian_merge_map_plot.jpg", width = 7, height = 3, units = "in")
 
 #east atlantic
 (east_atlantic_merge_map_plot <- egg::ggarrange(region_maps[[5]], 
@@ -1232,6 +1239,8 @@ ggsave(plot = west_pacific_merge_map_plot, filename = "west_pacific_merge_map_pl
           nrow = 1,
           top = T))
 
+ggsave(plot = east_atlantic_merge_map_plot, filename = "east_atlantic_merge_map_plot.jpg", width = 7, height = 3, units = "in")
+
 #east indian
 (east_indian_merge_map_plot <- egg::ggarrange(region_maps[[6]], 
           area_latitude_east_ind
@@ -1243,6 +1252,8 @@ ggsave(plot = west_pacific_merge_map_plot, filename = "west_pacific_merge_map_pl
 
           nrow = 1,
           top = T))
+
+ggsave(plot = east_indian_merge_map_plot, filename = "east_indian_merge_map_plot.jpg", width = 7, height = 3, units = "in")
 ```
 
 How many experience 'significant' changes in habitat (at least 40% change from one bin to another from Yin et al 2017: Overall, we suggest the maximum permissible habitat loss threshold to be between 0–40%, depending on the pre-disturbed occupancy (or abundance) of a species.)
