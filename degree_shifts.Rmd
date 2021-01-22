@@ -909,6 +909,46 @@ area_latitude_east_pac  <- ggplot() +
 
 ```
 
+Bin shifts --> contractions (loss of 40%) versus expansions (gain of 40%) versus neutral
+```{r bin shift categorization}
+
+library(scales)
+
+#call all objects in environment with "stats" string
+stats_string<-grep("stats",names(.GlobalEnv),value=TRUE)
+stats_string_list<-do.call("list",mget(stats_string))
+
+significant_changes <- as.data.table(rbind(stats_string_list[[1]],stats_string_list[[2]],stats_string_list[[3]],stats_string_list[[4]],stats_string_list[[5]],stats_string_list[[6]]))
+
+colnames(significant_changes) <- c("contraction", "neutral", "expansion")
+
+significant_changes[, region := names(stats_string_list)][,total_bins := contraction + neutral + expansion][,contraction_percent := contraction/total_bins][,neutral_percent := neutral/total_bins][,expansion_percent := expansion/total_bins]
+
+#melt to plot
+significant_changes.long <- melt(significant_changes, id.vars = c("region"), variable.name = "change_type", measure.vars = c("contraction_percent", "neutral_percent", "expansion_percent"))
+
+blank_theme <- theme_minimal()+
+  theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.border = element_blank(),
+  panel.grid=element_blank(),
+  axis.ticks = element_blank(),
+  plot.title=element_text(size=14, face="bold")
+  )
+
+ggplot(data = significant_changes.long, aes(x="", y = value, fill = change_type)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar("y", start=0) +
+  scale_fill_manual(values = c("darksalmon", "azure2", "cyan3")) +
+  facet_wrap(~region) +
+  geom_text(aes(y = value-(value/3), 
+                label = percent(value)), size=5) +
+  blank_theme +
+  theme(axis.text.x=element_blank())
+
+```
+
 Now, I should make maps for each of these regions
 
 Used https://gist.github.com/valentinitnelav/c7598fcfc8e53658f66feea9d3bafb40 for instructions
