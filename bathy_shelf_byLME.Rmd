@@ -17,6 +17,7 @@ library(data.table)
 library(hydroTSM) #hypsometric curves
 library(gridExtra)
 library(ggfortify)
+library(rgeos)
 
 etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/etopo_shelf_df.rds")
 #bring in bathy for shelf regions
@@ -24,14 +25,17 @@ etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_ha
 #LMEs
 LME_spdf <- readOGR("LME66/LMEs66.shp")
 head(LME_spdf)
+
 ```
+
 
 Let's just start with one LME to get started
 ```{r LME_baltic}
 LME_baltic <- LME_spdf[1,]
 plot(LME_baltic)
 
-
+center <- gCentroid(LME_baltic)
+center@coords[2]
 ```
 
 
@@ -326,7 +330,7 @@ LME_spdf_ordered <- LME_spdf[order(LME_spdf$LME_NUMBER),]
 
 
 LME_bathy_statistics <- as.data.table(matrix(nrow = nrow(LME_spdf)))
-LME_bathy_statistics[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][, dip_test := as.numeric(V1)][, dip_p_value := as.numeric(V1)][, skew := as.numeric(V1)][, kurtosis := as.numeric(V1)][, mean_depth := as.numeric(V1)]
+LME_bathy_statistics[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][, dip_test := as.numeric(V1)][, dip_p_value := as.numeric(V1)][, skew := as.numeric(V1)][, kurtosis := as.numeric(V1)][, mean_depth := as.numeric(V1)][, center_latitude := as.numeric(V1)]
 LME_bathy_statistics[, V1 := NULL]
 
 
@@ -338,6 +342,10 @@ for (i in 1:nrow(LME_bathy_statistics)) {
   LME_single <- LME_spdf_ordered[i,]
   LME_bathy_statistics[i, "lme_name"] <- LME_single$LME_NAME
   LME_bathy_statistics[i, "lme_number"] <- LME_single$LME_NUMBER
+  
+  #extract centroid latitude value
+  centroid <- gCentroid(LME_single)
+  LME_bathy_statistics[i, "center_latitude"] <- centroid@coords[2]
   
   #clip raster to LME
   LME_extent <- crop(etopo_shelf_raster, extent(LME_single))
@@ -376,7 +384,7 @@ for (i in 1:nrow(LME_bathy_statistics)) {
     r <- reclassify(LME_mask, cbind(-Inf, Inf, 1))
     
     # convert to polygons (you need to have package 'rgeos' installed for this to work)
-    pp <- rasterToPolygons(r, dissolve=TRUE)
+    pp <- rasterToPolygons(r, dissolve=TRUE) #longest step
     
     LME_reduced_df <- fortify(pp)
     
@@ -456,7 +464,7 @@ for (i in 1:nrow(LME_bathy_statistics)) {
   
 lme_densityplots[[i]] <- ggplot() +
     geom_density(aes(LME_bathy_depth_list_pos)) +
-    annotate("text", x=Inf, y = max_density+0.003, hjust=1, label = paste0(LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
+    annotate("text", x=Inf, y = max_density+max_density/50, hjust=1, label = paste0(LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
     theme_classic() +
     labs(x = "Depth (m)", y = "Density")
   
@@ -475,13 +483,36 @@ ggsave("arranged_maps.pdf", marrangeGrob(lme_maps, ncol=2, nrow = 2))
 ggsave("arranged_densityplots.pdf", marrangeGrob(grobs = lme_densityplots, ncol=2, nrow = 3))
 ggsave("arranged_areaplots.pdf", marrangeGrob(grobs = lme_areaplots, ncol=2, nrow = 3))
 ```
+Associate LME with region
 
-PCA
-```{r PCA}
+- keep in mind, LME 1 (1&6) and 54 (1&6) and 61 (1&2) and 65 (1&6) appear in multiple
 
-LME.pca <- prcomp(LME_bathy_statistics[,c(4,6,7)])
-LME.plot <- autoplot(LME.pca)
+```{r LME to region}
+west_pac <- c(35,	36,	37,	39,	40,	41,	42,	46,	47,	48,	49,	50,	51,	52,	53, 56,	57)
+east_pac <- c(2, 3, 4, 11, 13, 55)
+west_atl <- c(5, 6, 7, 8, 9, 12, 14, 15, 16, 17, 18, 63, 66)
+east_atl <- c(19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 58, 59, 60, 62)
+west_ind <- c(30, 31, 32, 33)
+east_ind <- c(34, 38, 43, 44, 45)
+east_west_pac <- c(1, 54, 65)
+east_pac_west_atl <- c(61)
+
+#OR larger groupings (includes LME's left out of earlier analyses because disconnected, aka Hawaii etc.)
+pacific <- c(35,	36,	37,	39,	40,	41,	42,	46,	47,	48,	49,	50,	51,	52,	53, 56,	57, 2, 3, 4, 11, 13, 55, 1, 54, 65,10)
+atlantic <- c(5, 6, 7, 8, 9, 12, 14, 15, 16, 17, 18, 63, 66, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 58, 59, 60, 62 )
+indian <- c(30, 31, 32, 33, 34, 38, 43, 44, 45)
+antarctica <- c(61)
+arctic <- c(64)
+
+
+
+#LME_bathy_statistics[,region := ifelse(lme_number %in% west_pac, "west_pac",ifelse(lme_number %in% east_pac, #"east_pac", ifelse(lme_number %in% west_atl, "west_atl", ifelse(lme_number %in% west_ind, "west_ind", #ifelse(lme_number %in% east_atl, "east_atl", ifelse(lme_number %in% east_ind, "east_ind", ifelse(lme_number #%in% east_west_pac, "east_west_pac", ifelse(lme_number %in% east_pac_west_atl, "east_pac_west_atl", #"none"))))))))]
+
+LME_bathy_statistics[,region := ifelse(lme_number %in% pacific, "pacific", ifelse(lme_number %in% atlantic, "atlantic", ifelse(lme_number %in% indian, "indian", ifelse(lme_number %in% antarctica, "antarctica", "arctic"))))]
+
 ```
+
+
 
 TO DO:
 make plots into curves instead of actual data** GAM, or kernel density? maybe neither
@@ -499,7 +530,7 @@ For distributions with a dip value ≤0.01, we assigned those with a Type-I skew
 ```{r expanded dataframe}
 LME_bathy_statistics[, skew_descriptor := ifelse(abs(skew) > 1, "high_skew", ifelse(abs(skew) < 0.5, "symmetric", "mod_skew"))]
 
-LME_bathy_statistics[, hourglass := ifelse(dip_test > 0.01, ifelse(p.value < 0.05, T, F), F)]
+LME_bathy_statistics[, hourglass := ifelse(dip_test > 0.01, ifelse(dip_p_value < 0.05, T, F), F)]
 
 LME_bathy_statistics[, deep_dominant := ifelse(dip_test <= 0.01, 
                                                ifelse(skew <= -0.5, T, F), F)]
@@ -507,7 +538,8 @@ LME_bathy_statistics[, deep_dominant := ifelse(dip_test <= 0.01,
 LME_bathy_statistics[, shallow_dominant := ifelse(dip_test <= 0.01, 
                                                   ifelse(skew >= 0.5, T, F), F)]
 
-LME_bathy_statistics[, mid_dominant := ifelse(abs(skew) <0.5, T, F)]
+LME_bathy_statistics[, mid_dominant := ifelse(dip_test <= 0.01,
+                                          ifelse(abs(skew) <0.5, T, F), F)]
 
 #negative kurtosis (no tails)
 LME_bathy_statistics[, uniform := ifelse(kurtosis < 0, T, F)]
@@ -524,9 +556,18 @@ LME_bathy_statistics[,type := ifelse(hourglass == T, "hourglass",
 ```
 
 PCA
-- size
-- region
 
+- size
+- region (color)
+- mean depth
+- mid-latitude
+- classification
+
+```{r PCA}
+
+LME.pca <- prcomp(LME_bathy_statistics[,.(lme_area, mean_depth)])
+LME.plot <- autoplot(LME.pca)
+```
 
 
 BIG Qs to ASK MALIN
