@@ -326,8 +326,9 @@ LME_spdf_ordered <- LME_spdf[order(LME_spdf$LME_NUMBER),]
 
 
 LME_bathy_statistics <- as.data.table(matrix(nrow = nrow(LME_spdf)))
-LME_bathy_statistics[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][, dip_test := as.numeric(V1)][, dip_p_value := as.numeric(V1)][, skew := as.numeric(V1)][, kurtosis := as.numeric(V1)][, mean_elev := as.numeric(V1)]
+LME_bathy_statistics[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][, dip_test := as.numeric(V1)][, dip_p_value := as.numeric(V1)][, skew := as.numeric(V1)][, kurtosis := as.numeric(V1)][, mean_depth := as.numeric(V1)]
 LME_bathy_statistics[, V1 := NULL]
+
 
 lme_maps <- vector("list", length = nrow(LME_spdf))
 lme_densityplots <- vector("list", length = nrow(LME_spdf))
@@ -391,7 +392,7 @@ for (i in 1:nrow(LME_bathy_statistics)) {
     labs(x = "Longitude", y = "Latitude", fill = "Depth (m)") +
     guides(fill = guide_colorbar(reverse = T)) +
     geom_path(data = LME_reduced_df, aes(x = long_shift, y = lat, group = group), color = "black") +
-    annotate("text", x=Inf, y = max(LME_reduced_df$lat)+1, hjust=1, label = paste0("LME ", LME_bathy_statistics[i,lme_number], ": ", LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 4)
+    annotate("text", x=Inf, y = max(LME_reduced_df$lat)+1, hjust=1, label = paste0("LME ", LME_bathy_statistics[i,lme_number], ": ", LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2.5)
   
   
     #list of values within raster
@@ -436,21 +437,26 @@ for (i in 1:nrow(LME_bathy_statistics)) {
   kurtosis <- kurtosis(LME_bathy_depth_list_pos, na.rm = T)
   LME_bathy_statistics[i,"kurtosis"] <- kurtosis
   mean <- mean(LME_bathy_depth_list_pos)
-  LME_bathy_statistics[i,"mean_elev"] <- mean
+  LME_bathy_statistics[i,"mean_depth"] <- mean
   
   max_area <- max(LME_bathy_bydepth_complete$area)
   
   #full plot
   lme_areaplots[[i]] <- plot +
-    annotate("text", x=Inf, y = max_area-max_area/20, hjust=1, label = paste0(LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 3) +
-    annotate("text", x=Inf, y = max_area-2*(max_area/20), hjust=1, label = paste0("Dip Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value, 2)), size = 3) +
-    annotate("text", x=Inf, y = max_area-3*(max_area/20), hjust=1, label = paste0("Skew: ", round(skew,2)), size = 3) +
-    annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2)), size = 3) +
-    annotate("text", x=Inf, y = max_area-5*(max_area/20), hjust=1, label = paste0("Mean: ",round(mean,2), " m"), size = 3) +
-    geom_vline(xintercept = mean, color = "red")
+    geom_vline(xintercept = mean, color = "red") +
+    annotate("text", x=Inf, y = max_area-max_area/20, hjust=1, label = paste0(LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
+    annotate("text", x=Inf, y = max_area-2*(max_area/20), hjust=1, label = paste0("Dip Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value, 2)), size = 2) +
+    annotate("text", x=Inf, y = max_area-3*(max_area/20), hjust=1, label = paste0("Skew: ", round(skew,2)), size = 2) +
+    annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2)), size = 2) +
+    annotate("text", x=Inf, y = max_area-5*(max_area/20), hjust=1, label = paste0("Mean: ",round(mean,2), " m"), size = 2)
   
-  lme_densityplots[[i]] <- ggplot() +
+  #density values, find max to help with annotation
+  density_distribution <- density(LME_bathy_depth_list_pos)
+  max_density <- max(density_distribution$y)
+  
+lme_densityplots[[i]] <- ggplot() +
     geom_density(aes(LME_bathy_depth_list_pos)) +
+    annotate("text", x=Inf, y = max_density+0.003, hjust=1, label = paste0(LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
     theme_classic() +
     labs(x = "Depth (m)", y = "Density")
   
@@ -517,6 +523,14 @@ LME_bathy_statistics[,type := ifelse(hourglass == T, "hourglass",
                                                          ifelse(uniform == T, "uniform", "none")))))]
 ```
 
+PCA
+- size
+- region
+
+
+
 BIG Qs to ASK MALIN
  - do I need to limit LMEs to continental shelf regions? does blue habitat seem like a good limiter?
- - should I instead go with 200 m like Hailey did?
+ Becca thinks Blue Habitat looks good, so good enough to me
+ - https://www.bluehabitats.org/
+ - should I instead go with 200 m like Hailey did? Instead, I am going to use Blue Habitat, and limit to 2000m depth
