@@ -18,6 +18,7 @@ library(hydroTSM) #hypsometric curves
 library(gridExtra)
 library(ggfortify)
 library(rgeos)
+library(ggridges) #allows for gradient in density plot
 
 etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/etopo_shelf_df.rds")
 #bring in bathy for shelf regions
@@ -260,6 +261,8 @@ How to classify different LMES? Dip (Modality) & Skew
 Modality: In mathematics, unimodality means possessing a unique mode. More generally, unimodality means there is only a single highest value, somehow defined, of some mathematical object. (Wikipedia)
 
 Skew: In probability theory and statistics, skewness is a measure of the asymmetry of the probability distribution of a real-valued random variable about its mean. The skewness value can be positive, zero, negative, or undefined. (Wikipedia)
+
+"The dip test measures multimodality in a sample by the maximum difference, over all sample points, between the empirical distribution function, and the unimodal distribution function that minimizes that maximum difference."
  
 ```{r dip test for unimodality}
 #Computes Hartigans’ dip test statistic for testing unimodality, and additionally the modal interval.
@@ -332,7 +335,7 @@ LME_spdf_ordered <- LME_spdf[order(LME_spdf$LME_NUMBER),]
 
 
 LME_bathy_statistics <- as.data.table(matrix(nrow = nrow(LME_spdf)))
-LME_bathy_statistics[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][, dip_test := as.numeric(V1)][, dip_p_value := as.numeric(V1)][, skew := as.numeric(V1)][, kurtosis := as.numeric(V1)][, mean_depth := as.numeric(V1)][, center_latitude := as.numeric(V1)][, dip_test_density_kernel := as.numeric(V1)][, dip_p_value_density_kernel := as.numeric(V1)][, skew_density_kernel := as.numeric(V1)][, kurtosis_density_kernel := as.numeric(V1)][, mean_depth_density_kernel := as.numeric(V1)]
+LME_bathy_statistics[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][, dip_test := as.numeric(V1)][, dip_p_value := as.numeric(V1)][, skew := as.numeric(V1)][, kurtosis := as.numeric(V1)][, mean_depth := as.numeric(V1)][, max_depth := as.numeric(V1)][, center_latitude := as.numeric(V1)][, dip_test_density_kernel := as.numeric(V1)][, dip_p_value_density_kernel := as.numeric(V1)][, skew_density_kernel := as.numeric(V1)][, kurtosis_density_kernel := as.numeric(V1)][, mean_depth_density_kernel := as.numeric(V1)][, max_depth_density_kernel := as.numeric(V1)]
 
 LME_bathy_statistics[, V1 := NULL]
 
@@ -341,7 +344,7 @@ lme_maps <- vector("list", length = nrow(LME_spdf))
 lme_densityplots <- vector("list", length = nrow(LME_spdf))
 lme_areaplots <- vector("list", length = nrow(LME_spdf))
 
-for (i in 1:nrow(LME_bathy_statistics)) {
+for (i in 11:nrow(LME_bathy_statistics)) {
   LME_single <- LME_spdf_ordered[i,]
   LME_bathy_statistics[i, "lme_name"] <- LME_single$LME_NAME
   LME_bathy_statistics[i, "lme_number"] <- LME_single$LME_NUMBER
@@ -449,6 +452,8 @@ for (i in 1:nrow(LME_bathy_statistics)) {
   LME_bathy_statistics[i,"kurtosis"] <- kurtosis
   mean <- mean(LME_bathy_depth_list_pos)
   LME_bathy_statistics[i,"mean_depth"] <- mean
+  max_depth <- max(LME_bathy_depth_list_pos)
+  LME_bathy_statistics[i, "max_depth"] <- max_depth
   
   max_area <- max(LME_bathy_bydepth_complete$area)
   
@@ -460,41 +465,43 @@ for (i in 1:nrow(LME_bathy_statistics)) {
     annotate("text", x=Inf, y = max_area-3*(max_area/20), hjust=1, label = paste0("Skew: ", round(skew,2)), size = 2) +
     annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2)), size = 2) +
     annotate("text", x=Inf, y = max_area-5*(max_area/20), hjust=1, label = paste0("Mean: ",round(mean,2), " m"), size = 2)
-  
-  #kernel density estimates, find max to help with annotation
-  density_distribution <- density(LME_bathy_depth_list_pos)
-  max_density <- max(density_distribution$y) #this is the guide I'll use to title the plot
-
-
-  #let's also calculate statistics using density kernel
-  diptest_density_kernel <- dip.test(LME_bathy_depth_list_pos, simulate.p.value = TRUE, B = 2000)
-  LME_bathy_statistics[i,"dip_test_density_kernel"] <- diptest_density_kernel$statistic[1]
-  p.value_density_kernel <- diptest_density_kernel$p.value
-  LME_bathy_statistics[i,"dip_p_value_density_kernel"] <- p.value
-  skew_density_kernel <- skewness(LME_bathy_depth_list_pos, na.rm = T)
-  LME_bathy_statistics[i,"skew_density_kernel"] <- skew_density_kernel
-  kurtosis_density_kernel <- kurtosis(LME_bathy_depth_list_pos, na.rm = T)
-  LME_bathy_statistics[i,"kurtosis_density_kernel"] <- kurtosis_density_kernel
-  mean_density_kernel <- mean(LME_bathy_depth_list_pos)
-  LME_bathy_statistics[i,"mean_depth_density_kernel"] <- mean_density_kernel
-  
-  #plot density kernel
-  
-  lme_densityplots[[i]] <- ggplot() +
-    geom_density_ridges_gradient(aes(LME_bathy_depth_list_pos, y = 0, fill = ..x..)) +
-    annotate("text", x=Inf, y = max_density+max_density/50, hjust=1, label = paste0(LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
-    theme_classic() +
-    labs(x = "Depth (m)", y = "Density") +
-    geom_vline(xintercept = mean_density_kernel, color = "red") +
-    annotate("text", x=Inf, y = max_density-2*(max_density/20), hjust=1, label = paste0("Dip Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value, 2)), size = 2) +
-    annotate("text", x=Inf, y = max_density-3*(max_density/20), hjust=1, label = paste0("Skew: ", round(skew,2)), size = 2) +
-    annotate("text", x=Inf, y = max_density-4*(max_density/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2)), size = 2) +
-    annotate("text", x=Inf, y = max_density-5*(max_density/20), hjust=1, label = paste0("Mean: ",round(mean,2), " m"), size = 2) +
-    scale_y_continuous(expand = c(0, 0)) +
-    scale_x_continuous(expand = c(0,0)) +
-    scale_fill_gradientn(colors = rev(viridis(5)), limits = c(0, 2000)) +
-    guides(position = "bottom", fill = guide_colorbar(reverse = T))
-  
+#  
+#  #kernel density estimates, find max to help with annotation
+#  density_distribution <- density(LME_bathy_depth_list_pos, n = )
+#  max_density <- max(density_distribution$y) #this is the guide I'll use to title the plot
+#
+#
+#  #let's also calculate statistics using density kernel
+#  diptest_density_kernel <- dip.test(density_distribution$y, simulate.p.value = TRUE, B = #2000)
+#  LME_bathy_statistics[i,"dip_test_density_kernel"] <- diptest_density_kernel$statistic[1]
+#  p.value_density_kernel <- diptest_density_kernel$p.value
+#  LME_bathy_statistics[i,"dip_p_value_density_kernel"] <- p.value
+#  skew_density_kernel <- skewness(density_distribution$y, na.rm = T)
+#  LME_bathy_statistics[i,"skew_density_kernel"] <- skew_density_kernel
+#  kurtosis_density_kernel <- kurtosis(density_distribution$y, na.rm = T)
+#  LME_bathy_statistics[i,"kurtosis_density_kernel"] <- kurtosis_density_kernel
+#  mean_density_kernel <- mean(density_distribution$y)
+#  LME_bathy_statistics[i,"mean_depth_density_kernel"] <- mean_density_kernel
+#  max_depth_density_kernel <- max(density_distribution$y)
+#  LME_bathy_statistics[i, "max_depth_density_kernel"] <- max_depth_density_kernel
+#  
+#  #plot density kernel
+#  
+#  lme_densityplots[[i]] <- ggplot() +
+#    geom_density_ridges_gradient(aes(LME_bathy_depth_list_pos, y = 0, fill = ..x..)) +
+#    theme_classic() +
+#    labs(x = "Depth (m)", y = "Density") +
+#    geom_vline(xintercept = mean_density_kernel, color = "red") +
+#    annotate("text", x=Inf, y = max_density-(max_density/20), hjust=1, label = #paste0(LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
+#    annotate("text", x=Inf, y = max_density-2*(max_density/20), hjust=1, label = paste0("Dip #Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value, 2)), size = 2) +
+#    annotate("text", x=Inf, y = max_density-3*(max_density/20), hjust=1, label = paste0("Skew: #", round(skew,2)), size = 2) +
+#    annotate("text", x=Inf, y = max_density-4*(max_density/20), hjust=1, label = #paste0("Kurtosis: ",round(kurtosis,2)), size = 2) +
+#    annotate("text", x=Inf, y = max_density-5*(max_density/20), hjust=1, label = paste0("Mean: #",round(mean,2), " m"), size = 2) +
+#    scale_y_continuous(expand = c(0, 0)) +
+#    scale_x_continuous(expand = c(0,0)) +
+#    scale_fill_gradientn(colors = rev(viridis(5)), limits = c(0, 2000)) +
+#    guides(position = "bottom", fill = guide_colorbar(reverse = T))
+#  
     print(paste(i, nrow(LME_bathy_statistics), sep = "/"))
   
 
@@ -529,7 +536,7 @@ pacific <- c(35,	36,	37,	39,	40,	41,	42,	46,	47,	48,	49,	50,	51,	52,	53, 56,	57,
 atlantic <- c(5, 6, 7, 8, 9, 12, 14, 15, 16, 17, 18, 63, 66, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 58, 59, 60, 62 )
 indian <- c(30, 31, 32, 33, 34, 38, 43, 44, 45)
 antarctica <- c(61)
-arctic <- c(64)
+arctic <- c(64) #likely exclude because most is 2000m+
 
 
 
@@ -579,7 +586,10 @@ LME_bathy_statistics[,type := ifelse(hourglass == T, "hourglass",
                                     ifelse(deep_dominant == T, "deep_dominant",
                                            ifelse(shallow_dominant == T, "shallow_dominant",
                                                   ifelse(mid_dominant == T, "mid_dominant", 
-                                                         ifelse(uniform == T, "uniform", "none")))))]
+                                                         ifelse(uniform == T, "uniform", "none")))))][,lme_name2 := lme_name]
+
+write.csv(LME_bathy_statistics, "LME_bathy_statistics.csv")
+saveRDS(LME_bathy_statistics, file = "LME_bathy_statistics.RData")
 ```
 
 PCA
@@ -588,16 +598,36 @@ PCA
 - region (color)
 - mean depth
 - mid-latitude
-- classification
+- classification (color)
+- max depth
 
 ```{r PCA}
+library(ggfortify)
+LME.pca <- prcomp(LME_bathy_statistics[,.(lme_area, mean_depth, center_latitude)], scale. = T)
 
-LME.pca <- prcomp(LME_bathy_statistics[,.(lme_area, mean_depth)])
-LME.plot <- autoplot(LME.pca)
 
-library(ggbiplot)
+LME.plot_type <- autoplot(LME.pca, data = LME_bathy_statistics, colour = 'type',
+                          loadings = TRUE, loadings.colour = 'black',
+                          loadings.label = TRUE, loadings.label.size = 4, loadings.la) + theme_classic()
+LME.plot_region <- autoplot(LME.pca, data = LME_bathy_statistics, colour = 'region',
+                          loadings = TRUE, loadings.colour = 'black',
+                          loadings.label = TRUE, loadings.label.size = 4) + theme_classic()
 
-ggbiplot(LME.pca)#groups
+LME.plot_type
+LME.plot_region
+
+ggsave(plot = LME.plot_type, filename = "LME.plot_type.pdf")
+ggsave(plot = LME.plot_region, filename = "LME.plot_region.pdf")
+
+```
+How many of each type
+hourglass/multimodal     mid_dominant             none                      shallow_dominant 
+       44 (70%)                1 (2%)               1 (arctic, will delete)          20 (32%) 
+```{r how many of each type}
+table(LME_bathy_statistics$type)
+44/63
+20/63
+1/63
 ```
 
 

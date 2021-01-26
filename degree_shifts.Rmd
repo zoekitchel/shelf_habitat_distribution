@@ -1258,3 +1258,13 @@ ggsave(plot = east_indian_merge_map_plot, filename = "east_indian_merge_map_plot
 
 How many experience 'significant' changes in habitat (at least 40% change from one bin to another from Yin et al 2017: Overall, we suggest the maximum permissible habitat loss threshold to be between 0–40%, depending on the pre-disturbed occupancy (or abundance) of a species.)
 
+Make map of world
+
+Each region coded with # expansions and # contractions
+
+```{r}
+
+save(significant_changes.long, significant_changes, file = "significant_changes.RData")
+
+```
+
