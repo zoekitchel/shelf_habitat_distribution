@@ -323,6 +323,8 @@ Now let's make a loop!!
 
 ```{r loop}
 
+library(ggridges)
+
 #plot map, plot hypsograph, plot histogram
 
 #reorder LME_spdf by LME # 
@@ -330,7 +332,8 @@ LME_spdf_ordered <- LME_spdf[order(LME_spdf$LME_NUMBER),]
 
 
 LME_bathy_statistics <- as.data.table(matrix(nrow = nrow(LME_spdf)))
-LME_bathy_statistics[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][, dip_test := as.numeric(V1)][, dip_p_value := as.numeric(V1)][, skew := as.numeric(V1)][, kurtosis := as.numeric(V1)][, mean_depth := as.numeric(V1)][, center_latitude := as.numeric(V1)]
+LME_bathy_statistics[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][, dip_test := as.numeric(V1)][, dip_p_value := as.numeric(V1)][, skew := as.numeric(V1)][, kurtosis := as.numeric(V1)][, mean_depth := as.numeric(V1)][, center_latitude := as.numeric(V1)][, dip_test_density_kernel := as.numeric(V1)][, dip_p_value_density_kernel := as.numeric(V1)][, skew_density_kernel := as.numeric(V1)][, kurtosis_density_kernel := as.numeric(V1)][, mean_depth_density_kernel := as.numeric(V1)]
+
 LME_bathy_statistics[, V1 := NULL]
 
 
@@ -458,15 +461,39 @@ for (i in 1:nrow(LME_bathy_statistics)) {
     annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2)), size = 2) +
     annotate("text", x=Inf, y = max_area-5*(max_area/20), hjust=1, label = paste0("Mean: ",round(mean,2), " m"), size = 2)
   
-  #density values, find max to help with annotation
+  #kernel density estimates, find max to help with annotation
   density_distribution <- density(LME_bathy_depth_list_pos)
-  max_density <- max(density_distribution$y)
+  max_density <- max(density_distribution$y) #this is the guide I'll use to title the plot
+
+
+  #let's also calculate statistics using density kernel
+  diptest_density_kernel <- dip.test(LME_bathy_depth_list_pos, simulate.p.value = TRUE, B = 2000)
+  LME_bathy_statistics[i,"dip_test_density_kernel"] <- diptest_density_kernel$statistic[1]
+  p.value_density_kernel <- diptest_density_kernel$p.value
+  LME_bathy_statistics[i,"dip_p_value_density_kernel"] <- p.value
+  skew_density_kernel <- skewness(LME_bathy_depth_list_pos, na.rm = T)
+  LME_bathy_statistics[i,"skew_density_kernel"] <- skew_density_kernel
+  kurtosis_density_kernel <- kurtosis(LME_bathy_depth_list_pos, na.rm = T)
+  LME_bathy_statistics[i,"kurtosis_density_kernel"] <- kurtosis_density_kernel
+  mean_density_kernel <- mean(LME_bathy_depth_list_pos)
+  LME_bathy_statistics[i,"mean_depth_density_kernel"] <- mean_density_kernel
   
-lme_densityplots[[i]] <- ggplot() +
-    geom_density(aes(LME_bathy_depth_list_pos)) +
+  #plot density kernel
+  
+  lme_densityplots[[i]] <- ggplot() +
+    geom_density_ridges_gradient(aes(LME_bathy_depth_list_pos, y = 0, fill = ..x..)) +
     annotate("text", x=Inf, y = max_density+max_density/50, hjust=1, label = paste0(LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
     theme_classic() +
-    labs(x = "Depth (m)", y = "Density")
+    labs(x = "Depth (m)", y = "Density") +
+    geom_vline(xintercept = mean_density_kernel, color = "red") +
+    annotate("text", x=Inf, y = max_density-2*(max_density/20), hjust=1, label = paste0("Dip Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value, 2)), size = 2) +
+    annotate("text", x=Inf, y = max_density-3*(max_density/20), hjust=1, label = paste0("Skew: ", round(skew,2)), size = 2) +
+    annotate("text", x=Inf, y = max_density-4*(max_density/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2)), size = 2) +
+    annotate("text", x=Inf, y = max_density-5*(max_density/20), hjust=1, label = paste0("Mean: ",round(mean,2), " m"), size = 2) +
+    scale_y_continuous(expand = c(0, 0)) +
+    scale_x_continuous(expand = c(0,0)) +
+    scale_fill_gradientn(colors = rev(viridis(5)), limits = c(0, 2000)) +
+    guides(position = "bottom", fill = guide_colorbar(reverse = T))
   
     print(paste(i, nrow(LME_bathy_statistics), sep = "/"))
   
@@ -567,6 +594,10 @@ PCA
 
 LME.pca <- prcomp(LME_bathy_statistics[,.(lme_area, mean_depth)])
 LME.plot <- autoplot(LME.pca)
+
+library(ggbiplot)
+
+ggbiplot(LME.pca)#groups
 ```
 
 
