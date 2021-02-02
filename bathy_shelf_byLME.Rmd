@@ -25,7 +25,12 @@ etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_ha
 
 #LMEs
 LME_spdf <- readOGR("LME66/LMEs66.shp")
-head(LME_spdf)
+
+#equal area projection
+eaproj <- CRS("+proj=eqearth")
+LME_spdf.EA <- spTransform(LME_spdf, eaproj)
+#change CRS
+summary(LME_spdf.EA)
 
 ```
 
@@ -40,10 +45,11 @@ center@coords[2]
 ```
 
 
-Make bathy layer into raster
+Make bathy layer into raster (I should see if this is different if I use equal area projection (To Do))
 ```{r rasterize}
 proj <- crs(LME_spdf)
 etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = proj)
+
 
 #make figure of shelves
   #png("etopo_shelf_bathy.png", height=5, width=7, units="in", res=300)
@@ -69,7 +75,7 @@ bathy_baltic_mask <- mask(bathy_baltic_extent, LME_baltic)
   bathy_baltic_dt  <- data.table(data.frame(bathy_baltic_pts))
 
 #keep depth positive  
-bathy_baltic_dt[,depth := -(layer)]
+bathy_baltic_dt[,depth := -(z)]
 
 #fortify to plot shapefile on top
 #LME_baltic_df <- fortify(LME_baltic) (don't need because indstead I make polygon to surround raster)
@@ -124,7 +130,7 @@ bathy_aleutian_mask <- mask(bathy_aleutian_extent, LME_aleutian)
   bathy_aleutian_dt  <- data.table(data.frame(bathy_aleutian_pts))
 
 #keep depth positive  
-bathy_aleutian_dt[,depth := -(layer)]
+bathy_aleutian_dt[,depth := -(z)]
 
 bathy_aleutian_dt$x_shift <- ifelse(bathy_aleutian_dt$x >0, bathy_aleutian_dt$x - 360, bathy_aleutian_dt$x)
 
@@ -192,18 +198,14 @@ bathy_baltic_bydepth_complete[,area := percent_area*bathy_raster_area][,depth :=
 
 
 (plot <- ggplot(data = bathy_baltic_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
-  geom_col(width = 1) +
+  geom_col(width = 5) +
+    geom_smooth(method = "gam", se = F, color = "black") +
   theme_classic() +
   labs(x = "Depth (m)", y = "Area (km^2)", fill = "Depth (m)") +
   scale_y_continuous(expand = c(0, 0)) +
   scale_x_continuous(expand = c(0,0)) +
   scale_fill_gradientn(colors = rev(viridis(10)), limits = c(0, 2000)) +
   guides(position = "bottom", fill = guide_colorbar(reverse = T)))
-
-#alternative, simple density plot
-ggplot(data = bathy_baltic_mask, aes(x = -layer, fill = -layer)) +
-  geom_density() +
-  theme_classic()
   
 
 ggsave(plot, filename = "Baltic_Sea.png")
@@ -294,9 +296,7 @@ Mean depth value
 mean <- mean(bathy_baltic_depth_list_pos)
 ```
 
-Maybe then do a MDS including kurtosis, skew, and modality measures for every LME
-
-See how many groups it goes into?
+Possible groupings:
 
 Shallow dominant: High positive skew, unimodal
 Mid-Dominant: Relatively normal (low skew, kurtosis = 0, unimodal)
@@ -335,7 +335,7 @@ LME_spdf_ordered <- LME_spdf[order(LME_spdf$LME_NUMBER),]
 
 
 LME_bathy_statistics <- as.data.table(matrix(nrow = nrow(LME_spdf)))
-LME_bathy_statistics[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][, dip_test := as.numeric(V1)][, dip_p_value := as.numeric(V1)][, skew := as.numeric(V1)][, kurtosis := as.numeric(V1)][, mean_depth := as.numeric(V1)][, max_depth := as.numeric(V1)][, center_latitude := as.numeric(V1)][, dip_test_density_kernel := as.numeric(V1)][, dip_p_value_density_kernel := as.numeric(V1)][, skew_density_kernel := as.numeric(V1)][, kurtosis_density_kernel := as.numeric(V1)][, mean_depth_density_kernel := as.numeric(V1)][, max_depth_density_kernel := as.numeric(V1)]
+LME_bathy_statistics[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][, dip_test := as.numeric(V1)][, dip_p_value := as.numeric(V1)][, skew := as.numeric(V1)][, kurtosis := as.numeric(V1)][, mean_depth := as.numeric(V1)][, max_depth := as.numeric(V1)][, median_depth := as.numeric(V1)][, center_latitude := as.numeric(V1)][, dip_test_density_kernel := as.numeric(V1)][, dip_p_value_density_kernel := as.numeric(V1)][, skew_density_kernel := as.numeric(V1)][, kurtosis_density_kernel := as.numeric(V1)][, mean_depth_density_kernel := as.numeric(V1)][, max_depth_density_kernel := as.numeric(V1)]
 
 LME_bathy_statistics[, V1 := NULL]
 
@@ -344,7 +344,7 @@ lme_maps <- vector("list", length = nrow(LME_spdf))
 lme_densityplots <- vector("list", length = nrow(LME_spdf))
 lme_areaplots <- vector("list", length = nrow(LME_spdf))
 
-for (i in 11:nrow(LME_bathy_statistics)) {
+for (i in 1:nrow(LME_bathy_statistics)) {
   LME_single <- LME_spdf_ordered[i,]
   LME_bathy_statistics[i, "lme_name"] <- LME_single$LME_NAME
   LME_bathy_statistics[i, "lme_number"] <- LME_single$LME_NUMBER
@@ -366,7 +366,7 @@ for (i in 11:nrow(LME_bathy_statistics)) {
     LME_dt  <- data.table(data.frame(LME_points))
   
   #keep depth positive  
-  LME_dt[,depth := -(layer)]
+  LME_dt[,depth := -(z)]
   
   LME_dt$x_shift <- ifelse(
     max(LME_dt$x)-min(LME_dt$x) > 200 & LME_dt$x >0,
@@ -429,10 +429,11 @@ for (i in 11:nrow(LME_bathy_statistics)) {
   
   
   
-  plot <- ggplot(data = LME_bathy_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
-    geom_col(width = 1) +
+  lme_areaplots[[i]] <- ggplot(data = LME_bathy_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
+    geom_col(width = 5) +
+    geom_smooth(method = "gam", se = F) +
     theme_classic() +
-    labs(x = "Depth (m)", y = "Area (km^2)", fill = "Depth (m)") +
+    labs(x = "Depth (m)", y = expression(paste("Area (", km^{2},")")), fill = "Depth (m)") +
     scale_y_continuous(expand = c(0, 0)) +
     scale_x_continuous(expand = c(0,0)) +
     scale_fill_gradientn(colors = rev(viridis(5)), limits = c(0, 2000)) +
@@ -454,17 +455,11 @@ for (i in 11:nrow(LME_bathy_statistics)) {
   LME_bathy_statistics[i,"mean_depth"] <- mean
   max_depth <- max(LME_bathy_depth_list_pos)
   LME_bathy_statistics[i, "max_depth"] <- max_depth
+  median_depth <- median(LME_bathy_depth_list_pos)
+  LME_bathy_statistics[i, "median_depth"] <- median_depth
   
   max_area <- max(LME_bathy_bydepth_complete$area)
   
-  #full plot
-  lme_areaplots[[i]] <- plot +
-    geom_vline(xintercept = mean, color = "red") +
-    annotate("text", x=Inf, y = max_area-max_area/20, hjust=1, label = paste0(LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
-    annotate("text", x=Inf, y = max_area-2*(max_area/20), hjust=1, label = paste0("Dip Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value, 2)), size = 2) +
-    annotate("text", x=Inf, y = max_area-3*(max_area/20), hjust=1, label = paste0("Skew: ", round(skew,2)), size = 2) +
-    annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2)), size = 2) +
-    annotate("text", x=Inf, y = max_area-5*(max_area/20), hjust=1, label = paste0("Mean: ",round(mean,2), " m"), size = 2)
 #  
 #  #kernel density estimates, find max to help with annotation
 #  density_distribution <- density(LME_bathy_depth_list_pos, n = )
@@ -582,15 +577,37 @@ LME_bathy_statistics[, uniform := ifelse(kurtosis < 0, T, F)]
 
 Are all regions labeled by type?
 ```{r labeling check}
-LME_bathy_statistics[,type := ifelse(hourglass == T, "hourglass",
-                                    ifelse(deep_dominant == T, "deep_dominant",
-                                           ifelse(shallow_dominant == T, "shallow_dominant",
-                                                  ifelse(mid_dominant == T, "mid_dominant", 
-                                                         ifelse(uniform == T, "uniform", "none")))))][,lme_name2 := lme_name]
+LME_bathy_statistics[,type := ifelse(hourglass == T, "Multimodal",
+                                    ifelse(deep_dominant == T, "Deep Dominant",
+                                           ifelse(shallow_dominant == T, "Shallow Dominant",
+                                                  ifelse(mid_dominant == T, "Mid Dominant", 
+                                                         ifelse(uniform == T, "Uniform", "none")))))][,lme_name2 := lme_name]
 
 write.csv(LME_bathy_statistics, "LME_bathy_statistics.csv")
 saveRDS(LME_bathy_statistics, file = "LME_bathy_statistics.RData")
 ```
+
+Now that we have classified distributions, let's make final plots
+```{r plots with classification and statistics}
+
+lme_areaplots_classified <- vector("list", length = nrow(LME_bathy_statistics))
+
+for (i in 1:nrow(LME_bathy_statistics)) {
+  
+#full plot
+  lme_areaplots_classified[[i]] <- lme_areaplots[[i]] +
+    geom_vline(xintercept = mean, color = "red") +
+    annotate("text", x=Inf, y = max_area-max_area/20, hjust=1, label = paste0("LME ", LME_bathy_statistics[i,lme_number], ": ", LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
+        annotate("text", x=Inf, y = max_area-2*max_area/20, hjust=1, label = paste0("Classification: ", LME_bathy_statistics[i,type]), size = 2) +
+    annotate("text", x=Inf, y = max_area-3*(max_area/20), hjust=1, label = paste0("Dip Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value, 2)), size = 2) +
+    annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Skew: ", round(skew,2)), size = 2) +
+#    annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2)), size = 2) +
+    annotate("text", x=Inf, y = max_area-5*(max_area/20), hjust=1, label = paste0("Mean: ",round(mean,2), " m"), size = 2)
+
+
+}
+```
+
 
 PCA
 
