@@ -431,7 +431,7 @@ for (i in 1:nrow(LME_bathy_statistics)) {
   
   lme_areaplots[[i]] <- ggplot(data = LME_bathy_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
     geom_col(width = 5) +
-    geom_smooth(method = "gam", se = F) +
+    geom_smooth(method = "gam", se = F, color = "black", size = 1) +
     theme_classic() +
     labs(x = "Depth (m)", y = expression(paste("Area (", km^{2},")")), fill = "Depth (m)") +
     scale_y_continuous(expand = c(0, 0)) +
@@ -509,7 +509,7 @@ saveRDS(lme_maps, file = "lme_maps.Rdata")
 
 #plots to pdf
 ggsave("arranged_maps.pdf", marrangeGrob(lme_maps, ncol=2, nrow = 2))
-ggsave("arranged_densityplots.pdf", marrangeGrob(grobs = lme_densityplots, ncol=2, nrow = 3))
+#ggsave("arranged_densityplots.pdf", marrangeGrob(grobs = lme_densityplots, ncol=2, nrow = 3))
 ggsave("arranged_areaplots.pdf", marrangeGrob(grobs = lme_areaplots, ncol=2, nrow = 3))
 ```
 Associate LME with region
@@ -530,8 +530,8 @@ east_pac_west_atl <- c(61)
 pacific <- c(35,	36,	37,	39,	40,	41,	42,	46,	47,	48,	49,	50,	51,	52,	53, 56,	57, 2, 3, 4, 11, 13, 55, 1, 54, 65,10)
 atlantic <- c(5, 6, 7, 8, 9, 12, 14, 15, 16, 17, 18, 63, 66, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 58, 59, 60, 62 )
 indian <- c(30, 31, 32, 33, 34, 38, 43, 44, 45)
-antarctica <- c(61)
-arctic <- c(64) #likely exclude because most is 2000m+
+antarctica <- c(61) #excluding
+arctic <- c(64) #excluding
 
 
 
@@ -594,18 +594,24 @@ lme_areaplots_classified <- vector("list", length = nrow(LME_bathy_statistics))
 
 for (i in 1:nrow(LME_bathy_statistics)) {
   
+  #get max y value to set label location
+  ggp <- ggplot_build(lme_areaplots[[i]])
+max_y <- ggp$layout$panel_scales_y[[1]]$range$range[[2]]  #y range
+  
 #full plot
   lme_areaplots_classified[[i]] <- lme_areaplots[[i]] +
-    geom_vline(xintercept = mean, color = "red") +
-    annotate("text", x=Inf, y = max_area-max_area/20, hjust=1, label = paste0("LME ", LME_bathy_statistics[i,lme_number], ": ", LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
-        annotate("text", x=Inf, y = max_area-2*max_area/20, hjust=1, label = paste0("Classification: ", LME_bathy_statistics[i,type]), size = 2) +
-    annotate("text", x=Inf, y = max_area-3*(max_area/20), hjust=1, label = paste0("Dip Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value, 2)), size = 2) +
-    annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Skew: ", round(skew,2)), size = 2) +
+    geom_vline(xintercept = LME_bathy_statistics[i,mean_depth], color = "red") +
+    annotate("text", x=Inf, y = max_y-max_y/20, hjust=1, label = paste0("LME ", LME_bathy_statistics[i,lme_number], ": ", LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
+        annotate("text", x=Inf, y = max_y-2*max_y/20, hjust=1, label = paste0("Classification: ", LME_bathy_statistics[i,type]), size = 2) +
+    annotate("text", x=Inf, y = max_y-3*max_y/20, hjust=1, label = paste0("Dip Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value, 2)), size = 2) +
+    annotate("text", x=Inf, y = max_y-4*max_y/20, hjust=1, label = paste0("Skew: ", round(skew,2)), size = 2) +
 #    annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2)), size = 2) +
-    annotate("text", x=Inf, y = max_area-5*(max_area/20), hjust=1, label = paste0("Mean: ",round(mean,2), " m"), size = 2)
+    annotate("text", x=Inf, y = max_y-5*max_y/20, hjust=1, label = paste0("Mean: ",round(mean,2), " m"), size = 2)
 
 
 }
+
+ggsave("arranged_areaplots_classified.pdf", marrangeGrob(grobs = lme_areaplots_classified, ncol=2, nrow = 3))
 ```
 
 
@@ -620,12 +626,12 @@ PCA
 
 ```{r PCA}
 library(ggfortify)
-LME.pca <- prcomp(LME_bathy_statistics[,.(lme_area, mean_depth, center_latitude)], scale. = T)
+LME.pca <- prcomp(LME_bathy_statistics[,.(lme_area, mean_depth, max_depth, center_latitude)], scale. = T)
 
 
 LME.plot_type <- autoplot(LME.pca, data = LME_bathy_statistics, colour = 'type',
                           loadings = TRUE, loadings.colour = 'black',
-                          loadings.label = TRUE, loadings.label.size = 4, loadings.la) + theme_classic()
+                          loadings.label = TRUE, loadings.label.size = 4) + theme_classic()
 LME.plot_region <- autoplot(LME.pca, data = LME_bathy_statistics, colour = 'region',
                           loadings = TRUE, loadings.colour = 'black',
                           loadings.label = TRUE, loadings.label.size = 4) + theme_classic()
@@ -639,17 +645,10 @@ ggsave(plot = LME.plot_region, filename = "LME.plot_region.pdf")
 ```
 How many of each type
 hourglass/multimodal     mid_dominant             none                      shallow_dominant 
-       44 (70%)                1 (2%)               1 (arctic, will delete)          20 (32%) 
+       44 (70%)                8 (13%)               1 (arctic, will delete)          13 (20%) 
 ```{r how many of each type}
 table(LME_bathy_statistics$type)
-44/63
-20/63
-1/63
+44/63 #multimodal
+8/63 #mid-dominant
+13/63 #shallow-dominant
 ```
-
-
-BIG Qs to ASK MALIN
- - do I need to limit LMEs to continental shelf regions? does blue habitat seem like a good limiter?
- Becca thinks Blue Habitat looks good, so good enough to me
- - https://www.bluehabitats.org/
- - should I instead go with 200 m like Hailey did? Instead, I am going to use Blue Habitat, and limit to 2000m depth
