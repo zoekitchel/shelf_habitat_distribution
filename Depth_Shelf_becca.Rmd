@@ -70,10 +70,10 @@ ggplot(shelf_simp) +
 ### Crop ETOPO to continental shelf
 #this takes a long time, so I'll just bring back in Becca's final product
 ```{r etopo crop}
-etopo_shelf <- mask(etopo2, shelf_simp)
+etopo_shelf <- mask(etopo2, shelf_simp) #raster of depth on continental shelf
 
 
-writeRaster(etopo_shelf, here::here("Data/etoposhelf.grd"))
+writeRaster(etopo_shelf, "etoposhelf.grd")
 
 etopo_df <- as.data.frame(etopo2, xy=T)
 
@@ -84,18 +84,18 @@ etopo_shelf_lim <- subset(etopo_shelf_df, !(is.na(layer)))
 
 
 
-png(here::here("Figures/hist_shelfdepth.png"), height=8, width=5, units="in", res=300)
+png("hist_shelfdepth.png", height=8, width=5, units="in", res=300)
 par(mfrow=c(2,1))
-hist(etopo_df$layer, main="ETOPO less than 2000m")
-hist(etopo_shelf_lim$layer, main="ETOPO masked by shelf polygons")
+hist(etopo_df$z, main="ETOPO less than 2000m")
+hist(etopo_shelf_lim$z, main="ETOPO masked by shelf polygons")
 dev.off()
 
-png(here::here("Figures/shelfpts.png"), height=5, width=7, units="in", res=300)
+png("shelfpts.png", height=5, width=7, units="in", res=300)
 plot(y ~ x, etopo_shelf_lim, cex=0.01)
 dev.off()
 
-saveRDS(etopo_shelf_lim, here::here("Data/etopo_shelf_lim.rds"))
-saveRDS(etopo_shelf_df, here::here("Data/etopo_shelf_df.rds"))
+saveRDS(etopo_shelf_lim, "etopo_shelf_lim.rds")
+saveRDS(etopo_shelf_df, "etopo_shelf_df.rds")
 ```
 
 ### Convert back to raster

@@ -5,7 +5,7 @@ output: html_notebook
 
 Degree shifts
 
-Second part of paper, if we move away from equator by 1 degree, how much habitat do we gain or lost
+Second part of paper, if we move away from equator by 0.5˚ degree, how much habitat do we gain or lost
 
 I need to look at shelf area by degrees latitude
 
@@ -34,7 +34,12 @@ etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_ha
 
 #LMEs
 LME_spdf <- readOGR("LME66/LMEs66.shp") #spatial points data frame with all 66 LMEs
-head(LME_spdf)
+
+
+#convert to equal area projection
+equalareaprojection<- crs(" +proj=eqearth +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs +towgs84=0,0,0 ")
+
+LME_spdf.EA <- spTransform(LME_spdf, equalareaprojection)
 
 #function to go from coordinates to minutes symbols in plots
 scale_x_longitude <- function(xmin=-180, xmax=180, step=0.002, ...) {
@@ -67,9 +72,18 @@ scale_y_latitude <- function(ymin=-90, ymax=90, step=0.002, ...) {
 ```
 
 Make bathymetry data frame into raster (this takes a bit)
+
+Note that I am using the [equal area projection](https://www.r-bloggers.com/2018/09/quick-hit-using-the-new-equal-earth-projection-in-r/)
 ```{r bathy to raster}
-proj <- crs(LME_spdf)
-etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = proj)
+
+etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = equalareaprojection)
+
+crs(etopo_shelf_raster)
+extent(etopo_shelf_raster)
+crs(LME_spdf.EA)
+extent(LME_spdf.EA)
+
+packageVersion("proj4")
 
 ```
 
@@ -77,7 +91,7 @@ Crop bathymetry raster to LME spdf (not sure if this is necessary, may just be a
 ```{r}
 
 #crop bathy layer to LME subset
-LMEs_extent <- crop(etopo_shelf_raster, extent(LME_spdf))
+LMEs_extent <- crop(etopo_shelf_raster, extent(LME_spdf.EA))
 
 
 ```
@@ -98,12 +112,12 @@ so,
 
 ```
 
-0.5333˚ is representative of decadal shifts
+0.5333˚ is representative of decadal shifts, but, for better visualization let's go with 1˚
 
-I will put areas into 0.5˚ Bins (180 total degrees, so 180/0.5=360)
+I will put areas into 1˚ Bins (180 total degrees, so 180/1=180)
 
 ```{r}
-180/0.5
+180/1
 ```
 
 How does continental shelf habitat change with latitude?
@@ -130,14 +144,16 @@ Keep above because it's interesting global perspective (how does total shelf are
 
 However, makes more sense to look at by contiguous coast lines AND we don't actually need depth info TBH!
 
+I am going to leave out Antarctica (61) and the Arctic (64) as Antarctica drowned out patterns in lower latitudes and Arctic doesn't have much area below 2000m to begin with. 
+
 Eastern Atlantic (3)
 -19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 58, 59, 60, 62
 
 Western Atlantic (2)
-- 5, 6, 7, 8, 9, 12, 14, 15, 16, 17, 18, 61, 63, 66
+- 5, 6, 7, 8, 9, 12, 14, 15, 16, 17, 18, 63, 66
 
 Eastern Pacific (1)
-- 1, 2, 3, 4, 11, 13, 54, 55, 61, 65
+- 1, 2, 3, 4, 11, 13, 54, 55, 65
 
 Western Indian (4)
 -30, 31, 32, 33
@@ -152,29 +168,29 @@ Using Hailey's file which seems to line up
 
 Merge LMEs into 6 LMEs
 
-- keep in mind, LME 1 (1&6) and 54 (1&6) and 61 (1&2) and 65 (1&6) appear in multiple
+- keep in mind, LME 1 (1&6) and 54 (1&6) and 65 (1&6) appear in multiple
 ```{r }
 west_pac <- c(1,	35,	36,	37,	39,	40,	41,	42,	46,	47,	48,	49,	50,	51,	52,	53,	54,	56,	57,	65)
-east_pac <- c(1, 2, 3, 4, 11, 13, 54, 55, 61, 65)
-west_atl <- c(5, 6, 7, 8, 9, 12, 14, 15, 16, 17, 18, 61, 63, 66)
+east_pac <- c(1, 2, 3, 4, 11, 13, 54, 55, 65)
+west_atl <- c(5, 6, 7, 8, 9, 12, 14, 15, 16, 17, 18, 63, 66)
 east_atl <- c(19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 58, 59, 60, 62)
 west_ind <- c(30, 31, 32, 33)
 east_ind <- c(34, 38, 43, 44, 45)
 
 #subregions based on LME_number
-west_pac_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% west_pac,]
-east_pac_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% east_pac,]
-west_atl_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% west_atl,]
-west_ind_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% west_ind,]
-east_atl_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% east_atl,]
-east_ind_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% east_ind,]
+west_pac_spdf <- LME_spdf.EA[(LME_spdf.EA$LME_NUMBER) %in% west_pac,]
+east_pac_spdf <- LME_spdf.EA[(LME_spdf.EA$LME_NUMBER) %in% east_pac,]
+west_atl_spdf <- LME_spdf.EA[(LME_spdf.EA$LME_NUMBER) %in% west_atl,]
+west_ind_spdf <- LME_spdf.EA[(LME_spdf.EA$LME_NUMBER) %in% west_ind,]
+east_atl_spdf <- LME_spdf.EA[(LME_spdf.EA$LME_NUMBER) %in% east_atl,]
+east_ind_spdf <- LME_spdf.EA[(LME_spdf.EA$LME_NUMBER) %in% east_ind,]
 
 #for subregions that span 360, we need to change CRS a bit
-newCRS_west <- "+proj=longlat +datum=WGS84 +lon_wrap=180"
+newCRS_west <- "+proj=eqearth +datum=WGS84 +lon_wrap=180"
 west_pac_spdf_shift <- spTransform(west_pac_spdf, CRS(newCRS_west))
 west_pac_spdf_shift <- gBuffer(west_pac_spdf_shift, byid=TRUE, width=0) #gets rid of buffers, allows for union
 
-newCRS_east <- "+proj=longlat +datum=WGS84 +lon_wrap=180"
+newCRS_east <- "+proj=eqearth +datum=WGS84 +lon_wrap=180"
 east_pac_spdf_shift <- spTransform(east_pac_spdf, CRS(newCRS_east))
 east_pac_spdf_shift <- gBuffer(east_pac_spdf_shift, byid=TRUE, width=0) #gets rid of buffers, allows for union
 #rotate raster for bathymetry (guided by extent of etoposhelf raster,  that's why wacky #s)

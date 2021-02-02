@@ -301,7 +301,7 @@ See how many groups it goes into?
 Shallow dominant: High positive skew, unimodal
 Mid-Dominant: Relatively normal (low skew, kurtosis = 0, unimodal)
 Deep-Dominant: High negative skew, unimodal
-Uniform: kurtosis < -1.2, unimodal, little skew
+Uniform: kurtosis < -1.2, unimodal, little skew (None fit here, got rid of it)
 Hourglass: Bimodality
 
 Text to add to plot:
@@ -559,7 +559,7 @@ Add classifications to data frame
 
 distributions with a dip value >0.01 and with significant (p<0.05) deviations from unimodality to the hourglass classification. 
 
-For distributions with a dip value ≤0.01, we assigned those with a Type-I skewness ≥0.5 to shallow dominant, those with skewness ≤ −0.5 to deep dominant, and the remainder to diamond, representing those with approximately normal distributions. 
+For distributions with a dip value ≤0.01, we assigned those with a Type-I skewness ≥0.5 to shallow dominant, those with skewness ≤ −0.5 to deep dominant, and the remainder to diamond, representing those with approximately normal distributions. This is what Elsen and Tingley did. Now, I'm going to play around with skew cutoff of 1 rather than 0.5.
 
 ```{r expanded dataframe}
 LME_bathy_statistics[, skew_descriptor := ifelse(abs(skew) > 1, "high_skew", ifelse(abs(skew) < 0.5, "symmetric", "mod_skew"))]
@@ -567,13 +567,13 @@ LME_bathy_statistics[, skew_descriptor := ifelse(abs(skew) > 1, "high_skew", ife
 LME_bathy_statistics[, hourglass := ifelse(dip_test > 0.01, ifelse(dip_p_value < 0.05, T, F), F)]
 
 LME_bathy_statistics[, deep_dominant := ifelse(dip_test <= 0.01, 
-                                               ifelse(skew <= -0.5, T, F), F)]
+                                               ifelse(skew <= -1, T, F), F)]
 
 LME_bathy_statistics[, shallow_dominant := ifelse(dip_test <= 0.01, 
-                                                  ifelse(skew >= 0.5, T, F), F)]
+                                                  ifelse(skew >= 1, T, F), F)]
 
 LME_bathy_statistics[, mid_dominant := ifelse(dip_test <= 0.01,
-                                          ifelse(abs(skew) <0.5, T, F), F)]
+                                          ifelse(abs(skew) <1, T, F), F)]
 
 #negative kurtosis (no tails)
 LME_bathy_statistics[, uniform := ifelse(kurtosis < 0, T, F)]
