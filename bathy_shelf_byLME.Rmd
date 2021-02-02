@@ -26,6 +26,10 @@ etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_ha
 #LMEs
 LME_spdf <- readOGR("LME66/LMEs66.shp")
 
+
+#get rid of Antarctica and the arctic
+LME_spdf <- LME_spdf[LME_spdf$LME_NUMBER != 61 & LME_spdf$LME_NUMBER != 64,]
+
 #equal area projection
 eaproj <- CRS("+proj=eqearth")
 LME_spdf.EA <- spTransform(LME_spdf, eaproj)
@@ -114,7 +118,7 @@ summary(bathy_baltic_dt)
 Will have to be creative on how to map LMEs that cross 180 longitude, ex. Aleutian Islands
 ```{r high longitude examples}
 LME_datatable <- LME_spdf@data
-LME_aleutian <- LME_spdf[59,]
+LME_aleutian <- LME_spdf[LME_spdf$LME_NUMBER == 65,]
 
 #crop bathy layer to LME subset
 bathy_aleutian_extent <- crop(etopo_shelf_raster, extent(LME_aleutian))
@@ -431,7 +435,7 @@ for (i in 1:nrow(LME_bathy_statistics)) {
   
   lme_areaplots[[i]] <- ggplot(data = LME_bathy_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
     geom_col(width = 5) +
-    geom_smooth(method = "gam", se = F, color = "black", size = 1) +
+#    geom_smooth(method = "gam", se = F, color = "black", size = 1) +
     theme_classic() +
     labs(x = "Depth (m)", y = expression(paste("Area (", km^{2},")")), fill = "Depth (m)") +
     scale_y_continuous(expand = c(0, 0)) +
@@ -514,7 +518,7 @@ ggsave("arranged_areaplots.pdf", marrangeGrob(grobs = lme_areaplots, ncol=2, nro
 ```
 Associate LME with region
 
-- keep in mind, LME 1 (1&6) and 54 (1&6) and 61 (1&2) and 65 (1&6) appear in multiple
+- keep in mind, LME 1 (1&6) and 54 (1&6) and 65 (1&6) appear in multiple
 
 ```{r LME to region}
 west_pac <- c(35,	36,	37,	39,	40,	41,	42,	46,	47,	48,	49,	50,	51,	52,	53, 56,	57)
@@ -603,10 +607,10 @@ max_y <- ggp$layout$panel_scales_y[[1]]$range$range[[2]]  #y range
     geom_vline(xintercept = LME_bathy_statistics[i,mean_depth], color = "red") +
     annotate("text", x=Inf, y = max_y-max_y/20, hjust=1, label = paste0("LME ", LME_bathy_statistics[i,lme_number], ": ", LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
         annotate("text", x=Inf, y = max_y-2*max_y/20, hjust=1, label = paste0("Classification: ", LME_bathy_statistics[i,type]), size = 2) +
-    annotate("text", x=Inf, y = max_y-3*max_y/20, hjust=1, label = paste0("Dip Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value, 2)), size = 2) +
-    annotate("text", x=Inf, y = max_y-4*max_y/20, hjust=1, label = paste0("Skew: ", round(skew,2)), size = 2) +
+    annotate("text", x=Inf, y = max_y-3*max_y/20, hjust=1, label = paste0("Dip Test: ", signif(LME_bathy_statistics[i,dip_test],2), " P-value = ", signif(LME_bathy_statistics[i,dip_p_value], 2)), size = 2) +
+    annotate("text", x=Inf, y = max_y-4*max_y/20, hjust=1, label = paste0("Skew: ", round(LME_bathy_statistics[i,skew],2)), size = 2) +
 #    annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2)), size = 2) +
-    annotate("text", x=Inf, y = max_y-5*max_y/20, hjust=1, label = paste0("Mean: ",round(mean,2), " m"), size = 2)
+    annotate("text", x=Inf, y = max_y-5*max_y/20, hjust=1, label = paste0("Mean: ",round(LME_bathy_statistics[i,mean_depth],2), " m"), size = 2)
 
 
 }
@@ -626,6 +630,10 @@ PCA
 
 ```{r PCA}
 library(ggfortify)
+#get rid of antartica and arctic (can remove this next round)
+LME_bathy_statistics <- LME_bathy_statistics[lme_number != 61,][lme_number != 64,]
+
+
 LME.pca <- prcomp(LME_bathy_statistics[,.(lme_area, mean_depth, max_depth, center_latitude)], scale. = T)
 
 
@@ -644,11 +652,11 @@ ggsave(plot = LME.plot_region, filename = "LME.plot_region.pdf")
 
 ```
 How many of each type
-hourglass/multimodal     mid_dominant             none                      shallow_dominant 
-       44 (70%)                8 (13%)               1 (arctic, will delete)          13 (20%) 
+hourglass/multimodal     mid_dominant            shallow_dominant 
+       44 (69%)                8 (13%)                12 (20%) 
 ```{r how many of each type}
 table(LME_bathy_statistics$type)
-44/63 #multimodal
-8/63 #mid-dominant
-13/63 #shallow-dominant
+44/64 #multimodal
+8/64 #mid-dominant
+12/64 #shallow-dominant
 ```
