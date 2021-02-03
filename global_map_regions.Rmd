@@ -9,11 +9,12 @@ Here, I plan to make a global map showing how each LME was grouped. This is larg
 library(data.table)
 library(ggplot2)
 library(ggspatial) #basemap
+library(rgdal)
 
 
 LME_bathy_statistics <- readRDS("LME_bathy_statistics.RData")
 LME_spdf <- readOGR("LME66/LMEs66.shp")
-LME_spdf_working <- LME_spdf
+LME_spdf_working <- LME_spdf[LME_spdf$LME_NUMBER != 61 & LME_spdf$LME_NUMBER != 64,]
 
 ```
 
@@ -65,6 +66,13 @@ LME_spdf_working$id <- rownames(as.data.frame(LME_spdf_working))
 
 LME_spdf_working.pts <- fortify(LME_spdf_working, region="id") #this only has the coordinates
 LME_spdf_working.df <- merge(LME_spdf_working.pts, LME_spdf_working, by="id", type='left') # add the attributes back 
+#___centroids
+library(rgeos)
+#centroid of each polygon
+LME_spdf_working.df_centroids <- gCentroid(LME_spdf_working, byid = T, id = LME_spdf_working$LME_NUMBER)
+LME_spdf_working.df_centroids$id <- rownames(as.data.frame(LME_spdf_working.df_centroids))
+LME_spdf_working.df_centroids.pts <- as.data.frame(LME_spdf_working.df_centroids)
+
 
 ```
 
@@ -72,7 +80,8 @@ LME_spdf_working.df <- merge(LME_spdf_working.pts, LME_spdf_working, by="id", ty
 
 Make map
 ```{r global map}
-ggplot() + 
+
+global_LME_classification_map <- ggplot() + 
     # add projected countries
     geom_polygon(data = Country.DT, 
                  aes(x = long, y = lat, group = group), 
@@ -80,8 +89,10 @@ ggplot() +
                  fill = "gray90", 
                  size = 0.25) +
   geom_polygon(data = LME_spdf_working.df, aes(x = long, y = lat, group = group, fill = type)) +
+  geom_text(data = LME_spdf_working.df_centroids.pts, aes(label = id, x = x, y = y), size = 1) +
     # ensures that one unit on the x-axis is the same length as one unit on the y-axis
     coord_equal() +
+  labs( x = expression("Longitude ("*~degree*E*")"), y = expression("Latitude ("*~degree*N*")")) +
   theme_classic()
 
 ggsave(filename = "map_global_type.pdf")

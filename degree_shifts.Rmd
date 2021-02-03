@@ -5,7 +5,7 @@ output: html_notebook
 
 Degree shifts
 
-Second part of paper, if we move away from equator by 0.5˚ degree, how much habitat do we gain or lost
+Second part of paper, if we move away from equator by 1˚ degree, how much habitat do we gain or lost
 
 I need to look at shelf area by degrees latitude
 
@@ -73,15 +73,10 @@ scale_y_latitude <- function(ymin=-90, ymax=90, step=0.002, ...) {
 
 Make bathymetry data frame into raster (this takes a bit)
 
-Note that I am using the [equal area projection](https://www.r-bloggers.com/2018/09/quick-hit-using-the-new-equal-earth-projection-in-r/)
+Note that I am trying to use the [equal area projection](https://www.r-bloggers.com/2018/09/quick-hit-using-the-new-equal-earth-projection-in-r/)
 ```{r bathy to raster}
 
-etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = equalareaprojection)
-
-crs(etopo_shelf_raster)
-extent(etopo_shelf_raster)
-crs(LME_spdf.EA)
-extent(LME_spdf.EA)
+etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = crs(LME_spdf))
 
 packageVersion("proj4")
 
@@ -91,7 +86,7 @@ Crop bathymetry raster to LME spdf (not sure if this is necessary, may just be a
 ```{r}
 
 #crop bathy layer to LME subset
-LMEs_extent <- crop(etopo_shelf_raster, extent(LME_spdf.EA))
+LMEs_extent <- crop(etopo_shelf_raster, extent(LME_spdf))
 
 
 ```
@@ -134,10 +129,10 @@ etopo_shelf_dt_south <- etopo_shelf_dt[y <= 0,][,habitat := ifelse(is.na(layer),
 setorder(etopo_shelf_dt_south, -y)
 ```
 
-Binning data by 0.5 ˚
+Binning data by 1 ˚
 ```{r}
-etopo_shelf_dt_north_binned <- etopo_shelf_dt_north[,sum(habitat) , .(gr=cut(y,breaks=seq(0,90,by = (0.5))))]
-etopo_shelf_dt_south_binned <- etopo_shelf_dt_south[,sum(habitat) , .(gr=cut(y,breaks=seq(0,-90,by = (-0.5))))]
+etopo_shelf_dt_north_binned <- etopo_shelf_dt_north[,sum(habitat) , .(gr=cut(y,breaks=seq(0,90,by = (1))))]
+etopo_shelf_dt_south_binned <- etopo_shelf_dt_south[,sum(habitat) , .(gr=cut(y,breaks=seq(0,-90,by = (-1))))]
 ```
 
 Keep above because it's interesting global perspective (how does total shelf area vary by latitude?)
@@ -169,7 +164,7 @@ Using Hailey's file which seems to line up
 Merge LMEs into 6 LMEs
 
 - keep in mind, LME 1 (1&6) and 54 (1&6) and 65 (1&6) appear in multiple
-```{r }
+```{r merging LMEs}
 west_pac <- c(1,	35,	36,	37,	39,	40,	41,	42,	46,	47,	48,	49,	50,	51,	52,	53,	54,	56,	57,	65)
 east_pac <- c(1, 2, 3, 4, 11, 13, 54, 55, 65)
 west_atl <- c(5, 6, 7, 8, 9, 12, 14, 15, 16, 17, 18, 63, 66)
@@ -178,19 +173,19 @@ west_ind <- c(30, 31, 32, 33)
 east_ind <- c(34, 38, 43, 44, 45)
 
 #subregions based on LME_number
-west_pac_spdf <- LME_spdf.EA[(LME_spdf.EA$LME_NUMBER) %in% west_pac,]
-east_pac_spdf <- LME_spdf.EA[(LME_spdf.EA$LME_NUMBER) %in% east_pac,]
-west_atl_spdf <- LME_spdf.EA[(LME_spdf.EA$LME_NUMBER) %in% west_atl,]
-west_ind_spdf <- LME_spdf.EA[(LME_spdf.EA$LME_NUMBER) %in% west_ind,]
-east_atl_spdf <- LME_spdf.EA[(LME_spdf.EA$LME_NUMBER) %in% east_atl,]
-east_ind_spdf <- LME_spdf.EA[(LME_spdf.EA$LME_NUMBER) %in% east_ind,]
+west_pac_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% west_pac,]
+east_pac_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% east_pac,]
+west_atl_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% west_atl,]
+west_ind_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% west_ind,]
+east_atl_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% east_atl,]
+east_ind_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% east_ind,]
 
 #for subregions that span 360, we need to change CRS a bit
-newCRS_west <- "+proj=eqearth +datum=WGS84 +lon_wrap=180"
+newCRS_west <- "+proj=longlat +datum=WGS84 +lon_wrap=180"
 west_pac_spdf_shift <- spTransform(west_pac_spdf, CRS(newCRS_west))
 west_pac_spdf_shift <- gBuffer(west_pac_spdf_shift, byid=TRUE, width=0) #gets rid of buffers, allows for union
 
-newCRS_east <- "+proj=eqearth +datum=WGS84 +lon_wrap=180"
+newCRS_east <- "+proj=longlat +datum=WGS84 +lon_wrap=180"
 east_pac_spdf_shift <- spTransform(east_pac_spdf, CRS(newCRS_east))
 east_pac_spdf_shift <- gBuffer(east_pac_spdf_shift, byid=TRUE, width=0) #gets rid of buffers, allows for union
 #rotate raster for bathymetry (guided by extent of etoposhelf raster,  that's why wacky #s)
@@ -272,8 +267,8 @@ west_pac_spdf_shift_agg_south <- crop(west_pac_spdf_shift_mask, extent(south_ext
 #unfortunately, I think I may have to just do this manually (ugly, I know)
 
 #all chunks for west pacific
-west_pac_north_latitudes <- seq(0, ymax(west_pac_spdf_shift_mask), by = 0.5)
-west_pac_south_latitudes <- seq(-0.5, ymin(west_pac_spdf_shift_mask), by = -0.5)
+west_pac_north_latitudes <- seq(0, ymax(west_pac_spdf_shift_mask), by = 1)
+west_pac_south_latitudes <- seq(-1, ymin(west_pac_spdf_shift_mask), by = -1)
 
 west_pac_shelf_areas <- as.data.table(matrix(nrow = (length(west_pac_north_latitudes)-1+length(west_pac_south_latitudes)-1)))
                                       
@@ -344,11 +339,11 @@ for (i in 1:(length(west_pac_south_latitudes)-1)) {
 ```{r percent shift western pacific}
 west_pac_shelf_areas[, percent_change := (area-shift(area, type = "lag"))/shift(area, type = "lag")][,area_1000s := area/1000]
 
-west_pac_shelf_areas[, change_above_40 := ifelse(percent_change>=0.4, 1, ifelse(percent_change<=-0.4, -1, 0))]
+west_pac_shelf_areas[, change_above_2fold := ifelse(percent_change>=2, 1, ifelse(percent_change<=-0.5, -1, 0))]
 
-west_pac_shelf_areas_highlight <- west_pac_shelf_areas[change_above_40 != 0,]
+west_pac_shelf_areas_highlight <- west_pac_shelf_areas[change_above_2fold != 0,]
 
-west_pac_shelf_areas_stats <- table(west_pac_shelf_areas[,.(change_above_40)])
+west_pac_shelf_areas_stats <- table(west_pac_shelf_areas[,.(change_above_2fold)])
 ```
 
 
@@ -367,8 +362,8 @@ east_pac_spdf_shift_agg_south <- crop(east_pac_spdf_shift_mask, extent(south_ext
 #unfortunately, I think I may have to just do this manually (ugly, I know)
 
 #all chunks for east pacific
-east_pac_north_latitudes <- seq(0, ymax(east_pac_spdf_shift_mask), by = 0.5)
-east_pac_south_latitudes <- seq(-0.5, ymin(east_pac_spdf_shift_mask), by = -0.5)
+east_pac_north_latitudes <- seq(0, ymax(east_pac_spdf_shift_mask), by = 1)
+east_pac_south_latitudes <- seq(-1, ymin(east_pac_spdf_shift_mask), by = -1)
 
 east_pac_shelf_areas <- as.data.table(matrix(nrow = (length(east_pac_north_latitudes)-1+length(east_pac_south_latitudes)-1)))
                                       
@@ -439,11 +434,11 @@ for (i in 1:(length(east_pac_south_latitudes)-1)) {
 ```{r percent shift eastern pacific}
 east_pac_shelf_areas[, percent_change := (area-shift(area, type = "lag"))/shift(area, type = "lag")][,area_1000s := area/1000]
 
-east_pac_shelf_areas[, change_above_40 := ifelse(percent_change>=0.4, 1, ifelse(percent_change<=-0.4, -1, 0))]
+east_pac_shelf_areas[, change_above_2fold := ifelse(percent_change>=2, 1, ifelse(percent_change<=-0.5, -1, 0))]
 
-east_pac_shelf_areas_highlight <- east_pac_shelf_areas[change_above_40 != 0,]
+east_pac_shelf_areas_highlight <- east_pac_shelf_areas[change_above_2fold != 0,]
 
-east_pac_shelf_areas_stats <- table(east_pac_shelf_areas[,.(change_above_40)])
+east_pac_shelf_areas_stats <- table(east_pac_shelf_areas[,.(change_above_2fold)])
 ```
 
 Western Atlantic
@@ -462,8 +457,8 @@ west_atl_agg_south <- crop(west_atl_spdf_mask, extent(south_extent))
 #unfortunately, I think I may have to just do this manually (ugly, I know)
 
 #all chunks for east pacific
-west_atl_north_latitudes <- seq(0, ymax(west_atl_spdf_mask), by = 0.5)
-west_atl_south_latitudes <- seq(-0.5, ymin(west_atl_spdf_mask), by = -0.5)
+west_atl_north_latitudes <- seq(0, ymax(west_atl_spdf_mask), by = 1)
+west_atl_south_latitudes <- seq(-1, ymin(west_atl_spdf_mask), by = -1)
 
 west_atl_shelf_areas <- as.data.table(matrix(nrow = (length(west_atl_north_latitudes)-1+length(west_atl_south_latitudes)-1)))
                                       
@@ -534,11 +529,11 @@ for (i in 1:(length(west_atl_south_latitudes)-1)) {
 ```{r percent shift western atlantic}
 west_atl_shelf_areas[, percent_change := (area-shift(area, type = "lag"))/shift(area, type = "lag")][,area_1000s := area/1000]
 
-west_atl_shelf_areas[, change_above_40 := ifelse(percent_change>=0.4, 1, ifelse(percent_change<=-0.4, -1, 0))]
+west_atl_shelf_areas[, change_above_2fold := ifelse(percent_change>=2, 1, ifelse(percent_change<=-0.5, -1, 0))]
 
-west_atl_shelf_areas_highlight <- west_atl_shelf_areas[change_above_40 != 0,]
+west_atl_shelf_areas_highlight <- west_atl_shelf_areas[change_above_2fold != 0,]
 
-west_atl_shelf_areas_stats <- table(west_atl_shelf_areas[,.(change_above_40)])
+west_atl_shelf_areas_stats <- table(west_atl_shelf_areas[,.(change_above_2fold)])
 ```
 
 Eastern Atlantic
@@ -556,8 +551,8 @@ east_atl_agg_south <- crop(east_atl_spdf_nobuf_mask, extent(south_extent))
 #unfortunately, I think I may have to just do this manually (ugly, I know)
 
 #all chunks for east pacific
-east_atl_north_latitudes <- seq(0, ymax(east_atl_spdf_nobuf_mask), by = 0.5)
-east_atl_south_latitudes <- seq(-0.5, ymin(east_atl_spdf_nobuf_mask), by = -0.5)
+east_atl_north_latitudes <- seq(0, ymax(east_atl_spdf_nobuf_mask), by = 1)
+east_atl_south_latitudes <- seq(-1, ymin(east_atl_spdf_nobuf_mask), by = -1)
 
 east_atl_shelf_areas <- as.data.table(matrix(nrow = (length(east_atl_north_latitudes)-1+length(east_atl_south_latitudes)-1)))
                                       
@@ -628,11 +623,11 @@ for (i in 1:(length(east_atl_south_latitudes)-1)) {
 ```{r percent shift eastern atlantic}
 east_atl_shelf_areas[, percent_change := (area-shift(area, type = "lag"))/shift(area, type = "lag")][,area_1000s := area/1000]
 
-east_atl_shelf_areas[, change_above_40 := ifelse(percent_change>=0.4, 1, ifelse(percent_change<=-0.4, -1, 0))]
+east_atl_shelf_areas[, change_above_2fold := ifelse(percent_change>=2, 1, ifelse(percent_change<=-0.5, -1, 0))]
 
-east_atl_shelf_areas_highlight <- east_atl_shelf_areas[change_above_40 != 0,]
+east_atl_shelf_areas_highlight <- east_atl_shelf_areas[change_above_2fold != 0,]
 
-east_atl_shelf_areas_stats <- table(east_atl_shelf_areas[,.(change_above_40)])
+east_atl_shelf_areas_stats <- table(east_atl_shelf_areas[,.(change_above_2fold)])
 ```
 
 Western Indian
@@ -650,8 +645,8 @@ west_ind_agg_south <- crop(west_ind_spdf_mask, extent(south_extent))
 #unfortunately, I think I may have to just do this manually (ugly, I know)
 
 #all chunks for east pacific
-west_ind_north_latitudes <- seq(0, ymax(west_ind_spdf_mask), by = 0.5)
-west_ind_south_latitudes <- seq(-0.5, ymin(west_ind_spdf_mask), by = -0.5)
+west_ind_north_latitudes <- seq(0, ymax(west_ind_spdf_mask), by = 1)
+west_ind_south_latitudes <- seq(-1, ymin(west_ind_spdf_mask), by = -1)
 
 west_ind_shelf_areas <- as.data.table(matrix(nrow = (length(west_ind_north_latitudes)-1+length(west_ind_south_latitudes)-1)))
                                       
@@ -722,11 +717,11 @@ for (i in 1:(length(west_ind_south_latitudes)-1)) {
 ```{r percent shift western indian}
 west_ind_shelf_areas[, percent_change := (area-shift(area, type = "lag"))/shift(area, type = "lag")][,area_1000s := area/1000]
 
-west_ind_shelf_areas[, change_above_40 := ifelse(percent_change>=0.4, 1, ifelse(percent_change<=-0.4, -1, 0))]
+west_ind_shelf_areas[, change_above_2fold := ifelse(percent_change>=2, 1, ifelse(percent_change<=-0.5, -1, 0))]
 
-west_ind_shelf_areas_highlight <- west_ind_shelf_areas[change_above_40 != 0,]
+west_ind_shelf_areas_highlight <- west_ind_shelf_areas[change_above_2fold != 0,]
 
-west_ind_shelf_areas_stats <- table(west_ind_shelf_areas[,.(change_above_40)])
+west_ind_shelf_areas_stats <- table(west_ind_shelf_areas[,.(change_above_2fold)])
 ```
 
 Eastern Indian
@@ -744,8 +739,8 @@ east_ind_agg_south <- crop(east_ind_spdf_mask, extent(south_extent))
 #unfortunately, I think I may have to just do this manually (ugly, I know)
 
 #all chunks for east pacific
-east_ind_north_latitudes <- seq(0, ymax(east_ind_spdf_mask), by = 0.5)
-east_ind_south_latitudes <- seq(-0.5, ymin(east_ind_spdf_mask), by = -0.5)
+east_ind_north_latitudes <- seq(0, ymax(east_ind_spdf_mask), by = 1)
+east_ind_south_latitudes <- seq(-1, ymin(east_ind_spdf_mask), by = -1)
 
 east_ind_shelf_areas <- as.data.table(matrix(nrow = (length(east_ind_north_latitudes)-1+length(east_ind_south_latitudes)-1)))
                                       
@@ -811,18 +806,18 @@ for (i in 1:(length(east_ind_south_latitudes)-1)) {
   } 
 }
 
-save(east_ind_shelf_areas, west_ind_shelf_areas, east_atl_shelf_areas, west_atl_shelf_areas, east_pac_shelf_areas, west_pac_shelf_areas ,file = "shelf_areas_by_0.5latitude.RData")
+save(east_ind_shelf_areas, west_ind_shelf_areas, east_atl_shelf_areas, west_atl_shelf_areas, east_pac_shelf_areas, west_pac_shelf_areas ,file = "shelf_areas_by_1latitude.RData")
 
 ```
 
 ```{r percent shift eastern indian}
 east_ind_shelf_areas[, percent_change := (area-shift(area, type = "lag"))/shift(area, type = "lag")][,area_1000s := area/1000][,area_1000s := area/1000]
 
-east_ind_shelf_areas[, change_above_40 := ifelse(percent_change>=0.4, 1, ifelse(percent_change<=-0.4, -1, 0))]
+east_ind_shelf_areas[, change_above_2fold := ifelse(percent_change>=2, 1, ifelse(percent_change<=-0.5, -1, 0))]
 
-east_ind_shelf_areas_highlight <- east_ind_shelf_areas[change_above_40 != 0,]
+east_ind_shelf_areas_highlight <- east_ind_shelf_areas[change_above_2fold != 0,]
 
-east_ind_shelf_areas_stats <- table(east_ind_shelf_areas[,.(change_above_40)])
+east_ind_shelf_areas_stats <- table(east_ind_shelf_areas[,.(change_above_2fold)])
 ```
 
 Plots of latitude versus habitat availability
@@ -831,9 +826,9 @@ Plots of latitude versus habitat availability
 (area_latitude_east_ind  <- ggplot() +
   geom_point(data = east_ind_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18) +
   geom_line(data = east_ind_shelf_areas, aes(x=latitude_start, y=area_1000s)) +
-  geom_rug(data = east_ind_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_40))) +
+  geom_rug(data = east_ind_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
  labs(x = "Latitude", y = expression(paste("Area (1000s of ", km^{2},")"))) +
-  scale_color_discrete(name = "Instances of 40%\n Habitat Change", labels = c("Contraction", "Expansion")) +
+  scale_color_discrete(name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
   ##annotate("text", x =22, y = 70000, label = "Eastern Indian Ocean") +
   geom_vline(xintercept = 0) +
   xlim(min(east_ind_shelf_areas$latitude_end), max(east_ind_shelf_areas$latitude_end)) +
@@ -847,9 +842,9 @@ Plots of latitude versus habitat availability
 area_latitude_west_ind  <- ggplot() +
   geom_point(data = west_ind_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18) + 
   geom_line(data = west_ind_shelf_areas, aes(x=latitude_start, y=area_1000s)) +
-    geom_rug(data = east_ind_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_40))) +
+    geom_rug(data = east_ind_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
  labs(x = "Latitude", y = expression(paste("Area (1000s of ", km^{2},")"))) +
-  scale_color_discrete(name = "Instances of 40%\n Habitat Change", labels = c("Contraction", "Expansion")) +
+  scale_color_discrete(name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
   #annotate("text", x = 30, y = 33000, label = "Western Indian Ocean") +
   geom_vline(xintercept = 0) +
   xlim(min(west_ind_shelf_areas$latitude_end), max(west_ind_shelf_areas$latitude_end)) +
@@ -862,9 +857,9 @@ area_latitude_west_ind  <- ggplot() +
 area_latitude_west_atl  <- ggplot() +
   geom_point(data = west_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18) + 
   geom_line(data = west_atl_shelf_areas, aes(x=latitude_start, y=area_1000s)) +
-  geom_rug(data = west_atl_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_40))) +
+  geom_rug(data = west_atl_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
  labs(x = "Latitude", y = expression(paste("Area (1000s of ", km^{2},")"))) +
-  scale_color_discrete(name = "Instances of 40%\n Habitat Change", labels = c("Contraction", "Expansion")) +
+  scale_color_discrete(name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
   #annotate("text", x = 80, y = 120000, label = "Western Atlantic Ocean") +
   geom_vline(xintercept = 0) +
   xlim(min(west_atl_shelf_areas$latitude_end), max(west_atl_shelf_areas$latitude_end)) +
@@ -877,9 +872,9 @@ area_latitude_west_atl  <- ggplot() +
 area_latitude_east_atl  <- ggplot() +
   geom_point(data = east_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18) + 
   geom_line(data = east_atl_shelf_areas, aes(x=latitude_start, y=area_1000s)) +
-  geom_rug(data = east_atl_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_40))) +
+  geom_rug(data = east_atl_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
  labs(x = "Latitude", y = expression(paste("Area (1000s of ", km^{2},")"))) +
-  scale_color_discrete(name = "Instances of 40%\n Habitat Change", labels = c("Contraction", "Expansion")) +
+  scale_color_discrete(name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
   #annotate("text", x = 82.5, y = 110000, label = "Eastern Atlantic Ocean") +
   geom_vline(xintercept = 0) +
   xlim(min(east_atl_shelf_areas$latitude_end), max(east_atl_shelf_areas$latitude_end)) +
@@ -892,9 +887,9 @@ area_latitude_east_atl  <- ggplot() +
 area_latitude_east_pac  <- ggplot() +
   geom_point(data = east_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18) + 
   geom_line(data = east_pac_shelf_areas, aes(x=latitude_start, y=area_1000s)) +
-  geom_rug(data = east_pac_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_40))) +
+  geom_rug(data = east_pac_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
  labs(x = "Latitude", y = expression(paste("Area (1000s of ", km^{2},")"))) +
-  scale_color_discrete(name = "Instances of 40%\n Habitat Change", labels = c("Contraction", "Expansion")) +
+  scale_color_discrete(name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
   #annotate("text", x = 80, y = 130000, label = "Eastern Pacific Ocean") +
   geom_vline(xintercept = 0) +
   xlim(min(east_pac_shelf_areas$latitude_end), max(east_pac_shelf_areas$latitude_end)) +
@@ -909,9 +904,9 @@ area_latitude_east_pac  <- ggplot() +
   geom_point(data = west_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18) + 
   geom_line(data = west_pac_shelf_areas, aes(x=latitude_start, y=area_1000s)) +
   #geom_point(data = west_pac_shelf_areas_highlight, aes(x = latitude_start, y = area), shape =19, color = "seagreen4", size = 2) + 
-  geom_rug(data = west_pac_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_40))) +
+  geom_rug(data = west_pac_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
  labs(x = "Latitude", y = expression(paste("Area (1000s of ", km^{2},")"))) +
-  scale_color_discrete(name = "Instances of 40%\n Habitat Change", labels = c("Contraction", "Expansion")) +
+  scale_color_discrete(name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
   #annotate("text", x = 90, y = 130000, label = "Western Pacific Ocean") +
   geom_vline(xintercept = 0) +
   xlim(min(west_pac_shelf_areas$latitude_end), max(west_pac_shelf_areas$latitude_end)) +
@@ -925,9 +920,9 @@ area_latitude_east_pac  <- ggplot() +
 
 ```
 
-How many experience 'significant' changes in habitat (at least 40% change from one bin to another from Yin et al 2017: Overall, we suggest the maximum permissible habitat loss threshold to be between 0–40%, depending on the pre-disturbed occupancy (or abundance) of a species.)
+How many experience 'significant' changes in habitat (at least -50% or +200% change from one bin to another) I will go with IUCN 50% loss -> vulnerable species designation.
 
-Bin shifts --> contractions (loss of 40%) versus expansions (gain of 40%) versus neutral
+Bin shifts --> contractions (loss of 50%) versus expansions (gain of 200%) versus neutral
 ```{r bin shift categorization}
 #call all objects in environment with "stats" string
 stats_string<-grep("_stats",names(.GlobalEnv),value=TRUE)
@@ -956,14 +951,14 @@ blank_theme <- theme_minimal()+
 ggplot(data = significant_changes.long, aes(x="", y = value, fill = change_type)) +
   geom_bar(stat = "identity", width = 1) +
   coord_polar("y", start=0) +
-  scale_fill_manual(values = c("darksalmon", "azure2", "cyan3"), name = "Habitat Change", labels = c(">= 40% Contraction", "<40% Change", ">= 40% Expansion")) +
+  scale_fill_manual(values = c("darksalmon", "azure2", "cyan3"), name = "Habitat Change", labels = c(">= 2 Fold Contraction", "< 2 Fold Change", ">= 2 Fold Expansion")) +
   facet_wrap(~region) +
-  geom_text(aes(label = paste0(round(value*100,1),"%")), position = position_stack(vjust = 0.6), size = 2.5) +
+  geom_text(aes(label = paste0(round(value*100,1),"%")), position = position_stack(vjust = 0.1), size = 2) +
   scale_x_discrete(expand = c(0,0)) +
   blank_theme +
   theme(axis.text.x=element_blank())
 
-ggsave(filename = "habitatloss_gain_4-.pdf")
+ggsave(filename = "habitatloss_gain_2fold.pdf")
 ```
 
 Now, I should make maps for each of these regions
@@ -1272,7 +1267,6 @@ ggsave(plot = east_atlantic_merge_map_plot, filename = "east_atlantic_merge_map_
 ggsave(plot = east_indian_merge_map_plot, filename = "east_indian_merge_map_plot.jpg", width = 7, height = 3, units = "in")
 ```
 
-How many experience 'significant' changes in habitat (at least 40% change from one bin to another from Yin et al 2017: Overall, we suggest the maximum permissible habitat loss threshold to be between 0–40%, depending on the pre-disturbed occupancy (or abundance) of a species.)
 
 Make map of world
 
