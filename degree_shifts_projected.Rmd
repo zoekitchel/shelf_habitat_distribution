@@ -257,8 +257,6 @@ for (i in 1:(length(west_pac_north_latitudes)-1)) {
   
   if(all(is.na(values(segment_north)))) { #if there's no shelf area within a bin, all area = 0
     
-  west_pac_shelf_areas[i, "latitude_start"] <- west_pac_north_latitudes[i]
-  west_pac_shelf_areas[i, "latitude_end"] <- west_pac_north_latitudes[i+1]
   west_pac_shelf_areas[i, "area_equalareaproj"] <- 0
   west_pac_shelf_areas[i, "area_rasterarea"] <- 0
   west_pac_shelf_areas[i, "area_rgeos_gArea"] <- 0
@@ -326,8 +324,6 @@ for (i in 1:(length(west_pac_south_latitudes)-1)) {
   
   if(all(is.na(values(segment_south)))) { #if there's no shelf area within a bin, meaning there's no shelf area at that latitude
     
-  west_pac_shelf_areas[i+(length(west_pac_north_latitudes)-1), "latitude_start"] <- west_pac_south_latitudes[i]
-  west_pac_shelf_areas[i+(length(west_pac_north_latitudes)-1), "latitude_end"] <- west_pac_south_latitudes[i+1]
   west_pac_shelf_areas[i+(length(west_pac_north_latitudes)-1), "area_equalareaproj"] <- 0
   west_pac_shelf_areas[i+(length(west_pac_north_latitudes)-1), "area_rasterarea"] <- 0
     west_pac_shelf_areas[i+(length(west_pac_north_latitudes)-1), "area_rgeos_gArea"] <- 0
@@ -391,18 +387,21 @@ ggplot(data = west_pac_shelf_areas) +
 
 cor(west_pac_shelf_areas[,3:5], use = "complete.obs")
 
+save(west_pac_shelf_areas, "west_pac_shelf_areas.RData")
+
 ```
 
 Classify by percent change!!
 
-between 1 and Inf = at least 2 fold increase (note I classified any change from 0 to something as NOT a significant change, should return to this)
+between 1 and Inf % change = at least 2 fold increase (note I classified any change from 0 to something as NOT a significant change, should return to this conceptually)
 
-between -0.5 and -inf = atleast 2 fold decrease
+between -0.5 and -inf % change = at least 2 fold decrease
 
 between -0.499 and 0.999 = no significant change 
 
+For area metric here, I used the raster::area function applied to the projected shapefile
 ```{r percent shift western pacific}
-west_pac_shelf_areas[, percent_change := (area-shift(area, type = "lag"))/shift(area, type = "lag")][,area_1000s := area/1000]
+west_pac_shelf_areas[, percent_change := (area_equalareaproj-shift(area_equalareaproj, type = "lag"))/shift(area_equalareaproj, type = "lag")][,area_1000s := area_equalareaproj/1000]
 
 west_pac_shelf_areas[, change_above_2fold := ifelse((percent_change>=1 & percent_change<Inf), 1, ifelse(percent_change<=-0.5, -1, 0))]
 
@@ -417,48 +416,87 @@ Eastern Pacific
 east_pac_spdf_shift
 
 ```{r split raster for eastern pacific}
-north_extent <- c(xmin(east_pac_spdf_shift_mask), xmax(east_pac_spdf_shift_mask), 0, ymax(east_pac_spdf_shift_mask))
-south_extent <- c(xmin(east_pac_spdf_shift_mask), xmax(east_pac_spdf_shift_mask), ymin(east_pac_spdf_shift_mask), 0)
+north_extent <- c(xmin(east_pac_spdf_shift_mask_1s), xmax(east_pac_spdf_shift_mask_1s), 0, ymax(east_pac_spdf_shift_mask_1s))
+south_extent <- c(xmin(east_pac_spdf_shift_mask_1s), xmax(east_pac_spdf_shift_mask_1s), ymin(east_pac_spdf_shift_mask_1s), 0)
 
-#crop into above and below 0
-east_pac_spdf_shift_agg_north <- crop(east_pac_spdf_shift_mask, extent(north_extent))
-east_pac_spdf_shift_agg_south <- crop(east_pac_spdf_shift_mask, extent(south_extent))
+#crop east_pac raster above and below 0
+east_pac_spdf_shift_agg_north <- crop(east_pac_spdf_shift_mask_1s, extent(north_extent))
+
+east_pac_spdf_shift_agg_south <- crop(east_pac_spdf_shift_mask_1s, extent(south_extent))
 
 #unfortunately, I think I may have to just do this manually (ugly, I know)
 
-#all chunks for east pacific
-east_pac_north_latitudes <- seq(0, ymax(east_pac_spdf_shift_mask), by = 1)
-east_pac_south_latitudes <- seq(-1, ymin(east_pac_spdf_shift_mask), by = -1)
+#all chunks for west pacific
+east_pac_north_latitudes <- seq(0, ymax(east_pac_spdf_shift_mask_1s), by = 1)
+east_pac_south_latitudes <- seq(0, ymin(east_pac_spdf_shift_mask_1s), by = -1)
 
+#setup data table to populate in loop, subtracting one to allow for bins
 east_pac_shelf_areas <- as.data.table(matrix(nrow = (length(east_pac_north_latitudes)-1+length(east_pac_south_latitudes)-1)))
                                       
-east_pac_shelf_areas[, latitude_start := as.numeric(V1)][, latitude_end := as.numeric(V1)][, area := as.numeric(V1)][, V1 := NULL]
+east_pac_shelf_areas[, latitude_start := as.numeric(V1)][, latitude_end := as.numeric(V1)][, area_rasterarea := as.numeric(V1)][, area_equalareaproj := as.numeric(V1)][, area_rgeos_gArea := as.numeric(V1)][, V1 := NULL]
 
 #loop for north
 for (i in 1:(length(east_pac_north_latitudes)-1)) {
-  north_extent <- c(xmin(east_pac_spdf_shift_mask), xmax(east_pac_spdf_shift_mask), east_pac_north_latitudes[i], east_pac_north_latitudes[i+1])
-  segment <- crop(east_pac_spdf_shift_mask, extent(north_extent))
+  #setting up extent for slicing by min and max longitudes, and i to i+1 latitudes
+  north_extent <- c(xmin(east_pac_spdf_shift_mask_1s), xmax(east_pac_spdf_shift_mask_1s), east_pac_north_latitudes[i], east_pac_north_latitudes[i+1])
   
-  if(all(is.na(values(segment)))) {
-    
+  #crop raster segement based on bin extent
+  segment_north <- crop(east_pac_spdf_shift_mask_1s, extent(north_extent))
+  
+  #populate data table with latitudinal bin
   east_pac_shelf_areas[i, "latitude_start"] <- east_pac_north_latitudes[i]
   east_pac_shelf_areas[i, "latitude_end"] <- east_pac_north_latitudes[i+1]
-  east_pac_shelf_areas[i, "area"] <- 0
+  
+  if(all(is.na(values(segment_north)))) { #if there's no shelf area within a bin, all area = 0
+    
+  east_pac_shelf_areas[i, "area_equalareaproj"] <- 0
+  east_pac_shelf_areas[i, "area_rasterarea"] <- 0
+  east_pac_shelf_areas[i, "area_rgeos_gArea"] <- 0
+
   
   print(i)
     
-  } else {
-  #get sizes of all cells in raster [km2]
-    cell_size<-area(segment, na.rm=TRUE, weights=FALSE)
+  } else { #if there is shelf area within the bin, calculate area of slice
+  
+    #raster area calculation
+      #get sizes of all cells in raster [km2]
+    cell_size_raster<-area(segment_north, na.rm=TRUE, weights=FALSE)
+    
     #delete NAs from vector of all raster cells
-    ##NAs lie outside of the rastered region, can thus be omitted
-    cell_size<-cell_size[!is.na(segment)]
-    #compute area [km2] of all cells in geo_raster
-    segment_area <-length(cell_size)*median(cell_size)
+    cell_size_raster<-cell_size_raster[!is.na(segment_north)]
+    
+    #compute area of all cells in geo_raster
+    #full area          <- total # grid cells     * median cell area (using median cares less about extreme values)
+    segment_area_raster <- length(cell_size_raster)*median(cell_size_raster) #in km^2
+    
+  #populate data table with raster area
+  east_pac_shelf_areas[i, "area_rasterarea"] <- segment_area_raster
+    
+  #convert to spatial polygons to check area calculations
+    
+  #convert segment from raster to polygon, each cell from the raster is an independent polygon, (dissolve means all cells with a value of 1 are a single polygon if connected)
+  segment_north.sp <- rasterToPolygons(segment_north, dissolve = T)
+  
+  #  If x is a SpatialPolygons* object: area of each spatial object in squared meters if the CRS is longitude/latitude, or in squared map units (typically meter)
+  
+    #project to equal earth area projection
+  segment_north.sp.EA <- spTransform(segment_north.sp, CRSobj = equalareaprojection)
 
-  east_pac_shelf_areas[i, "latitude_start"] <- east_pac_north_latitudes[i]
-  east_pac_shelf_areas[i, "latitude_end"] <- east_pac_north_latitudes[i+1]
-  east_pac_shelf_areas[i, "area"] <- segment_area
+  #calculate area of the spatial object in m^2
+    polygon_size.sp <- area(segment_north.sp.EA)
+
+    #convert from m^2 to km^2
+    segment_area_equalarea <- polygon_size.sp/1e6
+
+    #populate data table with polygon area using raster calculation
+  east_pac_shelf_areas[i, "area_equalareaproj"] <- segment_area_equalarea
+  
+  #and then plain and simple also using rgeos::gArea
+  
+  area_rgeos_gArea <- gArea(segment_north.sp.EA)/1e6
+  
+  #populate data table with polygon area using regeos calculation
+  east_pac_shelf_areas[i, "area_rgeos_gArea"] <-   area_rgeos_gArea
   
   print(i)
   } 
@@ -466,33 +504,80 @@ for (i in 1:(length(east_pac_north_latitudes)-1)) {
 
 #loop for south
 for (i in 1:(length(east_pac_south_latitudes)-1)) {
-  south_extent <- c(xmin(east_pac_spdf_shift_mask), xmax(east_pac_spdf_shift_mask), east_pac_south_latitudes[i+1], east_pac_south_latitudes[i])
-  segment <- crop(east_pac_spdf_shift_mask, extent(south_extent))
+  south_extent <- c(xmin(east_pac_spdf_shift_mask_1s), xmax(east_pac_spdf_shift_mask_1s), east_pac_south_latitudes[i+1], east_pac_south_latitudes[i]) #order= xmin, xmax, ymin, ymax)
   
-  if(all(is.na(values(segment)))) {
-    
-  east_pac_shelf_areas[i+(length(east_pac_north_latitudes)-1), "latitude_start"] <- east_pac_south_latitudes[i]
+  #raster segment
+  segment_south <- crop(east_pac_spdf_shift_mask_1s, extent(south_extent))
+  
+  #add latitude bin info to data table
+    east_pac_shelf_areas[i+(length(east_pac_north_latitudes)-1), "latitude_start"] <- east_pac_south_latitudes[i]
   east_pac_shelf_areas[i+(length(east_pac_north_latitudes)-1), "latitude_end"] <- east_pac_south_latitudes[i+1]
-  east_pac_shelf_areas[i+(length(east_pac_north_latitudes)-1), "area"] <- 0
+  
+  
+  if(all(is.na(values(segment_south)))) { #if there's no shelf area within a bin, meaning there's no shelf area at that latitude
+
+  east_pac_shelf_areas[i+(length(east_pac_north_latitudes)-1), "area_equalareaproj"] <- 0
+  east_pac_shelf_areas[i+(length(east_pac_north_latitudes)-1), "area_rasterarea"] <- 0
+    east_pac_shelf_areas[i+(length(east_pac_north_latitudes)-1), "area_rgeos_gArea"] <- 0
   
   print(i)
     
   } else {
-  #get sizes of all cells in raster [km2]
-    cell_size<-area(segment, na.rm=TRUE, weights=FALSE)
+  
+    #raster area calculation
+      #get sizes of all cells in raster [km2]
+    cell_size_raster<-area(segment_south, na.rm=TRUE, weights=FALSE)
+    
     #delete NAs from vector of all raster cells
-    ##NAs lie outside of the rastered region, can thus be omitted
-    cell_size<-cell_size[!is.na(segment)]
-    #compute area [km2] of all cells in geo_raster
-    segment_area <-length(cell_size)*median(cell_size)
+    cell_size_raster<-cell_size_raster[!is.na(segment_south)]
+    #compute area of all cells in geo_raster
+    #full area          <- total # grid cells     * median cell area (using median cares less about extreme values)
+    segment_area_raster <- length(cell_size_raster)*median(cell_size_raster)
+    
+  #populate data table with raster area
+  east_pac_shelf_areas[i+(length(east_pac_north_latitudes)-1), "area_rasterarea"] <- segment_area_raster
+    
+  
+  #convert to spatial polygons to check area calculations
+    
+  #convert segment from raster to polygon, each cell from the raster is an independent polygon, (dissolve means all cells with a value of 1 are a single polygon if connected)
+  segment_south.sp <- rasterToPolygons(segment_south, dissolve = T)
+  
+  #  If x is a SpatialPolygons* object: area of each spatial object in squared meters if the CRS is longitude/latitude, or in squared map units (typically meter)
+  
+    #project to equal earth area projection
+  segment_south.sp.EA <- spTransform(segment_south.sp, CRSobj = equalareaprojection)
 
-  east_pac_shelf_areas[i+(length(east_pac_north_latitudes)-1), "latitude_start"] <- east_pac_south_latitudes[i]
-  east_pac_shelf_areas[i+(length(east_pac_north_latitudes)-1), "latitude_end"] <- east_pac_south_latitudes[i+1]
-  east_pac_shelf_areas[i+(length(east_pac_north_latitudes)-1), "area"] <- segment_area
+  #calculate area of the spatial object in m^2
+    polygon_size.sp <- area(segment_south.sp.EA)
+
+    #convert from m^2 to km^2
+    segment_area_equalarea <- polygon_size.sp/1e6
+
+    #populate data table with area of polygon from raster::area function
+  east_pac_shelf_areas[i+(length(east_pac_north_latitudes)-1), "area_equalareaproj"] <- segment_area_equalarea
+  
+  #and then plain and simple also using rgeos::gArea
+  
+  area_rgeos_gArea <- gArea(segment_south.sp.EA)/1e6
+  
+  #populate data table from rgeos area calculation for projected polygon
+  east_pac_shelf_areas[i+(length(east_pac_north_latitudes)-1), "area_rgeos_gArea"] <-   area_rgeos_gArea
   
   print(i)
   } 
 }
+
+#compare raster:area calculation, to equal area still using raster::area function, to rgeos::gArea function for polygons
+
+ggplot(data = east_pac_shelf_areas) +
+  geom_point(aes(x = latitude_start, y = area_rgeos_gArea), color = "purple", size = 0.5) +
+  geom_point(aes(x = latitude_start, y = area_rasterarea), color = "darkgreen", size = 0.5) +
+  geom_point(aes(x = latitude_start, y = area_equalareaproj), color = "red", size = 0.5) +
+  labs(x = "Latitude", y = "Area km^2") +
+  theme_classic()
+
+cor(east_pac_shelf_areas[,3:5], use = "complete.obs")
 
 ```
 
