@@ -19,6 +19,7 @@ library(gridExtra)
 library(ggfortify)
 library(rgeos)
 library(ggridges) #allows for gradient in density plot
+library(psych) #summary statistics
 
 etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/etopo_shelf_df.rds")
 #bring in bathy for shelf regions
@@ -31,10 +32,9 @@ LME_spdf <- readOGR("LME66/LMEs66.shp")
 LME_spdf <- LME_spdf[LME_spdf$LME_NUMBER != 61 & LME_spdf$LME_NUMBER != 64,]
 
 #equal area projection
-eaproj <- CRS("+proj=eqearth")
+eaproj <- CRS("+proj=laea")
 LME_spdf.EA <- spTransform(LME_spdf, eaproj)
-#change CRS
-summary(LME_spdf.EA)
+
 
 ```
 
@@ -87,10 +87,11 @@ bathy_baltic_dt[,depth := -(z)]
 #To get a polygon that surrounds cells that are not NA
 
   # make all values the same.
-  r <- reclassify(bathy_baltic_mask, cbind(-Inf, Inf, 1))
+  bathy_baltic_mask_1s <- reclassify(bathy_baltic_mask, cbind(-Inf, Inf, 1))
   
   # convert to polygons (you need to have package 'rgeos' installed for this to work)
-  pp <- rasterToPolygons(r, dissolve=TRUE)
+  bathy_baltic_polygon_1s <- rasterToPolygons(bathy_baltic_mask_1s, dissolve=TRUE) #single polygon
+  bathy_baltic_polygon <- rasterToPolygons(bathy_baltic_mask, dissolve=TRUE) #one polygon for each depth profile
   
   LME_reduced_baltic_df <- fortify(pp)
 
@@ -113,8 +114,23 @@ summary(bathy_baltic_dt)
   cell_size<-cell_size[!is.na(cell_size)]
   #compute area [km2] of all cells in geo_raster
   bathy_raster_area<-length(cell_size)*median(cell_size)
+  
+#Also, try using raster::area on polygon
+
+#reproject
+#The Lambert azimuthal equal-area projection is a particular mapping from a sphere to a disk. It accurately represents area in all regions of the sphere, but it does not accurately represent angles.
+  equalareaprojection<- crs("+proj=laea")
+
+  bathy_baltic_polygon_1s.EA <- spTransform(bathy_baltic_polygon_1s, equalareaprojection)
+  bathy_baltic_polygon.EA <- spTransform(bathy_baltic_polygon, equalareaprojection)
+  
+    #get sizes of all polygons in shapefile (m^2)
+  polygon_area <- area(bathy_baltic_sp.EA, dissolve = T)
+
+  polygon_area_kms <- polygon_area/1e6
 
 ```
+
 Will have to be creative on how to map LMEs that cross 180 longitude, ex. Aleutian Islands
 ```{r high longitude examples}
 LME_datatable <- LME_spdf@data
@@ -163,7 +179,8 @@ ggplot(bathy_aleutian_dt) +
 
 ```
 
-Hypsometric Curves or Density Curve?
+START HERE Hypsometric Curves or Density Curve? **THINK MORE CRITICALLY ABOUT HOW I CALCULATE AREA HERE (I brush over the issue that cell sizes vary)
+-Try to make polygons with individual polygon for each depth level 
 ```{r hyposometric curves}
 #list of values within raster
 bathy_baltic_depth_list <- getValues(bathy_baltic_mask)
@@ -214,41 +231,43 @@ bathy_baltic_bydepth_complete[,area := percent_area*bathy_raster_area][,depth :=
 
 ggsave(plot, filename = "Baltic_Sea.png")
 ```
-What if we model instead of use true data? Instead, I need a density curve!!!
 
-```{r model versus data}
-ggplot(data = bathy_baltic_bydepth_complete, aes(x = depth, y = count, fill = depth)) +
-  #geom_col(width = 1) +
-  geom_density() +
-  geom_smooth(method = "gam", se = F) +
-  theme_classic() +
-  labs(x = "Depth (m)", y = "Area (km^2)", fill = "Depth (m)") +
-  scale_y_continuous(expand = c(0, 0)) +
-  scale_x_continuous(expand = c(0,0)) +
-  scale_fill_gradientn(colors = rev(viridis(5)), limits = c(0, 2000)) +
-  guides(position = "bottom", fill = guide_colorbar(reverse = T))
+What if we use projected shapefile instead of raster?
 
-library(mgcv)
-gam_model <- gam(area ~ s(depth, bs = "cr"), data = bathy_baltic_bydepth_complete)
+```{r area plot from projected shapefile}
+#list of values within polygon
+bathy_baltic_polygon.EA@data$depth <- -(bathy_baltic_polygon.EA@data$z)
 
-#cr = cubic spline 
+bathy_baltic_polygon.EA@data$area_m <- area(bathy_baltic_polygon.EA)
 
-predicted_values <- predict(gam_model)
+bathy_baltic_polygon.EA@data$area_km <- bathy_baltic_polygon.EA@data$area_m/1e6
 
-bathy_baltic_bydepth_complete[, preds := predicted_values]
+#sum of all areas
+sum_area <- sum(bathy_baltic_polygon.EA@data$area_m)
 
-ggplot(data = bathy_baltic_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
-  geom_col(width = 1) +
-  geom_density() +
-  #geom_smooth(method = "gam", se = F) +
-  geom_line(aes(x = depth, y = preds)) +
+#proportional areas
+bathy_baltic_polygon.EA@data$prop_area <- bathy_baltic_polygon.EA@data$area_m/sum_area*100
+
+
+(plot <- ggplot(data = bathy_baltic_polygon.EA@data, aes(x = depth, y = area_km, fill = depth)) +
+  geom_col(width = 5) +
+    geom_smooth(method = "gam", se = F, color = "black") +
   theme_classic() +
   labs(x = "Depth (m)", y = "Area (km^2)", fill = "Depth (m)") +
   scale_y_continuous(expand = c(0, 0)) +
   scale_x_continuous(expand = c(0,0)) +
   scale_fill_gradientn(colors = rev(viridis(10)), limits = c(0, 2000)) +
-  guides(position = "bottom", fill = guide_colorbar(reverse = T))
+  guides(position = "bottom", fill = guide_colorbar(reverse = T)))
+  
 
+ggsave(plot, filename = "Baltic_Sea.png")
+```
+Compare both methods visually, looks pretty good
+```{r}
+ggplot() +
+geom_point(aes(bathy_baltic_polygon.EA@data$depth, bathy_baltic_polygon.EA@data$area_km), color = "green") +
+geom_point(aes(bathy_baltic_bydepth_complete$depth, bathy_baltic_bydepth_complete$area), color = "blue") +
+theme_classic()
 
 ```
 
@@ -269,6 +288,19 @@ Modality: In mathematics, unimodality means possessing a unique mode. More gener
 Skew: In probability theory and statistics, skewness is a measure of the asymmetry of the probability distribution of a real-valued random variable about its mean. The skewness value can be positive, zero, negative, or undefined. (Wikipedia)
 
 "The dip test measures multimodality in a sample by the maximum difference, over all sample points, between the empirical distribution function, and the unimodal distribution function that minimizes that maximum difference."
+
+To calculate these values for both raster and projected polygon, I need to create a list of values for depth from the polygon
+```{r list of values projected polygon}
+bathy_baltic_list_values_projected_poly <- list()
+for (i in 1:nrow(bathy_baltic_polygon.EA@data)) {
+  reps<-rep.int(bathy_baltic_polygon.EA@data$depth[i], round(bathy_baltic_polygon.EA@data$prop_area[i],4)*10000)
+  bathy_baltic_list_values_projected_poly[[length(bathy_baltic_list_values_projected_poly) + 1]] <- reps
+}
+
+bathy_baltic_list_values_projected_poly_vector <- unlist(bathy_baltic_list_values_projected_poly)
+hist(bathy_baltic_list_values_projected_poly_vector)
+```
+
  
 ```{r dip test for unimodality}
 #Computes Hartigans’ dip test statistic for testing unimodality, and additionally the modal interval.
@@ -276,6 +308,15 @@ Skew: In probability theory and statistics, skewness is a measure of the asymmet
 diptest <- dip.test(bathy_baltic_depth_list_pos, simulate.p.value = TRUE, B = 2000)
 p.value <- diptest$p.value
 
+#for projected shapefile 
+diptest_sp <- dip.test(bathy_baltic_list_values_projected_poly_vector, simulate.p.value = TRUE, B = 2000)
+p.value_sp <- diptest_sp$p.value
+
+diptest
+diptest_sp
+
+p.value
+p.value_sp
 ```
 
 Skew
@@ -285,6 +326,10 @@ Skew
 * If skewness is between -0.5 and 0.5, the distribution is approximately symmetric.
 ```{r skew}
 skew <- skewness(bathy_baltic_depth_list_pos, na.rm = T)
+skew_sp <- skewness(bathy_baltic_list_values_projected_poly_vector)
+
+skew
+skew_sp
 ```
 
 
@@ -293,11 +338,19 @@ Maybe kurtosis too?
 Kurtosis is a statistical measure that defines how heavily the tails of a distribution differ from the tails of a normal distribution. In other words, kurtosis identifies whether the tails of a given distribution contain extreme values.
 ```{r kurtosis}
 kurtosis <- kurtosis(bathy_baltic_depth_list_pos, na.rm = T)
+kurtosis_sp <- kurtosis(bathy_baltic_list_values_projected_poly_vector)
+
+kurtosis
+kurtosis_sp
 ```
 
 Mean depth value
 ```{r mean depth}
 mean <- mean(bathy_baltic_depth_list_pos)
+mean_sp <- mean(bathy_baltic_list_values_projected_poly_vector)
+
+mean
+mean_sp
 ```
 
 Possible groupings:
@@ -324,13 +377,492 @@ plot +
   annotate("text", x = 300, y = 3100, label = paste0("Mean: ",round(mean,2), " m")) +
   geom_vline(xintercept = mean, color = "red")
 ```
+Let's try this sequence again for the East Greenland Shelf to see if it's significantly different because it's a high latitude area
+```{r testing East Greenland Shelf prepping shapefile and rasters}
+
+  LME_east_greenland <- LME_spdf[51,]
+  
+  #extract centroid latitude value
+  centroid <- gCentroid(LME_east_greenland)
+centroid@coords[2]
+  
+  #clip raster to LME
+  LME_extent <- crop(etopo_shelf_raster, extent(LME_east_greenland))
+  
+  #which areas of raster fall within borders?
+  LME_greenland_mask <- mask(LME_extent, LME_east_greenland)
+  
+  LME_greenland_mask_1s <- reclassify(LME_greenland_mask, c(-Inf, Inf, 1)) #this raster is only 1s
+  
+```
+
+```{r calculating raster size for greenland}  
+  #size of raster cells, and subsequently raster
+  #cell size varies quite tremendously across Greenland!! (2.03 km^2 to 6.9 km^2)
+  #get sizes of all cells in raster [km2]
+    cell_size<-area(LME_greenland_mask, na.rm=TRUE, weights=FALSE)
+    #delete NAs from vector of all raster cells
+    ##NAs lie outside of the rastered region, can thus be omitted
+    cell_size<-cell_size[!is.na(cell_size)]
+    #compute area [km2] of all cells in geo_raster
+    greenland_raster_area<-length(cell_size)*median(cell_size)
+  
+```
+
+Next, I need to construct hypsometric plots. One problem is that a value of 30 m in one cell does not necessarily mean the same as a 30 m value in another cell if those cells are different sizes. Can I somehow weight by cell size?
+```{r list of values in raster}
+    #list of values within raster
+  greenland_bathy_depth_list <- getValues(LME_greenland_mask)
+  greenland_bathy_depth_list <- greenland_bathy_depth_list[!is.na(greenland_bathy_depth_list)] #get rid of NA's
+  
+  greenland_bathy_depth_list_pos <- -1*greenland_bathy_depth_list
+
+
+  #cells of each depth value in data table
+  greenland_bathy_bydepth <- data.table(freq(LME_greenland_mask))
+  
+  greenland_bathy_bydepth_complete <- greenland_bathy_bydepth[!is.na(value)]
+  
+  #calculate percent of total area in polygon
+  greenland_bathy_bydepth_complete[,percent_area := count/sum(count)] #assuming that all cells are the same size
+  
+  
+  greenland_bathy_bydepth_complete[,area := percent_area*greenland_raster_area][,depth := -value]
+  
+  
+  
+ggplot(data = greenland_bathy_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
+    geom_col(width = 5) +
+#    geom_smooth(method = "gam", se = F, color = "black", size = 1) +
+    theme_classic() +
+    labs(x = "Depth (m)", y = expression(paste("Area (", km^{2},")")), fill = "Depth (m)") +
+    scale_y_continuous(expand = c(0, 0)) +
+    scale_x_continuous(expand = c(0,0)) +
+    scale_fill_gradientn(colors = rev(viridis(5)), limits = c(0, 2000)) +
+    guides(position = "bottom", fill = guide_colorbar(reverse = T))
+  
+```
+
+Greenland Test statistic calculations for classification
+```{r test statistics greenland raster}
+  #unimodality
+  #Computes Hartigans’ dip test statistic for testing unimodality, and additionally the modal interval.
+  
+  diptest <- dip.test(greenland_bathy_depth_list_pos, simulate.p.value = TRUE, B = 2000)
+diptest$statistic[1]
+  p.value <- diptest$p.value
+p.value
+  skew <- skewness(greenland_bathy_depth_list_pos, na.rm = T)
+skew
+  kurtosis <- kurtosis(greenland_bathy_depth_list_pos, na.rm = T)
+kurtosis
+  mean <- mean(greenland_bathy_depth_list_pos)
+mean
+  max_depth <- max(greenland_bathy_depth_list_pos)
+max_depth
+  median_depth <- median(greenland_bathy_depth_list_pos)
+median_depth
+
+```
+
+Area for polygon instead
+```{r area for Polygon instead}
+
+#POLYGON MAY BE THE WAY TO GO BECAUSE CELL SIZE VARIES SO MUCH
+
+  #raster back to polygon
+  LME_greenland.sp <- rasterToPolygons(LME_greenland_mask, dissolve = T) #dissolve means all same values are one polygon feature
+  LME_greenland_1s.sp <- rasterToPolygons(LME_greenland_mask_1s, dissolve = T)
+  
+  #transform to equal area projection
+  LME_greenland.EA <- spTransform(LME_greenland.sp, equalareaprojection)
+  LME_greenland_1s.EA <- spTransform(LME_greenland_1s.sp, equalareaprojection)
+  
+#list of values within polygon (what's the best way to do this? not immediately sure)
+LME_greenland.EA@data$depth <- -(LME_greenland.EA@data$z) #creating depth column in m
+
+LME_greenland.EA@data$area_m <- area(LME_greenland.EA, dissolve = T) #calculating area in m^2 of each depth within polygon
+
+LME_greenland.EA@data$area_km <- LME_greenland.EA@data$area_m/1e6 #convert to km^2 (same units as raster)
+
+```
+
+```{r calculating statistics for Greenland}
+#here I have a frequency table (depth versus km^2), how do I calculate statistics? I will try equate package
+library(equate)
+
+greenland_polygon_statistics <- as.freqtab(LME_greenland.EA@data[,c(2:3)])
+
+#statistics
+  diptest_polygon <- dip.test(greenland_polygon_statistics, simulate.p.value = TRUE, B = 2000) #not sure this is doing what it should be...
+diptest_polygon$statistic[1]
+  p.value_polygon <- diptest_polygon$p.value
+p.value_polygon
+  skew_polygon <- skew.freqtab(greenland_polygon_statistics)
+skew_polygon
+  kurtosis_polygon <- kurt.freqtab(greenland_polygon_statistics)
+kurtosis_polygon
+  mean_polygon <- mean(greenland_polygon_statistics)
+mean_polygon
+  max_depth_polygon <- max(greenland_polygon_statistics)
+max_depth_polygon
+  median_depth_polygon <- median(greenland_polygon_statistics)
+median_depth_polygon
+
+diptest
+diptest_polygon
+p.value
+p.value_polygon
+skew
+skew_polygon
+kurtosis
+kurtosis_polygon
+mean
+mean_polygon
+
+#these values all look pretty dang close, except for the diptest which is a little off, but still gives same result (multimodal)!
+
+```
+
+Let's try one more time with another high latitude region (55, Beaufort Sea)
+
+```{r testing Beaufort prepping shapefile and rasters}
+
+  LME_beaufort <- LME_spdf[62,]
+  
+  #clip raster to LME
+  LME_beaufort_extent <- crop(etopo_shelf_raster, extent(LME_beaufort))
+  
+  #which areas of raster fall within borders?
+  LME_beaufort_mask <- mask(LME_beaufort_extent, LME_beaufort)
+  
+  LME_beaufort_mask_1s <- reclassify(LME_beaufort_mask, c(-Inf, Inf, 1)) #this raster is only 1s
+  
+```
+
+```{r calculating raster size}  
+  #size of raster cells, and subsequently raster
+  #cell size varies quite tremendously across Beaufort Sea!! (3.3 km^2 to 5.4 km^2)
+  #get sizes of all cells in raster [km2]
+    cell_size<-area(LME_beaufort_mask, na.rm=TRUE, weights=FALSE)
+    #delete NAs from vector of all raster cells
+    ##NAs lie outside of the rastered region, can thus be omitted
+    cell_size<-cell_size[!is.na(cell_size)]
+    #compute area [km2] of all cells in geo_raster
+   beaufort_raster_area<-length(cell_size)*median(cell_size)
+  
+```
+
+Next, I need to construct hypsometric plots. One problem is that a value of 30 m in one cell does not necessarily mean the same as a 30 m value in another cell if those cells are different sizes. Can I somehow weight by cell size?
+```{r list of values in raster}
+    #list of values within raster
+  beaufort_bathy_depth_list <- getValues(LME_beaufort_mask)
+  beaufort_bathy_depth_list <- beaufort_bathy_depth_list[!is.na(beaufort_bathy_depth_list)] #get rid of NA's
+  
+  beaufort_bathy_depth_list_pos <- -1*beaufort_bathy_depth_list
+
+
+  #cells of each depth value in data table
+  beaufort_bathy_bydepth <- data.table(freq(LME_beaufort_mask))
+  
+  beaufort_bathy_bydepth_complete <- beaufort_bathy_bydepth[!is.na(value)]
+  
+  #calculate percent of total area in raster
+  beaufort_bathy_bydepth_complete[,percent_area := count/sum(count)] #assuming that all cells are the same size
+  
+  
+  beaufort_bathy_bydepth_complete[,area := percent_area*beaufort_raster_area][,depth := -value]
+  
+  
+  
+ggplot(data = beaufort_bathy_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
+    geom_col(width = 5) +
+#    geom_smooth(method = "gam", se = F, color = "black", size = 1) +
+    theme_classic() +
+    labs(x = "Depth (m)", y = expression(paste("Area (", km^{2},")")), fill = "Depth (m)") +
+    scale_y_continuous(expand = c(0, 0)) +
+    scale_x_continuous(expand = c(0,0)) +
+    scale_fill_gradientn(colors = rev(viridis(5)), limits = c(0, 2000)) +
+    guides(position = "bottom", fill = guide_colorbar(reverse = T))
+  
+```
+
+beaufort Test statistic calculations for classification
+```{r test statistics beaufort raster}
+  #unimodality
+  #Computes Hartigans’ dip test statistic for testing unimodality, and additionally the modal interval.
+  
+  diptest <- dip.test(beaufort_bathy_depth_list_pos, simulate.p.value = TRUE, B = 2000)
+diptest$statistic[1]
+  p.value <- diptest$p.value
+p.value
+  skew <- skewness(beaufort_bathy_depth_list_pos, na.rm = T)
+skew
+  kurtosis <- kurtosis(beaufort_bathy_depth_list_pos, na.rm = T)
+kurtosis
+  mean <- mean(beaufort_bathy_depth_list_pos)
+mean
+  max_depth <- max(beaufort_bathy_depth_list_pos)
+max_depth
+  median_depth <- median(beaufort_bathy_depth_list_pos)
+median_depth
+
+```
+
+Area for polygon instead
+```{r area for Polygon instead}
+
+#POLYGON MAY BE THE WAY TO GO BECAUSE CELL SIZE VARIES SO MUCH
+
+  #raster back to polygon
+  LME_beaufort.sp <- rasterToPolygons(LME_beaufort_mask, dissolve = T) #dissolve means all same values are one polygon feature
+  LME_beaufort_1s.sp <- rasterToPolygons(LME_beaufort_mask_1s, dissolve = T)
+  
+  #transform to equal area projection
+  LME_beaufort.EA <- spTransform(LME_beaufort.sp, equalareaprojection)
+  LME_beaufort_1s.EA <- spTransform(LME_beaufort_1s.sp, equalareaprojection)
+  
+#list of values within polygon (what's the best way to do this? not immediately sure)
+LME_beaufort.EA@data$depth <- -(LME_beaufort.EA@data$z) #creating depth column in m
+
+LME_beaufort.EA@data$area_m <- area(LME_beaufort.EA, dissolve = T) #calculating area in m^2 of each depth within polygon
+
+LME_beaufort.EA@data$area_km <- LME_beaufort.EA@data$area_m/1e6 #convert to km^2 (same units as raster)
+
+```
+
+```{r calculating statistics for beaufort}
+#here I have a frequency table (depth versus km^2), how do I calculate statistics? I will try equate package
+library(equate)
+
+beaufort_polygon_statistics <- as.freqtab(LME_beaufort.EA@data[,c(2:3)])
+
+#statistics
+  diptest_polygon <- dip.test(beaufort_polygon_statistics, simulate.p.value = TRUE, B = 2000) #not sure this is doing what it should be...
+diptest_polygon$statistic[1]
+  p.value_polygon <- diptest_polygon$p.value
+p.value_polygon
+  skew_polygon <- skew.freqtab(beaufort_polygon_statistics)
+skew_polygon
+  kurtosis_polygon <- kurt.freqtab(beaufort_polygon_statistics)
+kurtosis_polygon
+  mean_polygon <- mean(beaufort_polygon_statistics)
+mean_polygon
+  max_depth_polygon <- max(beaufort_polygon_statistics)
+max_depth_polygon
+  median_depth_polygon <- median(beaufort_polygon_statistics)
+median_depth_polygon
+
+diptest
+diptest_polygon
+p.value
+p.value_polygon
+skew
+skew_polygon
+kurtosis
+kurtosis_polygon
+mean
+mean_polygon
+
+#these values all look pretty dang close, except for the diptest which is quite off, but still gives same result (multimodal)!
+
+```
+None of the differences in any of these classifications would lead to different classifications
+
+One More 66, Canadian High Arctic North Greenland
+
+```{r testing Canadian High Arctic North Greenland prepping shapefile and rasters}
+
+  LME_high_arctic <- LME_spdf[63,]
+  
+  #clip raster to LME
+  LME_high_arctic_extent <- crop(etopo_shelf_raster, extent(LME_high_arctic))
+  
+  #which areas of raster fall within borders?
+  LME_high_arctic_mask <- mask(LME_high_arctic_extent, LME_high_arctic)
+  
+  LME_high_arctic_mask_1s <- reclassify(LME_high_arctic_mask, c(-Inf, Inf, 1)) #this raster is only 1s
+  
+```
+
+```{r calculating raster size Canadian High Arctic North Greenland}  
+  #size of raster cells, and subsequently raster
+  #cell size varies quite tremendously across high_arctic Sea!! (3.3 km^2 to 5.4 km^2)
+  #get sizes of all cells in raster [km2]
+    cell_size<-area(LME_high_arctic_mask, na.rm=TRUE, weights=FALSE)
+    #delete NAs from vector of all raster cells
+    ##NAs lie outside of the rastered region, can thus be omitted
+    cell_size<-cell_size[!is.na(cell_size)]
+    #compute area [km2] of all cells in geo_raster
+   high_arctic_raster_area<-length(cell_size)*median(cell_size)
+  
+```
+
+Next, I need to construct hypsometric plots. One problem is that a value of 30 m in one cell does not necessarily mean the same as a 30 m value in another cell if those cells are different sizes. Can I somehow weight by cell size?
+```{r list of values in raster Canadian High Arctic North Greenland}
+    #list of values within raster
+  high_arctic_bathy_depth_list <- getValues(LME_high_arctic_mask)
+  high_arctic_bathy_depth_list <- high_arctic_bathy_depth_list[!is.na(high_arctic_bathy_depth_list)] #get rid of NA's
+  
+  high_arctic_bathy_depth_list_pos <- -1*high_arctic_bathy_depth_list
+
+
+  #cells of each depth value in data table
+  high_arctic_bathy_bydepth <- data.table(freq(LME_high_arctic_mask))
+  
+  high_arctic_bathy_bydepth_complete <- high_arctic_bathy_bydepth[!is.na(value)]
+  
+  #calculate percent of total area in raster
+  high_arctic_bathy_bydepth_complete[,percent_area := count/sum(count)] #assuming that all cells are the same size
+  
+  
+  high_arctic_bathy_bydepth_complete[,area := percent_area*high_arctic_raster_area][,depth := -value]
+  
+  
+  
+ggplot(data = high_arctic_bathy_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
+    geom_col(width = 5) +
+#    geom_smooth(method = "gam", se = F, color = "black", size = 1) +
+    theme_classic() +
+    labs(x = "Depth (m)", y = expression(paste("Area (", km^{2},")")), fill = "Depth (m)") +
+    scale_y_continuous(expand = c(0, 0)) +
+    scale_x_continuous(expand = c(0,0)) +
+    scale_fill_gradientn(colors = rev(viridis(5)), limits = c(0, 2000)) +
+    guides(position = "bottom", fill = guide_colorbar(reverse = T))
+  
+```
+
+high_arctic Test statistic calculations for classification
+```{r test statistics high_arctic raster Canadian High Arctic North Greenland}
+  #unimodality
+  #Computes Hartigans’ dip test statistic for testing unimodality, and additionally the modal interval.
+  
+  diptest <- dip.test(high_arctic_bathy_depth_list_pos, simulate.p.value = TRUE, B = 2000)
+diptest$statistic[1]
+  p.value <- diptest$p.value
+p.value
+  skew <- skewness(high_arctic_bathy_depth_list_pos, na.rm = T)
+skew
+  kurtosis <- kurtosis(high_arctic_bathy_depth_list_pos, na.rm = T)
+kurtosis
+  mean <- mean(high_arctic_bathy_depth_list_pos)
+mean
+  max_depth <- max(high_arctic_bathy_depth_list_pos)
+max_depth
+  median_depth <- median(high_arctic_bathy_depth_list_pos)
+median_depth
+
+```
+
+Area for polygon instead
+```{r area for Polygon instead Canadian High Arctic North Greenland}
+
+#POLYGON MAY BE THE WAY TO GO BECAUSE CELL SIZE VARIES SO MUCH
+
+  #raster back to polygon
+  LME_high_arctic.sp <- rasterToPolygons(LME_high_arctic_mask, dissolve = T) #dissolve means all same values are one polygon feature
+  LME_high_arctic_1s.sp <- rasterToPolygons(LME_high_arctic_mask_1s, dissolve = T)
+  
+  #transform to equal area projection
+  LME_high_arctic.EA <- spTransform(LME_high_arctic.sp, equalareaprojection)
+  LME_high_arctic_1s.EA <- spTransform(LME_high_arctic_1s.sp, equalareaprojection)
+  
+#list of values within polygon (what's the best way to do this? not immediately sure)
+LME_high_arctic.EA@data$depth <- -(LME_high_arctic.EA@data$z) #creating depth column in m
+
+LME_high_arctic.EA@data$area_m <- area(LME_high_arctic.EA, dissolve = T) #calculating area in m^2 of each depth within polygon
+
+LME_high_arctic.EA@data$area_km <- LME_high_arctic.EA@data$area_m/1e6 #convert to km^2 (same units as raster)
+
+```
+
+```{r calculating statistics for Canadian High Arctic North Greenland}
+#here I have a frequency table (depth versus km^2), how do I calculate statistics? I will try equate package
+library(equate)
+
+high_arctic_polygon_statistics <- as.freqtab(LME_high_arctic.EA@data[,c(2:3)])
+
+#statistics
+  diptest_polygon <- dip.test(high_arctic_polygon_statistics, simulate.p.value = TRUE, B = 2000) #not sure this is doing what it should be...
+diptest_polygon$statistic[1]
+  p.value_polygon <- diptest_polygon$p.value
+p.value_polygon
+  skew_polygon <- skew.freqtab(high_arctic_polygon_statistics)
+skew_polygon
+  kurtosis_polygon <- kurt.freqtab(high_arctic_polygon_statistics)
+kurtosis_polygon
+  mean_polygon <- mean(high_arctic_polygon_statistics)
+mean_polygon
+  max_depth_polygon <- max(high_arctic_polygon_statistics)
+max_depth_polygon
+  median_depth_polygon <- median(high_arctic_polygon_statistics)
+median_depth_polygon
+
+diptest
+diptest_polygon
+p.value
+p.value_polygon
+skew
+skew_polygon
+kurtosis
+kurtosis_polygon
+mean
+mean_polygon
+
+#Here, unfortunately it appears that the diptest is different enough between the two methods is different enough to lead to different classifications (raster --> not multimodal, polygon --> multimodal)
+
+```
+Plotting hysometric graphs to compare two methods
+```{r plotting graphs for CA high arctic}
+
+(plot_higharctic_polygon <- ggplot(data = LME_high_arctic.EA@data, aes(x = depth, y = area_km, fill = depth)) +
+  geom_col(width = 5) +
+  #  geom_smooth(method = "gam", se = F, color = "black") +
+  theme_classic() +
+  labs(x = "Depth (m)", y = "Area (km^2)", fill = "Depth (m)") +
+  scale_y_continuous(expand = c(0, 0)) +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_fill_gradientn(colors = rev(viridis(10)), limits = c(0, 2000)) +
+  guides(position = "bottom", fill = guide_colorbar(reverse = T))) +
+  annotate("text", x = 600, y = 1650, label = "LME 66: Canadian High Arctic: Projected Polygon") +
+  annotate("text", x = 700, y = 1550, label = paste0("Dip Test: ", signif(diptest_polygon$statistic,2), " P-value = ", signif(p.value))) +
+  annotate("text", x = 700, y = 1450, label = paste0("Skew: ", round(skew_polygon,2))) +
+#  annotate("text", x = 700, y = 1350, label = paste0("Kurtosis: ",round(kurtosis_polygon,2))) +
+  annotate("text", x = 700, y = 1250, label = paste0("Mean: ",round(mean_polygon,2), " m")) +
+  annotate("text", x = 700, y = 1150, label = "Classification = Multimodal") +
+  geom_vline(xintercept = mean, color = "red")
+
+#and now for raster
+(plot_higharctic_raster <- ggplot(data = high_arctic_bathy_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
+  geom_col(width = 5) +
+  #  geom_smooth(method = "gam", se = F, color = "black") +
+  theme_classic() +
+  labs(x = "Depth (m)", y = "Area (km^2)", fill = "Depth (m)") +
+  scale_y_continuous(expand = c(0, 0)) +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_fill_gradientn(colors = rev(viridis(10)), limits = c(0, 2000)) +
+  guides(position = "bottom", fill = guide_colorbar(reverse = T))) +
+  annotate("text", x = 600, y = 1650, label = "LME 66: Canadian High Arctic: Unprojected Raster") +
+  annotate("text", x = 700, y = 1550, label = paste0("Dip Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value))) +
+  annotate("text", x = 700, y = 1450, label = paste0("Skew: ", round(skew,2))) +
+#  annotate("text", x = 700, y = 1350, label = paste0("Kurtosis: ",round(kurtosis,2))) +
+  annotate("text", x = 700, y = 1250, label = paste0("Mean: ",round(mean,2), " m")) +
+  annotate("text", x = 700, y = 1150, label = "Classification = Mid-Dominant") +
+  geom_vline(xintercept = mean, color = "red")
+
+```
+
+
+
+
+
 
 --------
 Now let's make a loop!!
 
-```{r loop}
+(I do not feel like I need to change )
 
-library(ggridges)
+```{r loop for caculations and classifications}
 
 #plot map, plot hypsograph, plot histogram
 
@@ -339,7 +871,7 @@ LME_spdf_ordered <- LME_spdf[order(LME_spdf$LME_NUMBER),]
 
 
 LME_bathy_statistics <- as.data.table(matrix(nrow = nrow(LME_spdf)))
-LME_bathy_statistics[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][, dip_test := as.numeric(V1)][, dip_p_value := as.numeric(V1)][, skew := as.numeric(V1)][, kurtosis := as.numeric(V1)][, mean_depth := as.numeric(V1)][, max_depth := as.numeric(V1)][, median_depth := as.numeric(V1)][, center_latitude := as.numeric(V1)][, dip_test_density_kernel := as.numeric(V1)][, dip_p_value_density_kernel := as.numeric(V1)][, skew_density_kernel := as.numeric(V1)][, kurtosis_density_kernel := as.numeric(V1)][, mean_depth_density_kernel := as.numeric(V1)][, max_depth_density_kernel := as.numeric(V1)]
+LME_bathy_statistics[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][, dip_test := as.numeric(V1)][, dip_p_value := as.numeric(V1)][, skew := as.numeric(V1)][, kurtosis := as.numeric(V1)][, mean_depth := as.numeric(V1)][, max_depth := as.numeric(V1)][, median_depth := as.numeric(V1)][, center_latitude := as.numeric(V1)]
 
 LME_bathy_statistics[, V1 := NULL]
 
@@ -463,44 +995,7 @@ for (i in 1:nrow(LME_bathy_statistics)) {
   LME_bathy_statistics[i, "median_depth"] <- median_depth
   
   max_area <- max(LME_bathy_bydepth_complete$area)
-  
-#  
-#  #kernel density estimates, find max to help with annotation
-#  density_distribution <- density(LME_bathy_depth_list_pos, n = )
-#  max_density <- max(density_distribution$y) #this is the guide I'll use to title the plot
-#
-#
-#  #let's also calculate statistics using density kernel
-#  diptest_density_kernel <- dip.test(density_distribution$y, simulate.p.value = TRUE, B = #2000)
-#  LME_bathy_statistics[i,"dip_test_density_kernel"] <- diptest_density_kernel$statistic[1]
-#  p.value_density_kernel <- diptest_density_kernel$p.value
-#  LME_bathy_statistics[i,"dip_p_value_density_kernel"] <- p.value
-#  skew_density_kernel <- skewness(density_distribution$y, na.rm = T)
-#  LME_bathy_statistics[i,"skew_density_kernel"] <- skew_density_kernel
-#  kurtosis_density_kernel <- kurtosis(density_distribution$y, na.rm = T)
-#  LME_bathy_statistics[i,"kurtosis_density_kernel"] <- kurtosis_density_kernel
-#  mean_density_kernel <- mean(density_distribution$y)
-#  LME_bathy_statistics[i,"mean_depth_density_kernel"] <- mean_density_kernel
-#  max_depth_density_kernel <- max(density_distribution$y)
-#  LME_bathy_statistics[i, "max_depth_density_kernel"] <- max_depth_density_kernel
-#  
-#  #plot density kernel
-#  
-#  lme_densityplots[[i]] <- ggplot() +
-#    geom_density_ridges_gradient(aes(LME_bathy_depth_list_pos, y = 0, fill = ..x..)) +
-#    theme_classic() +
-#    labs(x = "Depth (m)", y = "Density") +
-#    geom_vline(xintercept = mean_density_kernel, color = "red") +
-#    annotate("text", x=Inf, y = max_density-(max_density/20), hjust=1, label = #paste0(LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
-#    annotate("text", x=Inf, y = max_density-2*(max_density/20), hjust=1, label = paste0("Dip #Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value, 2)), size = 2) +
-#    annotate("text", x=Inf, y = max_density-3*(max_density/20), hjust=1, label = paste0("Skew: #", round(skew,2)), size = 2) +
-#    annotate("text", x=Inf, y = max_density-4*(max_density/20), hjust=1, label = #paste0("Kurtosis: ",round(kurtosis,2)), size = 2) +
-#    annotate("text", x=Inf, y = max_density-5*(max_density/20), hjust=1, label = paste0("Mean: #",round(mean,2), " m"), size = 2) +
-#    scale_y_continuous(expand = c(0, 0)) +
-#    scale_x_continuous(expand = c(0,0)) +
-#    scale_fill_gradientn(colors = rev(viridis(5)), limits = c(0, 2000)) +
-#    guides(position = "bottom", fill = guide_colorbar(reverse = T))
-#  
+ 
     print(paste(i, nrow(LME_bathy_statistics), sep = "/"))
   
 
