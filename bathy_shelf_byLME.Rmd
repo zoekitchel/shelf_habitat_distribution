@@ -93,7 +93,7 @@ bathy_baltic_dt[,depth := -(z)]
   bathy_baltic_polygon_1s <- rasterToPolygons(bathy_baltic_mask_1s, dissolve=TRUE) #single polygon
   bathy_baltic_polygon <- rasterToPolygons(bathy_baltic_mask, dissolve=TRUE) #one polygon for each depth profile
   
-  LME_reduced_baltic_df <- fortify(pp)
+  LME_reduced_baltic_df <- fortify(bathy_baltic_polygon)
 
 ggplot(bathy_baltic_dt) +
   geom_tile(aes(x = x, y = y, fill = depth)) +
@@ -125,7 +125,7 @@ summary(bathy_baltic_dt)
   bathy_baltic_polygon.EA <- spTransform(bathy_baltic_polygon, equalareaprojection)
   
     #get sizes of all polygons in shapefile (m^2)
-  polygon_area <- area(bathy_baltic_sp.EA, dissolve = T)
+  polygon_area <- area(bathy_baltic_polygon.EA, dissolve = T)
 
   polygon_area_kms <- polygon_area/1e6
 
@@ -410,7 +410,7 @@ centroid@coords[2]
 ```
 
 Next, I need to construct hypsometric plots. One problem is that a value of 30 m in one cell does not necessarily mean the same as a 30 m value in another cell if those cells are different sizes. Can I somehow weight by cell size?
-```{r list of values in raster}
+```{r list of values in raster greenland}
     #list of values within raster
   greenland_bathy_depth_list <- getValues(LME_greenland_mask)
   greenland_bathy_depth_list <- greenland_bathy_depth_list[!is.na(greenland_bathy_depth_list)] #get rid of NA's
@@ -466,7 +466,7 @@ median_depth
 ```
 
 Area for polygon instead
-```{r area for Polygon instead}
+```{r area for Polygon instead greenland}
 
 #POLYGON MAY BE THE WAY TO GO BECAUSE CELL SIZE VARIES SO MUCH
 
@@ -554,7 +554,7 @@ Let's try one more time with another high latitude region (55, Beaufort Sea)
 ```
 
 Next, I need to construct hypsometric plots. One problem is that a value of 30 m in one cell does not necessarily mean the same as a 30 m value in another cell if those cells are different sizes. Can I somehow weight by cell size?
-```{r list of values in raster}
+```{r list of values in raster beaufort}
     #list of values within raster
   beaufort_bathy_depth_list <- getValues(LME_beaufort_mask)
   beaufort_bathy_depth_list <- beaufort_bathy_depth_list[!is.na(beaufort_bathy_depth_list)] #get rid of NA's
@@ -610,7 +610,7 @@ median_depth
 ```
 
 Area for polygon instead
-```{r area for Polygon instead}
+```{r area for Polygon instead beaufort}
 
 #POLYGON MAY BE THE WAY TO GO BECAUSE CELL SIZE VARIES SO MUCH
 
@@ -683,20 +683,26 @@ One More 66, Canadian High Arctic North Greenland
   
   LME_high_arctic_mask_1s <- reclassify(LME_high_arctic_mask, c(-Inf, Inf, 1)) #this raster is only 1s
   
+plot(LME_high_arctic)
+plot(LME_high_arctic_mask)
+  
 ```
 
 ```{r calculating raster size Canadian High Arctic North Greenland}  
   #size of raster cells, and subsequently raster
-  #cell size varies quite tremendously across high_arctic Sea!! (3.3 km^2 to 5.4 km^2)
+  #cell size varies quite tremendously across high_arctic Sea!! (1.4 km^2 to 3.5 km^2)
   #get sizes of all cells in raster [km2]
-    cell_size<-area(LME_high_arctic_mask, na.rm=TRUE, weights=FALSE)
+    cell_size_high_arctic <-area(LME_high_arctic_mask, na.rm=TRUE, weights=FALSE)
     #delete NAs from vector of all raster cells
-    ##NAs lie outside of the rastered region, can thus be omitted
-    cell_size<-cell_size[!is.na(cell_size)]
+        cell_size_high_arctic<-cell_size_high_arctic[!is.na(cell_size_high_arctic)]
+        
+    #histogram to visualize variability in cell size 
+        hist(cell_size_high_arctic)
     #compute area [km2] of all cells in geo_raster
-   high_arctic_raster_area<-length(cell_size)*median(cell_size)
+   high_arctic_raster_area<-length(cell_size_high_arctic)*median(cell_size_high_arctic)
   
 ```
+***
 
 Next, I need to construct hypsometric plots. One problem is that a value of 30 m in one cell does not necessarily mean the same as a 30 m value in another cell if those cells are different sizes. Can I somehow weight by cell size?
 ```{r list of values in raster Canadian High Arctic North Greenland}
@@ -721,7 +727,7 @@ Next, I need to construct hypsometric plots. One problem is that a value of 30 m
   
   
 ggplot(data = high_arctic_bathy_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
-    geom_col(width = 5) +
+    geom_col(width = 10) +
 #    geom_smooth(method = "gam", se = F, color = "black", size = 1) +
     theme_classic() +
     labs(x = "Depth (m)", y = expression(paste("Area (", km^{2},")")), fill = "Depth (m)") +
@@ -737,24 +743,25 @@ high_arctic Test statistic calculations for classification
   #unimodality
   #Computes Hartigans’ dip test statistic for testing unimodality, and additionally the modal interval.
   
-  diptest <- dip.test(high_arctic_bathy_depth_list_pos, simulate.p.value = TRUE, B = 2000)
-diptest$statistic[1]
-  p.value <- diptest$p.value
-p.value
-  skew <- skewness(high_arctic_bathy_depth_list_pos, na.rm = T)
-skew
-  kurtosis <- kurtosis(high_arctic_bathy_depth_list_pos, na.rm = T)
-kurtosis
-  mean <- mean(high_arctic_bathy_depth_list_pos)
-mean
-  max_depth <- max(high_arctic_bathy_depth_list_pos)
-max_depth
-  median_depth <- median(high_arctic_bathy_depth_list_pos)
-median_depth
+  diptest_high_arctic_raster <- dip.test(high_arctic_bathy_depth_list_pos, simulate.p.value = TRUE, B = 2000)
+diptest_high_arctic_raster$statistic[1]
+  p.value_high_arctic_raster <- diptest$p.value
+p.value_high_arctic_raster
+  skew_high_arctic_raster <- skewness(high_arctic_bathy_depth_list_pos, na.rm = T)
+skew_high_arctic_raster
+  kurtosis_high_arctic_raster <- kurtosis(high_arctic_bathy_depth_list_pos, na.rm = T)
+kurtosis_high_arctic_raster
+  mean_high_arctic_raster <- mean(high_arctic_bathy_depth_list_pos)
+mean_high_arctic_raster
+  max_depth_high_arctic_raster <- max(high_arctic_bathy_depth_list_pos)
+max_depth_high_arctic_raster
+  median_depth_high_arctic_raster <- median(high_arctic_bathy_depth_list_pos)
+median_depth_high_arctic_raster
 
 ```
 
-Area for polygon instead
+***
+Area using polygon instead of raster (don't have to deal with variable grid cell size)
 ```{r area for Polygon instead Canadian High Arctic North Greenland}
 
 #POLYGON MAY BE THE WAY TO GO BECAUSE CELL SIZE VARIES SO MUCH
@@ -774,8 +781,40 @@ LME_high_arctic.EA@data$area_m <- area(LME_high_arctic.EA, dissolve = T) #calcul
 
 LME_high_arctic.EA@data$area_km <- LME_high_arctic.EA@data$area_m/1e6 #convert to km^2 (same units as raster)
 
+LME_high_arctic.EA@data
+
 ```
 
+Frequency table to vector?
+
+Rounding to generate values
+```{r rounding to generate raw values}
+
+LME_high_arctic_data <- data.table(LME_high_arctic.EA@data)
+
+LME_high_arctic_data[,prop_area :=  area_m/sum(area_m)]
+
+LME_high_arctic_data[,area_rounddown := round(prop_area * 100000000, 0)]
+
+#empty vector
+LME_high_arctic_data_vector <- vector()
+
+#populate vector
+for (i in 1:nrow(LME_high_arctic_data)){
+add <- rep(LME_high_arctic_data[i,depth], LME_high_arctic_data[i,area_rounddown])
+LME_high_arctic_data_vector <- append(LME_high_arctic_data_vector, add, after = length(LME_high_arctic_data_vector))
+
+}
+
+#plotting
+hist(LME_high_arctic_data_vector, 100)
+
+#statistics
+dip.test_generatedvalues_high_arctic <- dip.test(LME_high_arctic_data_vector)
+
+```
+
+Calculating statistics for polygon of Canadian High Arctic North Greenland
 ```{r calculating statistics for Canadian High Arctic North Greenland}
 #here I have a frequency table (depth versus km^2), how do I calculate statistics? I will try equate package
 library(equate)
@@ -783,31 +822,29 @@ library(equate)
 high_arctic_polygon_statistics <- as.freqtab(LME_high_arctic.EA@data[,c(2:3)])
 
 #statistics
-  diptest_polygon <- dip.test(high_arctic_polygon_statistics, simulate.p.value = TRUE, B = 2000) #not sure this is doing what it should be...
-diptest_polygon$statistic[1]
-  p.value_polygon <- diptest_polygon$p.value
-p.value_polygon
-  skew_polygon <- skew.freqtab(high_arctic_polygon_statistics)
-skew_polygon
-  kurtosis_polygon <- kurt.freqtab(high_arctic_polygon_statistics)
-kurtosis_polygon
-  mean_polygon <- mean(high_arctic_polygon_statistics)
-mean_polygon
-  max_depth_polygon <- max(high_arctic_polygon_statistics)
-max_depth_polygon
-  median_depth_polygon <- median(high_arctic_polygon_statistics)
-median_depth_polygon
+#diptest?
+dip.test_generatedvalues_high_arctic$statistic[1]
+  p.value_high_arctic_polygon <- dip.test_generatedvalues_high_arctic$p.value
+p.value_high_arctic_polygon
+  skew_high_arctic_polygon <- skew.freqtab(high_arctic_polygon_statistics)
+skew_high_arctic_polygon
+  kurtosis_high_arctic_polygon <- kurt.freqtab(high_arctic_polygon_statistics)
+kurtosis_high_arctic_polygon
+  mean_high_arctic_polygon <- mean(high_arctic_polygon_statistics)
+mean_high_arctic_polygon
+  max_depth_high_arctic_polygon <- max(high_arctic_polygon_statistics)
+max_depth_high_arctic_polygon
+  median_depth_high_arctic_polygon <- median(high_arctic_polygon_statistics)
+median_depth_high_arctic_polygon
 
-diptest
-diptest_polygon
-p.value
-p.value_polygon
-skew
-skew_polygon
-kurtosis
-kurtosis_polygon
-mean
-mean_polygon
+diptest_high_arctic_raster[1]
+dip.test_generatedvalues_high_arctic$statistic[1]
+p.value_high_arctic_raster
+p.value_high_arctic_polygon
+skew_high_arctic_raster
+skew_high_arctic_polygon
+mean_high_arctic_raster
+mean_high_arctic_polygon
 
 #Here, unfortunately it appears that the diptest is different enough between the two methods is different enough to lead to different classifications (raster --> not multimodal, polygon --> multimodal)
 
@@ -816,42 +853,41 @@ Plotting hysometric graphs to compare two methods
 ```{r plotting graphs for CA high arctic}
 
 (plot_higharctic_polygon <- ggplot(data = LME_high_arctic.EA@data, aes(x = depth, y = area_km, fill = depth)) +
-  geom_col(width = 5) +
-  #  geom_smooth(method = "gam", se = F, color = "black") +
+  geom_col(width = 10) +
+ # geom_smooth(method = "loess", se = F, color = "black") +
   theme_classic() +
   labs(x = "Depth (m)", y = "Area (km^2)", fill = "Depth (m)") +
   scale_y_continuous(expand = c(0, 0)) +
   scale_x_continuous(expand = c(0,0)) +
   scale_fill_gradientn(colors = rev(viridis(10)), limits = c(0, 2000)) +
-  guides(position = "bottom", fill = guide_colorbar(reverse = T))) +
+  guides(position = "bottom", fill = guide_colorbar(reverse = T)) +
   annotate("text", x = 600, y = 1650, label = "LME 66: Canadian High Arctic: Projected Polygon") +
-  annotate("text", x = 700, y = 1550, label = paste0("Dip Test: ", signif(diptest_polygon$statistic,2), " P-value = ", signif(p.value))) +
-  annotate("text", x = 700, y = 1450, label = paste0("Skew: ", round(skew_polygon,2))) +
+  annotate("text", x = 700, y = 1550, label = paste0("Dip Test: ", signif(dip.test_generatedvalues_high_arctic$statistic,2), " P-value = ", signif(p.value))) +
+  annotate("text", x = 700, y = 1450, label = paste0("Skew: ", round(skew_high_arctic_polygon,2))) +
 #  annotate("text", x = 700, y = 1350, label = paste0("Kurtosis: ",round(kurtosis_polygon,2))) +
-  annotate("text", x = 700, y = 1250, label = paste0("Mean: ",round(mean_polygon,2), " m")) +
-  annotate("text", x = 700, y = 1150, label = "Classification = Multimodal") +
-  geom_vline(xintercept = mean, color = "red")
+  annotate("text", x = 700, y = 1250, label = paste0("Mean: ",round(mean_high_arctic_polygon,2), " m")) +
+  annotate("text", x = 700, y = 1150, label = "Classification = Mid Dominant") +
+  geom_vline(xintercept = mean, color = "red"))
 
 #and now for raster
 (plot_higharctic_raster <- ggplot(data = high_arctic_bathy_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
-  geom_col(width = 5) +
+  geom_col(width = 10) +
   #  geom_smooth(method = "gam", se = F, color = "black") +
   theme_classic() +
   labs(x = "Depth (m)", y = "Area (km^2)", fill = "Depth (m)") +
   scale_y_continuous(expand = c(0, 0)) +
   scale_x_continuous(expand = c(0,0)) +
   scale_fill_gradientn(colors = rev(viridis(10)), limits = c(0, 2000)) +
-  guides(position = "bottom", fill = guide_colorbar(reverse = T))) +
+  guides(position = "bottom", fill = guide_colorbar(reverse = T)) +
   annotate("text", x = 600, y = 1650, label = "LME 66: Canadian High Arctic: Unprojected Raster") +
-  annotate("text", x = 700, y = 1550, label = paste0("Dip Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value))) +
-  annotate("text", x = 700, y = 1450, label = paste0("Skew: ", round(skew,2))) +
+  annotate("text", x = 700, y = 1550, label = paste0("Dip Test: ", signif(diptest_high_arctic_raster$statistic,2), " P-value = ", signif(p.value))) +
+  annotate("text", x = 700, y = 1450, label = paste0("Skew: ", round(skew_high_arctic_raster,2))) +
 #  annotate("text", x = 700, y = 1350, label = paste0("Kurtosis: ",round(kurtosis,2))) +
-  annotate("text", x = 700, y = 1250, label = paste0("Mean: ",round(mean,2), " m")) +
+  annotate("text", x = 700, y = 1250, label = paste0("Mean: ",round(mean_high_arctic_raster,2), " m")) +
   annotate("text", x = 700, y = 1150, label = "Classification = Mid-Dominant") +
-  geom_vline(xintercept = mean, color = "red")
+  geom_vline(xintercept = mean, color = "red"))
 
 ```
-
 
 
 
