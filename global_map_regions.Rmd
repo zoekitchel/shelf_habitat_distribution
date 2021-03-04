@@ -10,11 +10,21 @@ library(data.table)
 library(ggplot2)
 library(ggspatial) #basemap
 library(rgdal)
+library(sp)
+library(rgeos)
+library(viridis)
 
 
 LME_bathy_statistics <- readRDS("LME_bathy_statistics.RData")
 LME_spdf <- readOGR("LME66/LMEs66.shp")
 LME_spdf_working <- LME_spdf[LME_spdf$LME_NUMBER != 61 & LME_spdf$LME_NUMBER != 64,]
+
+# give the PORJ.4 string for Eckert IV projection ( changed to different projection, "+proj=eck4 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs" for eckert)
+PROJ <- "+proj=eck4 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs" 
+
+
+#LME_spdf_working_proj <- spTransform(LME_spdf_working, PROJ)
+LME_spdf_working_proj <- gBuffer(LME_spdf_working, byid=T, width = 0)
 
 ```
 
@@ -41,44 +51,45 @@ class(NE_countries) # is a SpatialPolygonsDataFrame object
 Country.DT <- data.table(map_data(as(NE_countries, "SpatialPolygonsDataFrame")))
 
 
-# give the PORJ.4 string for Eckert IV projection ( changed to different projection, "+proj=eck4 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs" for eckert)
-PROJ <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0" 
-
 # project coordinates 
 Country.DT[, c("X","Y") := data.table(project(cbind(long, lat), proj=PROJ))]
 ```
 
-Extract columns from bathy stats data table
-```{r type columns from data table}
-LME_bathy_statistics_reduced <- LME_bathy_statistics[,.(lme_name, lme_number, type)][, LME_NUMBER := lme_number][, LME_NAME := lme_name]
-
-LME_spdf_working@data <- data.frame(merge(LME_spdf_working@data, LME_bathy_statistics_reduced, on = c(LME_NUMBER, LME_NAME)))
-
-```
 Convert LME's into plottable objects in ggplot
 ```{r plottable objects}
-# create a unique ID for the later join
-LME_spdf_working$id <- rownames(as.data.frame(LME_spdf_working))
-
 
 # turn SpatialPolygonsDataframe into a data frame
 # (note that the rgeos library is required to use fortify)
 
-LME_spdf_working.pts <- fortify(LME_spdf_working, region="id") #this only has the coordinates
-LME_spdf_working.df <- merge(LME_spdf_working.pts, LME_spdf_working, by="id", type='left') # add the attributes back 
-#___centroids
-library(rgeos)
-#centroid of each polygon
-LME_spdf_working.df_centroids <- gCentroid(LME_spdf_working, byid = T, id = LME_spdf_working$LME_NUMBER)
-LME_spdf_working.df_centroids$id <- rownames(as.data.frame(LME_spdf_working.df_centroids))
-LME_spdf_working.df_centroids.pts <- as.data.frame(LME_spdf_working.df_centroids)
+LME_spdf_working_proj@data$id <- rownames(LME_spdf_working_proj@data)
 
+LME_spdf_working_proj.df <- fortify(LME_spdf_working_proj)#this only has the coordinates
+
+LME_spdf_working_proj.df <- merge(LME_spdf_working_proj@data, LME_spdf_working_proj.df,  by="id") # add the attributes back 
+
+#centroid of each polygon
+
+#extract a point on surface of each polygon
+label_points <- gPointOnSurface(LME_spdf_working_proj, byid = T, id = LME_spdf_working_proj$LME_NUMBER)
+
+
+#make into data frame
+label_points.df <- as.data.frame(label_points)
+label_points.df$LME_NUMBER <- rownames(label_points.df)
+
+```
+Extract columns from bathy stats data table
+```{r type columns from data table}
+LME_bathy_statistics_reduced <- LME_bathy_statistics[,.(lme_number, type)][, LME_NUMBER := lme_number][,lme_number := NULL]
+
+LME_spdf_working_proj.dt <- data.table(LME_spdf_working_proj.df)
+
+LME_spdf_working_proj.dt <- LME_spdf_working_proj.dt[LME_bathy_statistics_reduced, on = c("LME_NUMBER")]
 
 ```
 
-
-
 Make map
+
 ```{r global map}
 
 global_LME_classification_map <- ggplot() + 
@@ -87,14 +98,15 @@ global_LME_classification_map <- ggplot() +
                  aes(x = long, y = lat, group = group), 
                  colour = "gray70", 
                  fill = "gray90", 
-                 size = 0.25) +
-  geom_polygon(data = LME_spdf_working.df, aes(x = long, y = lat, group = group, fill = type)) +
-  geom_text(data = LME_spdf_working.df_centroids.pts, aes(label = id, x = x, y = y), size = 1) +
+                 size = 0.1) +
+  geom_polygon(data = LME_spdf_working_proj.dt, aes(x = long, y = lat, group = group, fill = as.factor(type)), color = "darkslategrey", size = 0.1) +
+  scale_fill_viridis_d(option = "A", begin = 0.4, end = 0.9) +
+  geom_text(data = label_points.df, aes(label = as.numeric(LME_NUMBER), x = x, y = y), size = 1.5) +
     # ensures that one unit on the x-axis is the same length as one unit on the y-axis
     coord_equal() +
   labs( x = expression("Longitude ("*~degree*E*")"), y = expression("Latitude ("*~degree*N*")")) +
   theme_classic()
 
-ggsave(filename = "map_global_type.pdf")
+ggsave(global_LME_classification_map, filename = "map_global_type.jpg")
 ```
 
