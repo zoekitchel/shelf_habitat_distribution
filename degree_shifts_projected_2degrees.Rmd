@@ -63,7 +63,7 @@ Note that I am trying to use the [equal area projection](https://www.r-bloggers.
 etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = crs(LME_spdf))
 
 #reclassify all values <2000m in depth to 1 instead of actual depth
-etopo_shelf_raster<- reclassify(etopo_shelf_raster,cbind(-Inf, Inf, 1))
+etopo_shelf_raster <- reclassify(etopo_shelf_raster,cbind(-Inf, Inf, 1))
 
 ```
 
@@ -101,24 +101,78 @@ I am going to leave out Antarctica (61) and the Arctic (64) as Antarctica drowne
 Eastern Atlantic (3)
 -19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 58, 59, 60, 62
 
+3/8 update (make more LMEs serve multiple coastlines, get rid of detached islands (New Zealand, Greenland, Iceland), and inner islands (aka Baltic Sea, mediterrraniean sea, red sea, black sea))
+
+-20, 58, 57, 56, 21, 60, 22, 24, 25, 27, 28, 29
+
 Western Atlantic (2)
 - 5, 6, 7, 8, 9, 12, 14, 15, 16, 17, 18, 63, 66
 
+3/8 update
+
+- 66, 55, 54, 63** Hudson Bay, 9, 8, 7, 6, 5** GOM, 12, 17, 16, 15, 14 **what about gulf of mexico and gulf of California?
+
 Eastern Pacific (1)
-- 1, 2, 3, 4, 11, 13, 54, 55, 65
+- 1, 2, 3, 4, 11, 13, 54, 55 **Beaufort sea thinly linked to Chukchi Sea, so split here, 65
+
+3/8 update
+-66, 54, 1, 2, 53, 65, 2, 3, 4** GOC, 11, 13
 
 Western Indian (4)
 -30, 31, 32, 33
 
+3/8 update
+-30, 31, 33**black sea, 32
+
 Eastern Indian (5)
 -34, 38, 43, 44, 45
+
+
+** not sure how to split eastern Indian from western pacific 
+3/8 update
+-42, 43, 44, 45, western Sumatra, 39, 34, 38
 
 Western Pacific (6)
 1,	35,	36,	37,	39,	40,	41,	42,	46,	47,	48,	49,	50,	51,	52,	53,	54,	56,	57,	65
 
+-3/8 update
+-42, 41, 40, Papua New Guinea, etc, 38, 37, 35, 36, 47, 49, 48, 50, 51, 52, 53, 1, 54, 56, 57, 58, 20, 39, outer phillipines
+
 Merge LMEs into 6 coastline regions
 
-- keep in mind, LME 1 (1&6) and 54 (1&6) and 65 (1&6) appear in multiple
+Masks for regions that are not included in LMEs (coordinates taken from Google maps). Will add in areas that do NOT overlap with existing LMEs at the end. 
+
+```{r missing from LMEs}
+#Papua New Guinea Extent
+#1.0240205546580048, 132.62031168164683
+#-8.785049033825267, 132.4445304387777
+#-12.069257731776018, 156.52656071184586
+#-1.0852349879052885, 154.94452952602384
+
+
+papua_extent <- extent(132.4445304387777,156.52656071184586, -12.069257731776018, 1.0240205546580048)
+papua_raster <- crop(etopo_shelf_raster, papua_extent)
+
+#Southern Sumatra Coast Extent
+#3.131889166532314, 94.12421874100268
+#-8.437450329160683, 95.17890619821733
+#-12.069257798609012, 122.33710822149496
+#5.235523767930577, 118.82148336411272
+
+
+southern_sumat_extent <- extent(94.12421874100268, 122.33710822149496, -12.069257798609012, 5.235523767930577)
+southern_sumat_raster <- crop(etopo_shelf_raster, southern_sumat_extent)
+
+#Outer Phillipines Extent
+4.359706039079976, 126.20429600316511
+20.60413268328657, 121.01874933852636
+18.950075222286138, 126.20429600316511
+5.323042022983101, 130.68671769632746
+
+philippines_extent <- extent(121.01874933852636, 130.68671769632746, 4.359706039079976, 20.60413268328657)
+philippines_raster <- crop(etopo_shelf_raster, philippines_extent)
+```
+
 ```{r merging LMEs}
 west_pac <- c(1,	35,	36,	37,	39,	40,	41,	42,	46,	47,	48,	49,	50,	51,	52,	53,	54,	56,	57,	65)
 east_pac <- c(1, 2, 3, 4, 11, 13, 54, 55, 65)
