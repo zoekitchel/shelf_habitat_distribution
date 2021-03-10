@@ -101,42 +101,42 @@ I am going to leave out Antarctica (61) and the Arctic (64) as Antarctica drowne
 Eastern Atlantic (3)
 -19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 58, 59, 60, 62
 
-3/8 update (make more LMEs serve multiple coastlines, get rid of detached islands (New Zealand, Greenland, Iceland), and inner islands (aka Baltic Sea, mediterrraniean sea, red sea, black sea))
+  3/8 update (make more LMEs serve multiple coastlines, get rid of detached islands     (New Zealand, Greenland, Iceland), and inner islands (aka Baltic Sea, mediterrraniean     sea, red sea, black sea))
 
--20, 58, 57, 56, 21, 60, 22, 24, 25, 27, 28, 29
+  -20, 58, 57, 56, 21, 60, 22, 23* Baltic Sea, 24, 25, 27, 28, 29, 26 * Mediterranean, 62* Black Sea
 
 Western Atlantic (2)
 - 5, 6, 7, 8, 9, 12, 14, 15, 16, 17, 18, 63, 66
 
-3/8 update
+  -3/8 update, LEAVE OUT GREENLAND
 
-- 66, 55, 54, 63** Hudson Bay, 9, 8, 7, 6, 5** GOM, 12, 17, 16, 15, 14 **what about gulf of mexico and gulf of California?
+  - 66, 55, 63** Hudson Bay, 9, 8, 7, 6, 5** GOM, 12, 17, 16, 15, 14 **what about    gulf of mexico and gulf of California?
 
 Eastern Pacific (1)
 - 1, 2, 3, 4, 11, 13, 54, 55 **Beaufort sea thinly linked to Chukchi Sea, so split here, 65
 
-3/8 update
--66, 54, 1, 2, 53, 65, 2, 3, 4** GOC, 11, 13
+  -3/8 update
+  -54, 1, 2, 53, 65, 3, 4** GOC, 11, 13
 
 Western Indian (4)
 -30, 31, 32, 33
 
-3/8 update
--30, 31, 33**black sea, 32
+  -3/8 update
+  -30, 31, 33**black sea, 32
 
 Eastern Indian (5)
 -34, 38, 43, 44, 45
 
 
-** not sure how to split eastern Indian from western pacific 
-3/8 update
--42, 43, 44, 45, western Sumatra, 39, 34, 38
+  -** not sure how to split eastern Indian from western pacific 
+  -3/8 update
+  -42, 43, 44, 45, western Sumatra, 39, 34, 38
 
 Western Pacific (6)
 1,	35,	36,	37,	39,	40,	41,	42,	46,	47,	48,	49,	50,	51,	52,	53,	54,	56,	57,	65
 
--3/8 update
--42, 41, 40, Papua New Guinea, etc, 38, 37, 35, 36, 47, 49, 48, 50, 51, 52, 53, 1, 54, 56, 57, 58, 20, 39, outer phillipines
+  -3/8 update
+  -42, 41, 40, Papua New Guinea, etc, 38, 37, 35, 36, 47, 49, 48, 50, 51, 52, 53, 1,     54, 56, 57, 58, 20, 39, outer phillipines
 
 Merge LMEs into 6 coastline regions
 
@@ -154,14 +154,28 @@ papua_extent <- extent(132.4445304387777,156.52656071184586, -12.069257731776018
 papua_raster <- crop(etopo_shelf_raster, papua_extent)
 
 #Southern Sumatra Coast Extent
-#3.131889166532314, 94.12421874100268
-#-8.437450329160683, 95.17890619821733
-#-12.069257798609012, 122.33710822149496
-#5.235523767930577, 118.82148336411272
 
 
-southern_sumat_extent <- extent(94.12421874100268, 122.33710822149496, -12.069257798609012, 5.235523767930577)
+southern_sumat_extent <- extent(94.12421874100268, 117, -9.392555887692712, 5.235523767930577)
 southern_sumat_raster <- crop(etopo_shelf_raster, southern_sumat_extent)
+
+#minus LME 36
+LME_36 <- LME_spdf[LME_spdf$LME_NUMBER == 36,]
+LME_36_extent <- extent(LME_36)
+LME_36_crop <- crop(etopo_shelf_raster, LME_36_extent)
+LME_36_raster <- mask(LME_36_crop, LME_36)
+lme_36_raster_sumat_overlap <- crop(LME_36_raster, extent(southern_sumat_raster))
+
+#extend extent of lme_36_raster_sumat_overlap
+lme_36_raster_sumat_full_extent <- extend(lme_36_raster_sumat_overlap, extent(southern_sumat_extent))
+
+#reclassify all values as 
+LME_36_raster_5s <- reclassify(lme_36_raster_sumat_full_extent, c(-Inf, Inf, 5))
+
+sum_westind_sumat <- sum(LME_36_raster_5s,southern_sumat_raster, na.rm = T)
+
+southern_sumatra_minus_36 <- reclassify(sum_westind_sumat, c(-Inf,0,NA, 1,1,1, 2,Inf,NA))
+
 
 #Outer Phillipines Extent
 4.359706039079976, 126.20429600316511
@@ -174,12 +188,12 @@ philippines_raster <- crop(etopo_shelf_raster, philippines_extent)
 ```
 
 ```{r merging LMEs}
-west_pac <- c(1,	35,	36,	37,	39,	40,	41,	42,	46,	47,	48,	49,	50,	51,	52,	53,	54,	56,	57,	65)
-east_pac <- c(1, 2, 3, 4, 11, 13, 54, 55, 65)
-west_atl <- c(5, 6, 7, 8, 9, 12, 14, 15, 16, 17, 18, 63, 66)
-east_atl <- c(19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 58, 59, 60, 62)
-west_ind <- c(30, 31, 32, 33)
-east_ind <- c(34, 38, 43, 44, 45)
+west_pac <- c(42, 41, 40, 38, 37, 35, 36, 47, 49, 48, 50, 51, 52, 53, 1, 54, 56, 57, 58, 20, 39) #and phillipines and Papua New Guinea
+east_pac <- c(54, 1, 2, 53, 65, 3, 4, 11, 13)
+west_atl <- c(66, 55, 63, 9, 8, 7, 6, 5, 12, 17, 16, 15, 14)
+east_atl <- c(20, 58, 57, 56, 21, 60, 22, 23, 24, 25, 27, 28, 29, 26, 62)
+west_ind <- c(30, 31, 33, 32)
+east_ind <- c(42, 43, 44, 45, 39, 34, 38) #AND ADD SUMATRA 
 
 #subregions based on LME_number
 west_pac_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% west_pac,]
@@ -265,6 +279,17 @@ for (i in 1:length(region_names_shift[1:2])) {
 
 ```
 
+Merge in areas unaccounted for by LMEs (Philippines, Sumatra, Papua New Guinea)
+
+```{r}
+#east indian ocean
+east_ind_spdf_mask_full <- merge(east_ind_spdf_mask_1s, southern_sumatra_minus_36)
+
+#western pacific ocean
+west_pac_spdf_mask_full <- merge(papua_raster, west_pac_spdf_shift_mask_1s)
+west_pac_spdf_mask_full <- merge(philippines_raster, west_pac_spdf_mask_full)
+```
+
 
 How to calculate area?
 
@@ -280,23 +305,23 @@ SpatialPolygons: Compute the area of the spatial features. Works for both planar
 Returns the area of the geometry in the units of the current projection. By definition non-[MULTI]POLYGON geometries have an area of 0. The area of a POLYGON is the area of its shell less the area of any holes. Note that this value may be different from the area slot of the Polygons class as this value does not subtract the area of any holes in the geometry.
 
 
-Now, we will split each coastline raster into latitudinal bins of 1˚
+Now, we will split each coastline raster into latitudinal bins of 2˚
 
 Western Pacific
 ```{r split raster for western pacific}
-north_extent <- c(xmin(west_pac_spdf_shift_mask_1s), xmax(west_pac_spdf_shift_mask_1s), 0, ymax(west_pac_spdf_shift_mask_1s))
-south_extent <- c(xmin(west_pac_spdf_shift_mask_1s), xmax(west_pac_spdf_shift_mask_1s), ymin(west_pac_spdf_shift_mask_1s), 0)
+north_extent <- c(xmin(west_pac_spdf_mask_full), xmax(west_pac_spdf_mask_full), 0, ymax(west_pac_spdf_mask_full))
+south_extent <- c(xmin(west_pac_spdf_mask_full), xmax(west_pac_spdf_mask_full), ymin(west_pac_spdf_mask_full), 0)
 
 #crop west_pac raster above and below 0
-west_pac_spdf_shift_agg_north <- crop(west_pac_spdf_shift_mask_1s, extent(north_extent))
+west_pac_spdf_shift_agg_north <- crop(west_pac_spdf_mask_full, extent(north_extent))
 
-west_pac_spdf_shift_agg_south <- crop(west_pac_spdf_shift_mask_1s, extent(south_extent))
+west_pac_spdf_shift_agg_south <- crop(west_pac_spdf_mask_full, extent(south_extent))
 
 #unfortunately, I think I may have to just do this manually (ugly, I know)
 
 #all chunks for west pacific
-west_pac_north_latitudes <- seq(0, ymax(west_pac_spdf_shift_mask_1s), by = 2)
-west_pac_south_latitudes <- seq(0, ymin(west_pac_spdf_shift_mask_1s), by = -2)
+west_pac_north_latitudes <- seq(0, ymax(west_pac_spdf_mask_full), by = 2)
+west_pac_south_latitudes <- seq(0, ymin(west_pac_spdf_mask_full), by = -2)
 
 #setup data table to populate in loop, subtracting one to allow for bins
 west_pac_shelf_areas <- as.data.table(matrix(nrow = (length(west_pac_north_latitudes)-1+length(west_pac_south_latitudes)-1)))
@@ -306,10 +331,10 @@ west_pac_shelf_areas[, latitude_start := as.numeric(V1)][, latitude_end := as.nu
 #loop for north
 for (i in 1:(length(west_pac_north_latitudes)-1)) {
   #setting up extent for slicing by min and max longitudes, and i to i+1 latitudes
-  north_extent <- c(xmin(west_pac_spdf_shift_mask_1s), xmax(west_pac_spdf_shift_mask_1s), west_pac_north_latitudes[i], west_pac_north_latitudes[i+1])
+  north_extent <- c(xmin(west_pac_spdf_mask_full), xmax(west_pac_spdf_mask_full), west_pac_north_latitudes[i], west_pac_north_latitudes[i+1])
   
   #crop raster segement based on bin extent
-  segment_north <- crop(west_pac_spdf_shift_mask_1s, extent(north_extent))
+  segment_north <- crop(west_pac_spdf_mask_full, extent(north_extent))
   
   #populate data table with latitudinal bin
   west_pac_shelf_areas[i, "latitude_start"] <- west_pac_north_latitudes[i]
@@ -372,10 +397,10 @@ for (i in 1:(length(west_pac_north_latitudes)-1)) {
 
 #loop for south
 for (i in 1:(length(west_pac_south_latitudes)-1)) {
-  south_extent <- c(xmin(west_pac_spdf_shift_mask_1s), xmax(west_pac_spdf_shift_mask_1s), west_pac_south_latitudes[i+1], west_pac_south_latitudes[i]) #order= xmin, xmax, ymin, ymax)
+  south_extent <- c(xmin(west_pac_spdf_mask_full), xmax(west_pac_spdf_mask_full), west_pac_south_latitudes[i+1], west_pac_south_latitudes[i]) #order= xmin, xmax, ymin, ymax)
   
   #raster segment
-  segment_south <- crop(west_pac_spdf_shift_mask_1s, extent(south_extent))
+  segment_south <- crop(west_pac_spdf_mask_full, extent(south_extent))
   
   #add latitude bin info to data table
     west_pac_shelf_areas[i+(length(west_pac_north_latitudes)-1), "latitude_start"] <- west_pac_south_latitudes[i]
@@ -461,13 +486,22 @@ between -0.499 and 0.999 = no significant change
 
 For area metric here, I used the raster::area function applied to the projected shapefile
 ```{r percent shift western pacific}
-west_pac_shelf_areas[, percent_change := (area_equalareaproj-shift(area_equalareaproj, type = "lag"))/shift(area_equalareaproj, type = "lag")][,area_1000s := area_equalareaproj/1000]
+west_pac_shelf_areas[, percent_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))/shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
 
 west_pac_shelf_areas[, change_above_2fold := ifelse((percent_change>=1 & percent_change<Inf), 1, ifelse(percent_change<=-0.5, -1, 0))]
 
 west_pac_shelf_areas_highlight <- west_pac_shelf_areas[change_above_2fold != 0,]
 
 west_pac_shelf_areas_stats <- table(west_pac_shelf_areas[,.(change_above_2fold)])
+```
+
+Model change for southern and northern hemisphere
+```{r model northern versus southern western pacific}
+west_pac_north_mod <- lm(data = west_pac_shelf_areas[latitude_end > 0], area_rasterarea ~ latitude_start)
+summary(west_pac_north_mod)
+
+west_pac_sorth_mod <- lm(data = west_pac_shelf_areas[latitude_end < 0], area_rasterarea ~ abs(latitude_start))
+summary(west_pac_sorth_mod)
 ```
 
 
@@ -644,13 +678,22 @@ save(east_pac_shelf_areas, file = "east_pac_shelf_areas_2degrees.Rdata")
 ```
 
 ```{r percent shift eastern pacific}
-east_pac_shelf_areas[, percent_change := (area_equalareaproj-shift(area_equalareaproj, type = "lag"))/shift(area_equalareaproj, type = "lag")][,area_1000s := area_equalareaproj/1000]
+east_pac_shelf_areas[, percent_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))/shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
 
 east_pac_shelf_areas[, change_above_2fold := ifelse((percent_change>=1 & percent_change<Inf), 1, ifelse(percent_change<=-0.5, -1, 0))]
 
 east_pac_shelf_areas_highlight <- east_pac_shelf_areas[change_above_2fold != 0,]
 
 east_pac_shelf_areas_stats <- table(east_pac_shelf_areas[,.(change_above_2fold)])
+```
+
+Model change for southern and northern hemisphere
+```{r model northern versus southern eastern pacific}
+east_pac_north_mod <- lm(data = east_pac_shelf_areas[latitude_end > 0], area_rasterarea ~ latitude_start)
+summary(east_pac_north_mod)
+
+east_pac_sorth_mod <- lm(data = east_pac_shelf_areas[latitude_end < 0], area_rasterarea ~ abs(latitude_start))
+summary(east_pac_sorth_mod)
 ```
 
 Western Atlantic
@@ -824,13 +867,22 @@ cor(west_atl_shelf_areas[,3:5], use = "complete.obs")
 ```
 
 ```{r percent shift western atlantic}
-west_atl_shelf_areas[, percent_change := (area_equalareaproj-shift(area_equalareaproj, type = "lag"))/shift(area_equalareaproj, type = "lag")][,area_1000s := area_equalareaproj/1000]
+west_atl_shelf_areas[, percent_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))/shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
 
 west_atl_shelf_areas[, change_above_2fold := ifelse((percent_change>=1 & percent_change<Inf), 1, ifelse(percent_change<=-0.5, -1, 0))]
 
 west_atl_shelf_areas_highlight <- west_atl_shelf_areas[change_above_2fold != 0,]
 
 west_atl_shelf_areas_stats <- table(west_atl_shelf_areas[,.(change_above_2fold)])
+```
+
+Model change for southern and northern hemisphere
+```{r model northern versus southern western tlantic}
+west_atl_north_mod <- lm(data = west_atl_shelf_areas[latitude_end > 0], area_rasterarea ~ latitude_start)
+summary(west_atl_north_mod)
+
+west_atl_sorth_mod <- lm(data = west_atl_shelf_areas[latitude_end < 0], area_rasterarea ~ abs(latitude_start))
+summary(west_atl_sorth_mod)
 ```
 
 Eastern Atlantic
@@ -1004,13 +1056,22 @@ cor(east_atl_shelf_areas[,3:5], use = "complete.obs")
 ```
 
 ```{r percent shift eastern atlantic}
-east_atl_shelf_areas[, percent_change := (area_equalareaproj-shift(area_equalareaproj, type = "lag"))/shift(area_equalareaproj, type = "lag")][,area_1000s := area_equalareaproj/1000]
+east_atl_shelf_areas[, percent_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))/shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
 
 east_atl_shelf_areas[, change_above_2fold := ifelse((percent_change>=1 & percent_change<Inf), 1, ifelse(percent_change<=-0.5, -1, 0))]
 
 east_atl_shelf_areas_highlight <- east_atl_shelf_areas[change_above_2fold != 0,]
 
 east_atl_shelf_areas_stats <- table(east_atl_shelf_areas[,.(change_above_2fold)])
+```
+
+Model change for southern and northern hemisphere
+```{r model northern versus southern eastern atlantic}
+east_atl_north_mod <- lm(data = east_atl_shelf_areas[latitude_end > 0], area_rasterarea ~ latitude_start)
+summary(east_atl_north_mod)
+
+east_atl_sorth_mod <- lm(data = east_atl_shelf_areas[latitude_end < 0], area_rasterarea ~ abs(latitude_start))
+summary(east_atl_sorth_mod)
 ```
 
 Western Indian
@@ -1183,7 +1244,7 @@ cor(west_ind_shelf_areas[,3:5], use = "complete.obs")
 ```
 
 ```{r percent shift western indian}
-west_ind_shelf_areas[, percent_change := (area_equalareaproj-shift(area_equalareaproj, type = "lag"))/shift(area_equalareaproj, type = "lag")][,area_1000s := area_equalareaproj/1000]
+west_ind_shelf_areas[, percent_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))/shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
 
 west_ind_shelf_areas[, change_above_2fold := ifelse((percent_change>=1 & percent_change<Inf), 1, ifelse(percent_change<=-0.5, -1, 0))]
 
@@ -1192,24 +1253,33 @@ west_ind_shelf_areas_highlight <- west_ind_shelf_areas[change_above_2fold != 0,]
 west_ind_shelf_areas_stats <- table(west_ind_shelf_areas[,.(change_above_2fold)])
 ```
 
+Model change for southern and northern hemisphere
+```{r model northern versus southern western indian}
+west_ind_north_mod <- lm(data = west_ind_shelf_areas[latitude_end > 0], area_rasterarea ~ latitude_start)
+summary(west_ind_north_mod)
+
+west_ind_sorth_mod <- lm(data = west_ind_shelf_areas[latitude_end < 0], area_rasterarea ~ abs(latitude_start))
+summary(west_ind_sorth_mod)
+```
+
 Eastern Indian
 
-east_ind_spdf_mask
+east_ind_spdf_mask_full
 
 ```{r split raster for eastern indian}
-north_extent <- c(xmin(east_ind_spdf_mask_1s), xmax(east_ind_spdf_mask_1s), 0, ymax(east_ind_spdf_mask_1s))
-south_extent <- c(xmin(east_ind_spdf_mask_1s), xmax(east_ind_spdf_mask_1s), ymin(east_ind_spdf_mask_1s), 0)
+north_extent <- c(xmin(east_ind_spdf_mask_full), xmax(east_ind_spdf_mask_full), 0, ymax(east_ind_spdf_mask_full))
+south_extent <- c(xmin(east_ind_spdf_mask_full), xmax(east_ind_spdf_mask_full), ymin(east_ind_spdf_mask_full), 0)
 
 #crop east_ind raster above and below 0
-east_ind_spdf_shift_agg_north <- crop(east_ind_spdf_mask_1s, extent(north_extent))
+east_ind_spdf_shift_agg_north <- crop(east_ind_spdf_mask_full, extent(north_extent))
 
-east_ind_spdf_shift_agg_south <- crop(east_ind_spdf_mask_1s, extent(south_extent))
+east_ind_spdf_shift_agg_south <- crop(east_ind_spdf_mask_full, extent(south_extent))
 
 #unfortunately, I think I may have to just do this manually (ugly, I know)
 
 #all chunks for east indian
-east_ind_north_latitudes <- seq(0, ymax(east_ind_spdf_mask_1s), by = 2)
-east_ind_south_latitudes <- seq(0, ymin(east_ind_spdf_mask_1s), by = -2)
+east_ind_north_latitudes <- seq(0, ymax(east_ind_spdf_mask_full), by = 2)
+east_ind_south_latitudes <- seq(0, ymin(east_ind_spdf_mask_full), by = -2)
 
 #setup data table to populate in loop, subtracting one to allow for bins
 east_ind_shelf_areas <- as.data.table(matrix(nrow = (length(east_ind_north_latitudes)-1+length(east_ind_south_latitudes)-1)))
@@ -1219,10 +1289,10 @@ east_ind_shelf_areas[, latitude_start := as.numeric(V1)][, latitude_end := as.nu
 #loop for north
 for (i in 1:(length(east_ind_north_latitudes)-1)) {
   #setting up extent for slicing by min and max longitudes, and i to i+1 latitudes
-  north_extent <- c(xmin(east_ind_spdf_mask_1s), xmax(east_ind_spdf_mask_1s), east_ind_north_latitudes[i], east_ind_north_latitudes[i+1])
+  north_extent <- c(xmin(east_ind_spdf_mask_full), xmax(east_ind_spdf_mask_full), east_ind_north_latitudes[i], east_ind_north_latitudes[i+1])
   
   #crop raster segement based on bin extent
-  segment_north <- crop(east_ind_spdf_mask_1s, extent(north_extent))
+  segment_north <- crop(east_ind_spdf_mask_full, extent(north_extent))
   
   #populate data table with latitudinal bin
   east_ind_shelf_areas[i, "latitude_start"] <- east_ind_north_latitudes[i]
@@ -1285,10 +1355,10 @@ for (i in 1:(length(east_ind_north_latitudes)-1)) {
 
 #loop for south
 for (i in 1:(length(east_ind_south_latitudes)-1)) {
-  south_extent <- c(xmin(east_ind_spdf_mask_1s), xmax(east_ind_spdf_mask_1s), east_ind_south_latitudes[i+1], east_ind_south_latitudes[i]) #order= xmin, xmax, ymin, ymax)
+  south_extent <- c(xmin(east_ind_spdf_mask_full), xmax(east_ind_spdf_mask_full), east_ind_south_latitudes[i+1], east_ind_south_latitudes[i]) #order= xmin, xmax, ymin, ymax)
   
   #raster segment
-  segment_south <- crop(east_ind_spdf_mask_1s, extent(south_extent))
+  segment_south <- crop(east_ind_spdf_mask_full, extent(south_extent))
   
   #add latitude bin info to data table
     east_ind_shelf_areas[i+(length(east_ind_north_latitudes)-1), "latitude_start"] <- east_ind_south_latitudes[i]
@@ -1363,7 +1433,7 @@ cor(east_ind_shelf_areas[,3:5], use = "complete.obs")
 ```
 
 ```{r percent shift eastern indian}
-east_ind_shelf_areas[, percent_change := (area_equalareaproj-shift(area_equalareaproj, type = "lag"))/shift(area_equalareaproj, type = "lag")][,area_1000s := area_equalareaproj/1000]
+east_ind_shelf_areas[, percent_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))/shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
 
 east_ind_shelf_areas[, change_above_2fold := ifelse((percent_change>=1 & percent_change<Inf), 1, ifelse(percent_change<=-0.5, -1, 0))]
 
@@ -1371,6 +1441,16 @@ east_ind_shelf_areas_highlight <- east_ind_shelf_areas[change_above_2fold != 0,]
 
 east_ind_shelf_areas_stats <- table(east_ind_shelf_areas[,.(change_above_2fold)])
 ```
+
+Model change for southern and northern hemisphere
+```{r model northern versus southern eastern indian}
+east_ind_north_mod <- lm(data = east_ind_shelf_areas[latitude_end > 0], area_rasterarea ~ latitude_start)
+summary(east_ind_north_mod)
+
+east_ind_sorth_mod <- lm(data = east_ind_shelf_areas[latitude_end < 0], area_rasterarea ~ abs(latitude_start))
+summary(east_ind_sorth_mod)
+```
+
 
 Plots of latitude versus habitat availability
 
