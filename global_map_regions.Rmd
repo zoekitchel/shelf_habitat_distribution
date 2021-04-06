@@ -109,4 +109,14 @@ global_LME_classification_map <- ggplot() +
 
 ggsave(global_LME_classification_map, filename = "map_global_type.jpg")
 ```
+How many of each for %s?
+```{r percents}
+table(LME_bathy_statistics$type)
+#mid dominant
+8/64
+#multimodal
+44/64
+#shallow dominant
+12/64
+```
 
