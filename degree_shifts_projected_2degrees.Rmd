@@ -155,6 +155,9 @@ west_pac_fao <- FAO_spdf[FAO_spdf$F_CODE %in% c(61,71),]
 #adjust extent a bit to get rid of rogue -178 points
 west_pac_fao <- crop(west_pac_fao, extent(94, 180, -28.15, 66.4148))
 
+west_pac_fao.raster <- crop(etopo_shelf_raster, extent(94, 180, -28.15, 66.4148))
+west_pac_fao.raster <- mask(west_pac_fao.raster, west_pac_fao)
+
 #Eastern Indian Ocean
 east_ind_fao <- FAO_spdf[FAO_spdf$F_CODE == 57,]
 
@@ -256,7 +259,7 @@ Merge in areas unaccounted for by LMEs (Philippines, Sumatra, Papua New Guinea)
 
 ```{r merge non-LME regions}
 #western pacific ocean
-west_pac_spdf_mask_full <- merge(west_pac_fao, west_pac_spdf_shift_mask_1s)
+west_pac_spdf_mask_full <- merge(west_pac_fao.raster, west_pac_spdf_shift_mask_1s)
 ```
 
 
@@ -1325,10 +1328,10 @@ for (i in 1:(length(east_ind_north_latitudes)-1)) {
 
 #loop for south
 for (i in 1:(length(east_ind_south_latitudes)-1)) {
-  south_extent <- c(xmin(east_ind_spdf_mask_full), xmax(east_ind_spdf_mask_full), east_ind_south_latitudes[i+1], east_ind_south_latitudes[i]) #order= xmin, xmax, ymin, ymax)
+  south_extent <- c(xmin(east_ind_spdf_mask_1s), xmax(east_ind_spdf_mask_1s), east_ind_south_latitudes[i+1], east_ind_south_latitudes[i]) #order= xmin, xmax, ymin, ymax)
   
   #raster segment
-  segment_south <- crop(east_ind_spdf_mask_full, extent(south_extent))
+  segment_south <- crop(east_ind_spdf_mask_1s, extent(south_extent))
   
   #add latitude bin info to data table
     east_ind_shelf_areas[i+(length(east_ind_north_latitudes)-1), "latitude_start"] <- east_ind_south_latitudes[i]
@@ -1425,6 +1428,7 @@ summary(east_ind_south_mod)
 Plots of latitude versus habitat availability
 
 ```{r plots latitude habitat availability}
+#east indian
 (area_latitude_east_ind  <- ggplot() +
   geom_point(data = east_ind_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18) +
   geom_line(data = east_ind_shelf_areas, aes(x=latitude_start, y=area_1000s)) +
@@ -1444,7 +1448,7 @@ Plots of latitude versus habitat availability
 area_latitude_west_ind  <- ggplot() +
   geom_point(data = west_ind_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18) + 
   geom_line(data = west_ind_shelf_areas, aes(x=latitude_start, y=area_1000s)) +
-    geom_rug(data = east_ind_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
+    geom_rug(data = west_ind_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
  labs(x = "Latitude", y = expression(paste("Area (1000s of ", km^{2},")"))) +
   scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
   #annotate("text", x = 30, y = 33000, label = "Western Indian Ocean") +
