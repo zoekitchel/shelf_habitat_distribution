@@ -348,8 +348,8 @@ for (i in 1:nrow(LME_bathy_statistics)) {
     # First, to a SpatialPointsDataFrame
     LME_points <- rasterToPoints(LME_mask, spatial = TRUE)
     
-***    #project points to help with better plotting
-    LME_points <- spTransform(LME_points, )
+  #project points to help with better plotting
+ #   LME_points <- spTransform(LME_points, CRS())
     
     # Then to a 'conventional' dataframe
     LME_dt  <- data.table(data.frame(LME_points))
@@ -387,14 +387,29 @@ for (i in 1:nrow(LME_bathy_statistics)) {
     max(LME_reduced_df$long)-min(LME_reduced_df$long) > 200 & LME_reduced_df$long >0,
     LME_reduced_df$long - 360,
     LME_reduced_df$long)
+    
+    depth_palette <- c(
+  `yellow`        = "E3E247",
+  `green`      = "46AF78",
+  `blue`       = "472F7B",
+  `darkpurple`     = "280330")
   
-  lme_maps[[i]] <- ggplot(LME_dt) +
-    geom_tile(aes(x = x_shift, y = y, fill = depth)) +
-    scale_fill_viridis(direction = -1, limits = c(0,2000)) +
+  lme_maps[[i]] <- ggplot(LME_dt,aes(x = x_shift, y = y, fill = depth)) +
+    geom_tile() +
+    scale_fill_gradientn(
+  colours=c("#f98f3e","#f9be3e","#E3E247", "#46AF78", "#3B5088","#592f83","#420d54", "#420d54"),
+  breaks = c(min(LME_dt$depth),
+                    100,
+                    200,
+                    300,
+                    400,
+                     500,
+                     500,
+                     max(LME_dt$depth))) +
     theme_classic() +
     labs(x = "Longitude", y = "Latitude", fill = "Depth (m)") +
     guides(fill = guide_colorbar(reverse = T)) +
-    geom_path(data = LME_reduced_df, aes(x = long_shift, y = lat, group = group), color = "black") +
+  #  geom_path(data = LME_reduced_df, aes(x = long_shift, y = lat, group = group), color = "black") +
     annotate("text", x=Inf, y = max(LME_reduced_df$lat)+1, hjust=1, label = paste0("LME ", LME_bathy_statistics[i,lme_number], ":\n ", LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2.5)
   
   
@@ -425,7 +440,16 @@ for (i in 1:nrow(LME_bathy_statistics)) {
     labs(x = "Depth (m)", y = expression(paste("Area (", km^{2},")")), fill = "Depth (m)") +
     scale_y_continuous(expand = c(0, 0)) +
     scale_x_continuous(expand = c(0,0)) +
-    scale_fill_gradientn(colors = rev(viridis(5)), limits = c(0, 2000)) +
+    scale_fill_gradientn(
+  colours=c("#f98f3e","#f9be3e","#E3E247", "#46AF78", "#3B5088","#592f83","#420d54", "#420d54"),
+  breaks = c(min(LME_bathy_bydepth_complete$depth),
+                    100,
+                    200,
+                    300,
+                    400,
+                     500,
+                     500,
+                     max(LME_bathy_bydepth_complete$depth))) +
     guides(position = "bottom", fill = guide_colorbar(reverse = T))
   
   
