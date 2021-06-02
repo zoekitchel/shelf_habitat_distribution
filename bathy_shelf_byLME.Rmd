@@ -62,6 +62,15 @@ etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = proj)
 
 ```
 
+Depth distribution
+```{r depth distribution}
+mean(etopo_shelf_raster$z)
+hist(etopo_shelf_raster$z)
+
+cellStats(etopo_shelf_raster, stat = 'mean')
+hist(etopo_shelf_raster)
+```
+
 Clip raster to each individual polygon
 
 ```{r clip raster to polygon}
