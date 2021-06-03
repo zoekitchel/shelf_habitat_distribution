@@ -438,7 +438,7 @@ ggplot(data = west_pac_shelf_areas) +
   geom_point(aes(x = latitude_start, y = area_rgeos_gArea), color = "purple", size = 0.5) +
   geom_point(aes(x = latitude_start, y = area_rasterarea), color = "darkgreen", size = 0.5) +
   geom_point(aes(x = latitude_start, y = area_equalareaproj), color = "red", size = 0.5) +
-  labs(x = "Latitude", y = "Area km^2") +
+  labs(x=paste0("Latitude ","\u00B0","E"), y = "Area km^2") +
   theme_classic()
 
 cor(west_pac_shelf_areas[,3:5], use = "complete.obs")
@@ -642,7 +642,7 @@ ggplot(data = east_pac_shelf_areas) +
   geom_point(aes(x = latitude_start, y = area_rgeos_gArea), color = "purple", size = 0.5) +
   geom_point(aes(x = latitude_start, y = area_rasterarea), color = "darkgreen", size = 0.5) +
   geom_point(aes(x = latitude_start, y = area_equalareaproj), color = "red", size = 0.5) +
-  labs(x = "Latitude", y = "Area km^2") +
+  labs(x=paste0("Latitude ","\u00B0","E"), y = "Area km^2") +
   theme_classic()
 
 cor(east_pac_shelf_areas[,3:5], use = "complete.obs")
@@ -835,7 +835,7 @@ ggplot(data = west_atl_shelf_areas) +
   geom_point(aes(x = latitude_start, y = area_rgeos_gArea), color = "purple", size = 0.5) +
   geom_point(aes(x = latitude_start, y = area_rasterarea), color = "darkgreen", size = 0.5) +
   geom_point(aes(x = latitude_start, y = area_equalareaproj), color = "red", size = 0.5) +
-  labs(x = "Latitude", y = "Area km^2") +
+  labs(x=paste0("Latitude ","\u00B0","E"), y = "Area km^2") +
   theme_classic()
 
 cor(west_atl_shelf_areas[,3:5], use = "complete.obs")
@@ -1026,7 +1026,7 @@ ggplot(data = east_atl_shelf_areas) +
   geom_point(aes(x = latitude_start, y = area_rgeos_gArea), color = "purple", size = 0.5) +
   geom_point(aes(x = latitude_start, y = area_rasterarea), color = "darkgreen", size = 0.5) +
   geom_point(aes(x = latitude_start, y = area_equalareaproj), color = "red", size = 0.5) +
-  labs(x = "Latitude", y = "Area km^2") +
+  labs(x=paste0("Latitude ","\u00B0","E"), y = "Area km^2") +
   theme_classic()
 
 cor(east_atl_shelf_areas[,3:5], use = "complete.obs")
@@ -1217,7 +1217,7 @@ ggplot(data = west_ind_shelf_areas) +
   geom_point(aes(x = latitude_start, y = area_rgeos_gArea), color = "purple", size = 0.5) +
   geom_point(aes(x = latitude_start, y = area_rasterarea), color = "darkgreen", size = 0.5) +
   geom_point(aes(x = latitude_start, y = area_equalareaproj), color = "red", size = 0.5) +
-  labs(x = "Latitude", y = "Area km^2") +
+  labs(x=paste0("Latitude ","\u00B0","E"), y = "Area km^2") +
   theme_classic()
 
 cor(west_ind_shelf_areas[,3:5], use = "complete.obs")
@@ -1407,7 +1407,7 @@ ggplot(data = east_ind_shelf_areas) +
   geom_point(aes(x = latitude_start, y = area_rgeos_gArea), color = "purple", size = 0.5) +
   geom_point(aes(x = latitude_start, y = area_rasterarea), color = "darkgreen", size = 0.5) +
   geom_point(aes(x = latitude_start, y = area_equalareaproj), color = "red", size = 0.5) +
-  labs(x = "Latitude", y = "Area km^2") +
+  labs(x=paste0("Latitude ","\u00B0","E"), y = "Area km^2") +
   theme_classic()
 
 cor(east_ind_shelf_areas[,3:5], use = "complete.obs")
@@ -1459,10 +1459,10 @@ east_ind_south_data[,area_1000s := east_ind_south_mod$coefficients[[1]]/1000+eas
 (area_latitude_east_ind  <- ggplot() +
 #  geom_line(data = east_ind_north_data, aes(x=latitude_start, y = area_1000s), color = "gray71") + not significant
 #  geom_line(data = east_ind_south_data, aes(x=latitude_start, y = area_1000s), color = "gray71") + not significant
-  geom_point(data = east_ind_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18) +
-  geom_line(data = east_ind_shelf_areas, aes(x=latitude_start, y=area_1000s)) +
+  geom_point(data = east_ind_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) +
+  geom_line(data = east_ind_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
   geom_rug(data = east_ind_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
- labs(x = "Latitude", y = expression(paste("Area (1000s of ", km^{2},")"))) +
+ labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
   scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
   ##annotate("text", x =22, y = 70000, label = "Eastern Indian Ocean") +
   geom_vline(xintercept = 0) +
@@ -1485,10 +1485,10 @@ west_ind_south_data[,area_1000s := west_ind_south_mod$coefficients[[1]]/1000+wes
 area_latitude_west_ind  <- ggplot() +
   geom_line(data = west_ind_north_data, aes(x=latitude_start, y = area_1000s), color = "gray71") +
  # geom_line(data = west_ind_south_data, aes(x=latitude_start, y = area_1000s), color = "gray71") + not significant
-  geom_point(data = west_ind_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18) + 
-  geom_line(data = west_ind_shelf_areas, aes(x=latitude_start, y=area_1000s)) +
+  geom_point(data = west_ind_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) + 
+  geom_line(data = west_ind_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
     geom_rug(data = west_ind_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
- labs(x = "Latitude", y = expression(paste("Area (1000s of ", km^{2},")"))) +
+ labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
   scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
   #annotate("text", x = 30, y = 33000, label = "Western Indian Ocean") +
   geom_vline(xintercept = 0) +
@@ -1510,10 +1510,10 @@ west_atl_south_data[,area_1000s := west_atl_south_mod$coefficients[[1]]/1000+wes
 area_latitude_west_atl  <- ggplot() +
   geom_line(data = west_atl_north_data, aes(x=latitude_start, y = area_1000s), color = "gray71") +
   geom_line(data = west_atl_south_data, aes(x=latitude_start, y = area_1000s), color = "gray71") +
-  geom_point(data = west_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18) + 
-  geom_line(data = west_atl_shelf_areas, aes(x=latitude_start, y=area_1000s)) +
+  geom_point(data = west_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) + 
+  geom_line(data = west_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
   geom_rug(data = west_atl_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
- labs(x = "Latitude", y = expression(paste("Area (1000s of ", km^{2},")"))) +
+ labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
   scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
   #annotate("text", x = 80, y = 120000, label = "Western Atlantic Ocean") +
   geom_vline(xintercept = 0) +
@@ -1536,10 +1536,10 @@ east_atl_south_data[,area_1000s := east_atl_south_mod$coefficients[[1]]/1000+eas
 area_latitude_east_atl  <- ggplot() +
   geom_line(data = east_atl_north_data, aes(x=latitude_start, y = area_1000s), color = "gray71") +
   geom_line(data = east_atl_south_data, aes(x=latitude_start, y = area_1000s), color = "gray71") +
-  geom_point(data = east_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18) + 
-  geom_line(data = east_atl_shelf_areas, aes(x=latitude_start, y=area_1000s)) +
+  geom_point(data = east_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) + 
+  geom_line(data = east_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
   geom_rug(data = east_atl_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
- labs(x = "Latitude", y = expression(paste("Area (1000s of ", km^{2},")"))) +
+ labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
   scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
   #annotate("text", x = 82.5, y = 110000, label = "Eastern Atlantic Ocean") +
   geom_vline(xintercept = 0) +
@@ -1562,10 +1562,10 @@ east_pac_south_data[,area_1000s := east_pac_south_mod$coefficients[[1]]/1000+eas
 area_latitude_east_pac  <- ggplot() +
   geom_line(data = east_pac_north_data, aes(x=latitude_start, y = area_1000s), color = "gray71") +
 #  geom_line(data = east_pac_south_data, aes(x=latitude_start, y = area_1000s), color = "gray71") + not significant
-  geom_point(data = east_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18) + 
-  geom_line(data = east_pac_shelf_areas, aes(x=latitude_start, y=area_1000s)) +
+  geom_point(data = east_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) + 
+  geom_line(data = east_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
   geom_rug(data = east_pac_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
- labs(x = "Latitude", y = expression(paste("Area (1000s of ", km^{2},")"))) +
+ labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
   scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
   #annotate("text", x = 80, y = 130000, label = "Eastern Pacific Ocean") +
   geom_vline(xintercept = 0) +
@@ -1588,11 +1588,11 @@ west_pac_south_data[,area_1000s := west_pac_south_mod$coefficients[[1]]/1000+wes
 (area_latitude_west_pac <- ggplot() +
   geom_line(data = west_pac_north_data, aes(x=latitude_start, y = area_1000s), color = "gray71") +
   geom_line(data = west_pac_south_data, aes(x=latitude_start, y = area_1000s), color = "gray71") +
-  geom_point(data = west_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18) + 
-  geom_line(data = west_pac_shelf_areas, aes(x=latitude_start, y=area_1000s)) +
+  geom_point(data = west_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) + 
+  geom_line(data = west_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
   #geom_point(data = west_pac_shelf_areas_highlight, aes(x = latitude_start, y = area), shape =19, color = "seagreen4", size = 2) + 
   geom_rug(data = west_pac_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
- labs(x = "Latitude", y = expression(paste("Area (1000s of ", km^{2},")"))) +
+ labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
   scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
   #annotate("text", x = 90, y = 130000, label = "Western Pacific Ocean") +
   geom_vline(xintercept = 0) +
@@ -1852,7 +1852,7 @@ for (i in 1:length(region_names)) {
                  size = 0.25) +
     geom_tile(data = region_df, aes(x = x, y = y, fill = value), color = "seagreen4") +
     coord_sf(x = c(region_spdf_mask_1s_extent[1], region_spdf_mask_1s_extent[2]), y = c(region_spdf_mask_1s_extent[3], region_spdf_mask_1s_extent[4])) +
-    labs( x = expression("Longitude ("*~degree*E*")"), y = expression("Latitude ("*~degree*N*")")) +
+    labs( x = expression("Longitude "*~degree*E*), y = expression("Latitude "*~degree*N*)) +
     geom_abline(intercept = 0, slope = 0) +
     theme_classic() +
     theme(legend.position = "none"))
@@ -1880,7 +1880,7 @@ for (i in 1:length(region_names)) {
                  size = 0.25) +
     geom_tile(data = region_df, aes(x = x, y = y, fill = value), color = "seagreen4") +
     coord_sf(x = c(region_spdf_mask_1s_extent[1], region_spdf_mask_1s_extent[2]), y = c(region_spdf_mask_1s_extent[3], region_spdf_mask_1s_extent[4])) +
-    labs( x = expression("Longitude ("*~degree*E*")"), y = expression("Latitude ("*~degree*N*")")) +
+    labs( x = expression("Longitude "*~degree*E*), y = expression("Latitude "*~degree*N*)) +
     geom_abline(intercept = 0, slope = 0) +
     theme_classic() +
     theme(legend.position = "none"))
@@ -2002,11 +2002,24 @@ ggsave(plot = east_atlantic_merge_map_plot, filename = "east_atlantic_merge_map_
 
 ggsave(plot = east_indian_merge_map_plot, filename = "east_indian_merge_map_plot_2degrees.jpg", width = 7, height = 3, units = "in")
 ```
+And now final merge for figures 3-5
+```{r final merge figures}
+indian_latitude_2_plots <- ggarrange(west_indian_merge_map_plot, east_indian_merge_map_plot)
+ggsave(indian_latitude_2_plots, file = "indian_latitude_2_plots.jpg", height = 6, unit = "in")
+ggsave(indian_latitude_2_plots, file = "indian_latitude_2_plots.pdf", height = 6, unit = "in")
+
+pacific_latitude_2_plots <- ggarrange(west_pacific_merge_map_plot, east_pacific_merge_map_plot)
+ggsave(pacific_latitude_2_plots, file = "pacific_latitude_2_plots.jpg", height = 6, unit = "in")
+ggsave(pacific_latitude_2_plots, file = "pacific_latitude_2_plots.pdf", height = 6, unit = "in")
+
+atlantic_latitude_2_plots <- ggarrange(west_atlantic_merge_map_plot, east_atlantic_merge_map_plot)
+ggsave(atlantic_latitude_2_plots, file = "atlantic_latitude_2_plots.jpg", height = 6, unit = "in")
+ggsave(atlantic_latitude_2_plots, file = "atlantic_latitude_2_plots.pdf", height = 6, unit = "in")
+```
 
 
 Summary Table of Shifts away from Equator
 
-#NEED TO CHECK STATS IN THIS TABLE
 
 ```{r statistics table}
 regional_statistics <- data.table()
@@ -2041,25 +2054,9 @@ for (i in 1:length(shelf_areas)) {
 }
 
 view(regional_statistics)
-```
 
-Visualize regional statistics (same as above, another possibility for figure 6 but spliting northern and southern hemispheres)
-```{r visualize regional stats}
-#pull back to long form
-regional_statistics_long <- melt(regional_statistics, id.vars = c("region","hemisphere"),
-                measure.vars = c("contractions", "expansions", "coef","pvalue"))
-
-ggplot(data = regional_statistics_long[variable %in% c("contractions","expansions")], aes(x="", y = value, fill = variable)) +
-  geom_bar(stat = "identity", width = 1) +
-  coord_polar("y", start=0) +
-  scale_fill_manual(values = c(viridis_exp_cont[1], "grey94", viridis_exp_cont[2]), name = "Habitat Change", labels = c(">= 2 Fold Contraction", "< 2 Fold Change", ">= 2 Fold Expansion")) +
-  facet_wrap(~region) +
-  geom_text(aes(label = paste0(round(value*100,1),"%")), position = position_stack(vjust = 0.1), size = 2) +
-  scale_x_discrete(expand = c(0,0)) +
-  blank_theme +
-  theme(axis.text.x=element_blank())
-
-ggsave(filename = "figure6_habitatloss_gain_2fold.pdf", height = 4, width = 8, unit = "in")
+#save
+fwrite(regional_statistics, file = "Table1_regional_stats.csv")
 ```
 
 
