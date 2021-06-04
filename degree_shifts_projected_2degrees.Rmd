@@ -278,6 +278,17 @@ Returns the area of the geometry in the units of the current projection. By defi
 
 Now, we will split each coastline raster into latitudinal bins of 2˚
 
+If these have already been done, load in from file instead of recreating because that takes some time.
+```{r load in from files}
+load("west_pac_shelf_areas_2degrees.Rdata")
+load("west_atl_shelf_areas_2degrees.Rdata")
+load("west_ind_shelf_areas_2degrees.Rdata")
+load("east_pac_shelf_areas_2degrees.Rdata")
+load("east_atl_shelf_areas_2degrees.Rdata")
+load("east_ind_shelf_areas_2degrees.Rdata")
+```
+
+
 Western Pacific
 ```{r split raster for western pacific}
 north_extent <- c(xmin(west_pac_spdf_mask_full), xmax(west_pac_spdf_mask_full), 0, ymax(west_pac_spdf_mask_full))
@@ -444,6 +455,7 @@ ggplot(data = west_pac_shelf_areas) +
 cor(west_pac_shelf_areas[,3:5], use = "complete.obs")
 
 save(west_pac_shelf_areas, file = "west_pac_shelf_areas_2degrees.Rdata")
+load("west_pac_shelf_areas_2degrees.Rdata")
 
 ```
 
@@ -470,11 +482,13 @@ west_pac_shelf_areas_stats <- table(west_pac_shelf_areas[,.(change_above_2fold,h
 
 Model change for southern and northern hemisphere
 ```{r model northern versus southern western pacific}
-west_pac_north_mod <- lm(data = west_pac_shelf_areas[latitude_end > 0], area_rasterarea ~ latitude_start)
-west_pac_north_mod$coefficients[2]
-summary(west_pac_north_mod)$coefficients[,"Pr(>|t|)"][2]
+#add mid latitude
+west_pac_shelf_areas[,latitude_mid := (latitude_end+latitude_start)/2]
 
-west_pac_south_mod <- lm(data = west_pac_shelf_areas[latitude_end < 0], area_rasterarea ~ abs(latitude_start))
+west_pac_north_mod <- lm(data = west_pac_shelf_areas[latitude_mid > 0], area_rasterarea ~ latitude_mid)
+summary(west_pac_north_mod)
+
+west_pac_south_mod <- lm(data = west_pac_shelf_areas[latitude_mid < 0], area_rasterarea ~ latitude_mid)
 summary(west_pac_south_mod)
 ```
 
@@ -665,10 +679,13 @@ east_pac_shelf_areas_stats <- table(east_pac_shelf_areas[,.(change_above_2fold, 
 
 Model change for southern and northern hemisphere
 ```{r model northern versus southern eastern pacific}
-east_pac_north_mod <- lm(data = east_pac_shelf_areas[latitude_end > 0], area_rasterarea ~ latitude_start)
+#add mid latitude
+east_pac_shelf_areas[,latitude_mid := (latitude_end+latitude_start)/2]
+
+east_pac_north_mod <- lm(data = east_pac_shelf_areas[latitude_mid > 0], area_rasterarea ~ latitude_mid)
 summary(east_pac_north_mod)
 
-east_pac_south_mod <- lm(data = east_pac_shelf_areas[latitude_end < 0], area_rasterarea ~ abs(latitude_start))
+east_pac_south_mod <- lm(data = east_pac_shelf_areas[latitude_mid < 0], area_rasterarea ~ latitude_mid)
 summary(east_pac_south_mod)
 ```
 
@@ -855,11 +872,14 @@ west_atl_shelf_areas_stats <- table(west_atl_shelf_areas[,.(change_above_2fold, 
 ```
 
 Model change for southern and northern hemisphere
-```{r model northern versus southern western tlantic}
-west_atl_north_mod <- lm(data = west_atl_shelf_areas[latitude_end > 0], area_rasterarea ~ latitude_start)
+```{r model northern versus southern western atlantic}
+#add mid latitude
+west_atl_shelf_areas[,latitude_mid := (latitude_end+latitude_start)/2]
+
+west_atl_north_mod <- lm(data = west_atl_shelf_areas[latitude_mid > 0], area_rasterarea ~ latitude_mid)
 summary(west_atl_north_mod)
 
-west_atl_south_mod <- lm(data = west_atl_shelf_areas[latitude_end < 0], area_rasterarea ~ abs(latitude_start))
+west_atl_south_mod <- lm(data = west_atl_shelf_areas[latitude_mid < 0], area_rasterarea ~ latitude_mid)
 summary(west_atl_south_mod)
 ```
 
@@ -1047,10 +1067,13 @@ east_atl_shelf_areas_stats <- table(east_atl_shelf_areas[,.(change_above_2fold, 
 
 Model change for southern and northern hemisphere
 ```{r model northern versus southern eastern atlantic}
-east_atl_north_mod <- lm(data = east_atl_shelf_areas[latitude_end > 0], area_rasterarea ~ latitude_start)
+#add mid latitude
+east_atl_shelf_areas[,latitude_mid := (latitude_end+latitude_start)/2]
+
+east_atl_north_mod <- lm(data = east_atl_shelf_areas[latitude_mid > 0], area_rasterarea ~ latitude_mid)
 summary(east_atl_north_mod)
 
-east_atl_south_mod <- lm(data = east_atl_shelf_areas[latitude_end < 0], area_rasterarea ~ abs(latitude_start))
+east_atl_south_mod <- lm(data = east_atl_shelf_areas[latitude_mid < 0], area_rasterarea ~ latitude_mid)
 summary(east_atl_south_mod)
 ```
 
@@ -1237,10 +1260,13 @@ west_ind_shelf_areas_stats <- table(west_ind_shelf_areas[,.(change_above_2fold, 
 
 Model change for southern and northern hemisphere
 ```{r model northern versus southern western indian}
-west_ind_north_mod <- lm(data = west_ind_shelf_areas[latitude_end > 0], area_rasterarea ~ latitude_start)
+#add mid latitude
+west_ind_shelf_areas[,latitude_mid := (latitude_end+latitude_start)/2]
+
+west_ind_north_mod <- lm(data = west_ind_shelf_areas[latitude_mid > 0], area_rasterarea ~ latitude_mid)
 summary(west_ind_north_mod)
 
-west_ind_south_mod <- lm(data = west_ind_shelf_areas[latitude_end < 0], area_rasterarea ~ abs(latitude_start))
+west_ind_south_mod <- lm(data = west_ind_shelf_areas[latitude_mid < 0], area_rasterarea ~ latitude_mid)
 summary(west_ind_south_mod)
 ```
 
@@ -1428,10 +1454,13 @@ east_ind_shelf_areas_stats <- table(east_ind_shelf_areas[,.(change_above_2fold,h
 
 Model change for southern and northern hemisphere
 ```{r model northern versus southern eastern indian}
-east_ind_north_mod <- lm(data = east_ind_shelf_areas[latitude_end > 0], area_rasterarea ~ latitude_start)
+#add mid latitude
+east_ind_shelf_areas[,latitude_mid := (latitude_end+latitude_start)/2]
+
+east_ind_north_mod <- lm(data = east_ind_shelf_areas[latitude_mid > 0], area_rasterarea ~ latitude_mid)
 summary(east_ind_north_mod)
 
-east_ind_south_mod <- lm(data = east_ind_shelf_areas[latitude_end < 0], area_rasterarea ~ abs(latitude_start))
+east_ind_south_mod <- lm(data = east_ind_shelf_areas[latitude_mid < 0], area_rasterarea ~ latitude_mid)
 summary(east_ind_south_mod)
 ```
 
@@ -1445,20 +1474,20 @@ NOT:
 - West Indian Southern
 
 ```{r plots latitude habitat availability}
+##east indian
+#simulate data to plot trendline
+east_ind_north_data <- data.table(latitude_mid = unique(east_ind_shelf_areas[latitude_end>0,]$latitude_mid))
 
-#similate data to plot trendline
-east_ind_north_data <- data.table(latitude_start = unique(east_ind_shelf_areas[latitude_end>0,]$latitude_start))
+east_ind_north_data[,area_1000s := east_ind_north_mod$coefficients[[1]]/1000+east_ind_north_mod$coefficients[[2]]/1000*latitude_mid]
 
-east_ind_north_data[,area_1000s := east_ind_north_mod$coefficients[[1]]/1000+east_ind_north_mod$coefficients[[2]]/1000*latitude_start]
+east_ind_south_data <- data.table(latitude_mid = unique(east_ind_shelf_areas[latitude_end <0,]$latitude_mid))
 
-east_ind_south_data <- data.table(latitude_start = unique(east_ind_shelf_areas[latitude_end <0,]$latitude_start))
-
-east_ind_south_data[,area_1000s := east_ind_south_mod$coefficients[[1]]/1000+east_ind_south_mod$coefficients[[2]]/1000*(-latitude_start)]
+east_ind_south_data[,area_1000s := east_ind_south_mod$coefficients[[1]]/1000+east_ind_south_mod$coefficients[[2]]/1000*latitude_mid]
 
 #east indian
 (area_latitude_east_ind  <- ggplot() +
-#  geom_line(data = east_ind_north_data, aes(x=latitude_start, y = area_1000s), color = "gray71") + not significant
-#  geom_line(data = east_ind_south_data, aes(x=latitude_start, y = area_1000s), color = "gray71") + not significant
+#  geom_line(data = east_ind_north_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") + not significant
+#  geom_line(data = east_ind_south_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") + not significant
   geom_point(data = east_ind_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) +
   geom_line(data = east_ind_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
   geom_rug(data = east_ind_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
@@ -1474,17 +1503,18 @@ east_ind_south_data[,area_1000s := east_ind_south_mod$coefficients[[1]]/1000+eas
 
   ggsave(area_latitude_east_ind, filename = "area_latitude_east_ind_2degrees.jpg", height = 4, units = c("in"))
   
-west_ind_north_data <- data.table(latitude_start = unique(west_ind_shelf_areas[latitude_end>0,]$latitude_start))
+##west indian
+west_ind_north_data <- data.table(latitude_mid = unique(west_ind_shelf_areas[latitude_end>0,]$latitude_mid))
 
-west_ind_north_data[,area_1000s := west_ind_north_mod$coefficients[[1]]/1000+west_ind_north_mod$coefficients[[2]]/1000*latitude_start]
+west_ind_north_data[,area_1000s := west_ind_north_mod$coefficients[[1]]/1000+west_ind_north_mod$coefficients[[2]]/1000*latitude_mid]
 
-west_ind_south_data <- data.table(latitude_start = unique(west_ind_shelf_areas[latitude_end <0,]$latitude_start))
+west_ind_south_data <- data.table(latitude_mid = unique(west_ind_shelf_areas[latitude_end <0,]$latitude_mid))
 
-west_ind_south_data[,area_1000s := west_ind_south_mod$coefficients[[1]]/1000+west_ind_south_mod$coefficients[[2]]/1000*(-latitude_start)]
+west_ind_south_data[,area_1000s := west_ind_south_mod$coefficients[[1]]/1000+west_ind_south_mod$coefficients[[2]]/1000*latitude_mid]
 
-area_latitude_west_ind  <- ggplot() +
-  geom_line(data = west_ind_north_data, aes(x=latitude_start, y = area_1000s), color = "gray71") +
- # geom_line(data = west_ind_south_data, aes(x=latitude_start, y = area_1000s), color = "gray71") + not significant
+(area_latitude_west_ind  <- ggplot() +
+  geom_line(data = west_ind_north_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
+ # geom_line(data = west_ind_south_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") + not significant
   geom_point(data = west_ind_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) + 
   geom_line(data = west_ind_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
     geom_rug(data = west_ind_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
@@ -1495,21 +1525,21 @@ area_latitude_west_ind  <- ggplot() +
   xlim(min(west_ind_shelf_areas$latitude_end), max(west_ind_shelf_areas$latitude_end)) +
   coord_flip() +
   theme_classic() +
-  theme(plot.margin = margin(10, 40, 10, 10))
+  theme(plot.margin = margin(10, 40, 10, 10)))
 
   ggsave(area_latitude_west_ind, filename = "area_latitude_west_ind_2degrees.jpg", height = 4, units = c("in"))
 
-west_atl_north_data <- data.table(latitude_start = unique(west_atl_shelf_areas[latitude_end>0,]$latitude_start))
+west_atl_north_data <- data.table(latitude_mid = unique(west_atl_shelf_areas[latitude_end>0,]$latitude_mid))
 
-west_atl_north_data[,area_1000s := west_atl_north_mod$coefficients[[1]]/1000+west_atl_north_mod$coefficients[[2]]/1000*latitude_start]
+west_atl_north_data[,area_1000s := west_atl_north_mod$coefficients[[1]]/1000+west_atl_north_mod$coefficients[[2]]/1000*latitude_mid]
 
-west_atl_south_data <- data.table(latitude_start = unique(west_atl_shelf_areas[latitude_end <0,]$latitude_start))
+west_atl_south_data <- data.table(latitude_mid = unique(west_atl_shelf_areas[latitude_end <0,]$latitude_mid))
 
-west_atl_south_data[,area_1000s := west_atl_south_mod$coefficients[[1]]/1000+west_atl_south_mod$coefficients[[2]]/1000*(-latitude_start)]
+west_atl_south_data[,area_1000s := west_atl_south_mod$coefficients[[1]]/1000+west_atl_south_mod$coefficients[[2]]/1000*latitude_mid]
 
 area_latitude_west_atl  <- ggplot() +
-  geom_line(data = west_atl_north_data, aes(x=latitude_start, y = area_1000s), color = "gray71") +
-  geom_line(data = west_atl_south_data, aes(x=latitude_start, y = area_1000s), color = "gray71") +
+  geom_line(data = west_atl_north_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
+  geom_line(data = west_atl_south_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
   geom_point(data = west_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) + 
   geom_line(data = west_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
   geom_rug(data = west_atl_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
@@ -1525,17 +1555,17 @@ area_latitude_west_atl  <- ggplot() +
   ggsave(area_latitude_west_atl, filename = "area_latitude_west_atl_2degrees.jpg", height = 4, units = c("in"))
 
   
-east_atl_north_data <- data.table(latitude_start = unique(east_atl_shelf_areas[latitude_end>0,]$latitude_start))
+east_atl_north_data <- data.table(latitude_mid = unique(east_atl_shelf_areas[latitude_end>0,]$latitude_mid))
 
-east_atl_north_data[,area_1000s := east_atl_north_mod$coefficients[[1]]/1000+east_atl_north_mod$coefficients[[2]]/1000*latitude_start]
+east_atl_north_data[,area_1000s := east_atl_north_mod$coefficients[[1]]/1000+east_atl_north_mod$coefficients[[2]]/1000*latitude_mid]
 
-east_atl_south_data <- data.table(latitude_start = unique(east_atl_shelf_areas[latitude_end <0,]$latitude_start))
+east_atl_south_data <- data.table(latitude_mid = unique(east_atl_shelf_areas[latitude_end <0,]$latitude_mid))
 
-east_atl_south_data[,area_1000s := east_atl_south_mod$coefficients[[1]]/1000+east_atl_south_mod$coefficients[[2]]/1000*(-latitude_start)]  
+east_atl_south_data[,area_1000s := east_atl_south_mod$coefficients[[1]]/1000+east_atl_south_mod$coefficients[[2]]/1000*latitude_mid]  
 
 area_latitude_east_atl  <- ggplot() +
-  geom_line(data = east_atl_north_data, aes(x=latitude_start, y = area_1000s), color = "gray71") +
-  geom_line(data = east_atl_south_data, aes(x=latitude_start, y = area_1000s), color = "gray71") +
+  geom_line(data = east_atl_north_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
+  geom_line(data = east_atl_south_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
   geom_point(data = east_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) + 
   geom_line(data = east_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
   geom_rug(data = east_atl_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
@@ -1551,17 +1581,17 @@ area_latitude_east_atl  <- ggplot() +
   ggsave(area_latitude_east_atl, filename = "area_latitude_east_atl_2degrees.jpg", height = 4, units = c("in"))
   
   
-east_pac_north_data <- data.table(latitude_start = unique(east_pac_shelf_areas[latitude_end>0,]$latitude_start))
+east_pac_north_data <- data.table(latitude_mid = unique(east_pac_shelf_areas[latitude_end>0,]$latitude_mid))
 
-east_pac_north_data[,area_1000s := east_pac_north_mod$coefficients[[1]]/1000+east_pac_north_mod$coefficients[[2]]/1000*latitude_start]
+east_pac_north_data[,area_1000s := east_pac_north_mod$coefficients[[1]]/1000+east_pac_north_mod$coefficients[[2]]/1000*latitude_mid]
 
-east_pac_south_data <- data.table(latitude_start = unique(east_pac_shelf_areas[latitude_end <0,]$latitude_start))
+east_pac_south_data <- data.table(latitude_mid = unique(east_pac_shelf_areas[latitude_end <0,]$latitude_mid))
 
-east_pac_south_data[,area_1000s := east_pac_south_mod$coefficients[[1]]/1000+east_pac_south_mod$coefficients[[2]]/1000*(-latitude_start)]
+east_pac_south_data[,area_1000s := east_pac_south_mod$coefficients[[1]]/1000+east_pac_south_mod$coefficients[[2]]/1000*latitude_mid]
 
 area_latitude_east_pac  <- ggplot() +
-  geom_line(data = east_pac_north_data, aes(x=latitude_start, y = area_1000s), color = "gray71") +
-#  geom_line(data = east_pac_south_data, aes(x=latitude_start, y = area_1000s), color = "gray71") + not significant
+  geom_line(data = east_pac_north_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
+#  geom_line(data = east_pac_south_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") + not significant
   geom_point(data = east_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) + 
   geom_line(data = east_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
   geom_rug(data = east_pac_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
@@ -1577,20 +1607,19 @@ area_latitude_east_pac  <- ggplot() +
   ggsave(area_latitude_east_pac, filename = "area_latitude_east_pac_2degrees.jpg", height = 4, units = c("in"))
 
   
-west_pac_north_data <- data.table(latitude_start = unique(west_pac_shelf_areas[latitude_end>0,]$latitude_start))
+west_pac_north_data <- data.table(latitude_mid = unique(west_pac_shelf_areas[latitude_end>0,]$latitude_mid))
 
-west_pac_north_data[,area_1000s := west_pac_north_mod$coefficients[[1]]/1000+west_pac_north_mod$coefficients[[2]]/1000*latitude_start]
+west_pac_north_data[,area_1000s := west_pac_north_mod$coefficients[[1]]/1000+west_pac_north_mod$coefficients[[2]]/1000*latitude_mid]
 
-west_pac_south_data <- data.table(latitude_start = unique(west_pac_shelf_areas[latitude_end <0,]$latitude_start))
+west_pac_south_data <- data.table(latitude_mid = unique(west_pac_shelf_areas[latitude_end <0,]$latitude_mid))
 
-west_pac_south_data[,area_1000s := west_pac_south_mod$coefficients[[1]]/1000+west_pac_south_mod$coefficients[[2]]/1000*(-latitude_start)]
+west_pac_south_data[,area_1000s := west_pac_south_mod$coefficients[[1]]/1000+west_pac_south_mod$coefficients[[2]]/1000*latitude_mid]
 
 (area_latitude_west_pac <- ggplot() +
-  geom_line(data = west_pac_north_data, aes(x=latitude_start, y = area_1000s), color = "gray71") +
-  geom_line(data = west_pac_south_data, aes(x=latitude_start, y = area_1000s), color = "gray71") +
+  geom_line(data = west_pac_north_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
+  geom_line(data = west_pac_south_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
   geom_point(data = west_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) + 
   geom_line(data = west_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
-  #geom_point(data = west_pac_shelf_areas_highlight, aes(x = latitude_start, y = area), shape =19, color = "seagreen4", size = 2) + 
   geom_rug(data = west_pac_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
  labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
   scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
