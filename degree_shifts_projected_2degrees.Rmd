@@ -1881,7 +1881,7 @@ for (i in 1:length(region_names)) {
                  size = 0.25) +
     geom_tile(data = region_df, aes(x = x, y = y, fill = value), color = "seagreen4") +
     coord_sf(x = c(region_spdf_mask_1s_extent[1], region_spdf_mask_1s_extent[2]), y = c(region_spdf_mask_1s_extent[3], region_spdf_mask_1s_extent[4])) +
-    labs( x = expression("Longitude "*~degree*E*), y = expression("Latitude "*~degree*N*)) +
+    labs( x = paste0("Longitude ", "\u00B0E"), y = paste0("Latitude ", "\u00B0E")) +
     geom_abline(intercept = 0, slope = 0) +
     theme_classic() +
     theme(legend.position = "none"))
@@ -1909,7 +1909,7 @@ for (i in 1:length(region_names)) {
                  size = 0.25) +
     geom_tile(data = region_df, aes(x = x, y = y, fill = value), color = "seagreen4") +
     coord_sf(x = c(region_spdf_mask_1s_extent[1], region_spdf_mask_1s_extent[2]), y = c(region_spdf_mask_1s_extent[3], region_spdf_mask_1s_extent[4])) +
-    labs( x = expression("Longitude "*~degree*E*), y = expression("Latitude "*~degree*N*)) +
+    labs( x = paste0("Longitude ", "\u00B0E"), y = paste0("Latitude ", "\u00B0N")) +
     geom_abline(intercept = 0, slope = 0) +
     theme_classic() +
     theme(legend.position = "none"))

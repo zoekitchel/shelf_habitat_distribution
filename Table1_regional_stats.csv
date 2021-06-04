@@ -1,13 +1,13 @@
 region,hemisphere,contractions,expansions,coef,pvalue
 West Pacific,Northern,10,5,4378.33,0
-West Pacific,Southern,17.39,8.7,-6998.71,0
+West Pacific,Southern,17.39,8.7,6998.71,0
 East Pacific,Northern,13.16,15.79,2330.72,0
-East Pacific,Southern,21.43,25,133.62,0.18
-West Atlantic,Northern,9.76,2.44,1134.85,0.01
-West Atlantic,Southern,11.11,7.41,1973.7,0
+East Pacific,Southern,21.43,25,-133.62,0.18
+West Atlantic,Northern,4.88,2.44,1236.47,0.01
+West Atlantic,Southern,11.11,7.41,-1973.7,0
 West Indian,Northern,0,35.71,3767.64,0
-West Indian,Southern,22.22,33.33,700.87,0.1
-East Atlantic,Northern,10,12.5,6586.05,0
-East Atlantic,Southern,11.11,11.11,614.69,0.01
-East Indian,Northern,10,10,1237.71,0.34
-East Indian,Southern,29.17,20.83,-410.22,0.49
+West Indian,Southern,22.22,33.33,-700.87,0.1
+East Atlantic,Northern,7.5,7.5,5354.04,0
+East Atlantic,Southern,11.11,11.11,-614.69,0.01
+East Indian,Northern,10,10,1069.9,0.39
+East Indian,Southern,26.32,21.05,2660.39,0.12
