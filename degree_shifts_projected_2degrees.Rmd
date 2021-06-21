@@ -3,10 +3,6 @@ title: "2˚ Shifts"
 output: html_notebook
 ---
 
----
-title: "Degree shifts but projected to calculate Area"
-output: html_notebook
----
 
 This script is very similar to degree_shifts_projected, but looks at 2˚ shifts instead of 1˚shifts. 
 

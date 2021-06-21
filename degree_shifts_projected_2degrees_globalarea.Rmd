@@ -1,0 +1,88 @@
+---
+title: "2˚ Shifts global area change analysis"
+output: html_notebook
+---
+
+```{r setup}
+library(raster)
+library(sf)
+library(ncdf4)
+library(rmapshaper)
+library(tidyverse)
+library(diptest)
+library(moments)
+library(viridis) #colors
+library(data.table)
+library(hydroTSM) #hypsometric curves
+library(gridExtra)
+library(maptools)
+library(rgdal)
+library(rgeos)
+library(SpaDES)
+library(rnaturalearth)
+library(rnaturalearthdata)
+
+load("west_pac_shelf_areas_2degrees.Rdata")
+load("west_atl_shelf_areas_2degrees.Rdata")
+load("west_ind_shelf_areas_2degrees.Rdata")
+load("east_pac_shelf_areas_2degrees.Rdata")
+load("east_atl_shelf_areas_2degrees.Rdata")
+load("east_ind_shelf_areas_2degrees.Rdata")
+
+#merge
+
+```
+
+For ease, merge areas (I need to do this when I actually have matched them in degree_shifts_projected_2degrees script)
+```{r merge tables for each region}
+west_pac_shelf_areas.r <- west_pac_shelf_areas[,1:3][,region := "west_pac"][, area_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))]
+west_atl_shelf_areas.r <- west_atl_shelf_areas[,1:3][,region := "west_atl"][, area_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))]
+west_ind_shelf_areas.r <- west_ind_shelf_areas[,1:3][,region := "west_ind"][, area_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))]
+east_pac_shelf_areas.r <- east_pac_shelf_areas[,1:3][,region := "east_pac"][, area_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))]
+east_atl_shelf_areas.r <- east_atl_shelf_areas[,1:3][,region := "east_atl"][, area_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))]
+east_ind_shelf_areas.r <- east_ind_shelf_areas[,1:3][,region := "east_ind"][, area_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))]
+
+shelf_areas <- rbind(west_pac_shelf_areas.r, west_atl_shelf_areas.r, west_ind_shelf_areas.r, east_pac_shelf_areas.r, east_atl_shelf_areas.r, east_ind_shelf_areas.r)
+
+#positive versus negative change
+
+shelf_areas[,change_dir := ifelse(area_change >0, "positive", "negative")][,hemisphere := ifelse(latitude_end >0, "Northern", "Southern")]
+
+#add labels to regions
+shelf_areas[,region := factor(region, levels = c("east_atl", "east_ind", "east_pac", "west_atl", "west_ind", "west_pac"), labels = c("East Atlantic","East Indian","East Pacific","West Atlantic","West Indian","West Pacific"))]
+```
+
+
+Calculate change in area from one bin to the next
+```{r change in area}
+
+(area_change_latitude  <- ggplot(data = shelf_areas) +
+  geom_col(aes(x=latitude_end, y=area_change/1000, fill = change_dir)) +
+ labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
+     scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Direction of Habitat\nArea Change\nWith 2\u00B0 Shift", labels = c("Negative", "Positive")) +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) +
+  coord_flip() +
+  theme_classic() +
+   facet_wrap(~region, scales = "free"))
+  
+
+ggsave(area_change_latitude_west_pac, file = "area_change_latitude.jpg")
+
+```
+
+Make datatable with statistics
+```{r datatable with stats}
+shelf_areas[, sum_change := sum(area_change, na.rm = T)]
+shelf_areas[, sum_change_reg := sum(area_change, na.rm = T), region]
+shelf_areas[, sum_change_hemis := sum(area_change, na.rm = T), hemisphere]
+shelf_areas[, sum_change_hemis_reg := sum(area_change, na.rm = T), .(region, hemisphere)]
+
+(shelf_area_change_all_stats <- unique(shelf_areas[,.(region, hemisphere, sum_change, sum_change_reg, sum_change_hemis, sum_change_hemis_reg)]))
+
+(shelf_area_change_region_stats <- unique(shelf_areas[,.(region, sum_change_reg)]))
+(shelf_area_change_hemis_stats <- unique(shelf_areas[,.(hemisphere, sum_change_hemis)]))
+
+
+```
+
