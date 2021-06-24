@@ -29,32 +29,46 @@ load("east_pac_shelf_areas_2degrees.Rdata")
 load("east_atl_shelf_areas_2degrees.Rdata")
 load("east_ind_shelf_areas_2degrees.Rdata")
 
-#merge
-
 ```
 
 For ease, merge areas (I need to do this when I actually have matched them in degree_shifts_projected_2degrees script)
 ```{r merge tables for each region}
-west_pac_shelf_areas.r <- west_pac_shelf_areas[,1:3][,region := "west_pac"][, area_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))]
-west_atl_shelf_areas.r <- west_atl_shelf_areas[,1:3][,region := "west_atl"][, area_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))]
-west_ind_shelf_areas.r <- west_ind_shelf_areas[,1:3][,region := "west_ind"][, area_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))]
-east_pac_shelf_areas.r <- east_pac_shelf_areas[,1:3][,region := "east_pac"][, area_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))]
-east_atl_shelf_areas.r <- east_atl_shelf_areas[,1:3][,region := "east_atl"][, area_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))]
-east_ind_shelf_areas.r <- east_ind_shelf_areas[,1:3][,region := "east_ind"][, area_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))]
+west_pac_shelf_areas.r <- west_pac_shelf_areas[,1:3][,region := "west_pac"]
+west_atl_shelf_areas.r <- west_atl_shelf_areas[,1:3][,region := "west_atl"]
+west_ind_shelf_areas.r <- west_ind_shelf_areas[,1:3][,region := "west_ind"]
+east_pac_shelf_areas.r <- east_pac_shelf_areas[,1:3][,region := "east_pac"]
+east_atl_shelf_areas.r <- east_atl_shelf_areas[,1:3][,region := "east_atl"]
+east_ind_shelf_areas.r <- east_ind_shelf_areas[,1:3][,region := "east_ind"]
+
+
 
 shelf_areas <- rbind(west_pac_shelf_areas.r, west_atl_shelf_areas.r, west_ind_shelf_areas.r, east_pac_shelf_areas.r, east_atl_shelf_areas.r, east_ind_shelf_areas.r)
 
-#positive versus negative change
+shelf_areas[,hemisphere := ifelse(latitude_end >0, "Northern", "Southern")]
 
-shelf_areas[,change_dir := ifelse(area_change >0, "positive", "negative")][,hemisphere := ifelse(latitude_end >0, "Northern", "Southern")]
+#be sure to order table first so that shift is calculated accurately
 
-#add labels to regions
-shelf_areas[,region := factor(region, levels = c("east_atl", "east_ind", "east_pac", "west_atl", "west_ind", "west_pac"), labels = c("East Atlantic","East Indian","East Pacific","West Atlantic","West Indian","West Pacific"))]
+#include absolute value of latitude end to help with sorting
+shelf_areas[,latitude_end_abs  := abs(latitude_end)]
+setkey(shelf_areas, region, hemisphere, latitude_end_abs) #sort by region, and then hemisphere, and then latitude_end_abs increasing (because we want to be moving outward from the equator)
+
+
+
 ```
 
 
 Calculate change in area from one bin to the next
 ```{r change in area}
+#area change
+shelf_areas[, area_change :=  area_rasterarea -  shift(area_rasterarea, n = 1, type = "lag"), .(region, hemisphere)] #change in species from previous bin to this bin?
+#note that it's important to include grouping for region so that calculations are correct, and there's always a gain at the lowest latitude
+
+#positive versus negative change
+
+shelf_areas[,change_dir := ifelse(area_change > 0, "positive", "negative")]
+
+#add labels to regions
+shelf_areas[,region := factor(region, levels = c("east_atl", "east_ind", "east_pac", "west_atl", "west_ind", "west_pac"), labels = c("East Atlantic","East Indian","East Pacific","West Atlantic","West Indian","West Pacific"))]
 
 (area_change_latitude  <- ggplot(data = shelf_areas) +
   geom_col(aes(x=latitude_end, y=area_change/1000, fill = change_dir)) +
@@ -67,22 +81,178 @@ Calculate change in area from one bin to the next
    facet_wrap(~region, scales = "free"))
   
 
-ggsave(area_change_latitude_west_pac, file = "area_change_latitude.jpg")
+ggsave(area_change_latitude, file = "area_change_latitude.jpg")
 
 ```
 
+Let's make this same figure but for species lost or gained. 
+
 Make datatable with statistics
 ```{r datatable with stats}
-shelf_areas[, sum_change := sum(area_change, na.rm = T)]
-shelf_areas[, sum_change_reg := sum(area_change, na.rm = T), region]
-shelf_areas[, sum_change_hemis := sum(area_change, na.rm = T), hemisphere]
-shelf_areas[, sum_change_hemis_reg := sum(area_change, na.rm = T), .(region, hemisphere)]
+shelf_areas[, sum_change := sum(area_change, na.rm = T)] #total change in area across all shelf regions
+shelf_areas[, sum_change_reg := sum(area_change, na.rm = T), region] #total change in area by region
+shelf_areas[, sum_change_hemis := sum(area_change, na.rm = T), hemisphere] #total change in area by hemisphere
+shelf_areas[, sum_change_hemis_reg := sum(area_change, na.rm = T), .(region, hemisphere)] #total change in area by both hemisphere and region
+
+shelf_areas[, original_area_reg := sum(area_rasterarea, na.rm = T), region] #original area by region
+shelf_areas[, final_area_reg := original_area_reg + sum(area_change, na.rm = T), region] #final area by region
 
 (shelf_area_change_all_stats <- unique(shelf_areas[,.(region, hemisphere, sum_change, sum_change_reg, sum_change_hemis, sum_change_hemis_reg)]))
 
 (shelf_area_change_region_stats <- unique(shelf_areas[,.(region, sum_change_reg)]))
 (shelf_area_change_hemis_stats <- unique(shelf_areas[,.(hemisphere, sum_change_hemis)]))
+(shelf_area_change_hemis_reg_stats <- unique(shelf_areas[,.(hemisphere, region, sum_change_hemis_reg)]))
 
+#individual bins
+shelf_areas[, original_spp_predicted_meixler :=
+              exp(6.854 + (0.185 * log(area_rasterarea)) -  (1.084 * log(abs(0.5*(latitude_start+latitude_end)))))]
+
+shelf_areas[, original_spp_predicted_levin := 16.18*area_rasterarea^0.226]
+
+#be sure to order table so that shift is used accurately (I did this above also, this is just a check)
+#include absolute value of latitude end
+setkey(shelf_areas, region, hemisphere, latitude_end_abs)
+
+#species change
+shelf_areas[, change_spp_predicted_meixler :=  original_spp_predicted_meixler -  shift(original_spp_predicted_meixler, n = 1, type = "lag"), .(region, hemisphere)] #change in species from previous bin to this bin?
+#note that it's important to include grouping for region so that calculations are correct, and there's always a gain at the lowest latitude
+
+shelf_areas[, change_spp_predicted_levin :=  original_spp_predicted_levin -  shift(original_spp_predicted_levin, n = 1, type = "lag"), region] #change in species from previous bin to this bin?
+
+#color code by direction of spp gain or loss
+shelf_areas[, spp_change_pos_neg_meixler := ifelse(change_spp_predicted_meixler > 0, "Positive","Negative")]
+shelf_areas[, spp_change_pos_neg_levin := ifelse(change_spp_predicted_levin > 0, "Positive","Negative")]
+
+```
+Species Area Curves
+
+How much total area to begin with? #FIX THIS
+```{r total area to begin with}
+OG_total_shelf_area <- sum(shelf_areas$area_rasterarea)
+new_total_shelf_area <- sum(shelf_areas[latitude_start > 0])
+
+final_shelf_area <- OG_total_shelf_area-106656.4
+
+#Equation Spp=16.18*A^0.226 (Phillip Levin 2008) https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/j.1365-2664.2009.01667.x
+
+OG_species <- 16.18*OG_total_shelf_area^0.226
+final_species <- 16.18*final_shelf_area^0.226
+
+final_species -  OG_species
+
+```
+
+Comparing alternative ways of calculating SAR
+
+Also, Chittaro et al. 2010 (Levin is on this paper as well)
+spp = 26.1*A^0.183
+
+```{r comparing alternative ways of calculating SAR}
+testareas <- data.table(area= seq(1,10000000,by = 100))
+testareas[,Levin_SAR := 16.18*area^0.226][,Chittaro_SAR := 26.1*area^0.183][,Meixler_SAR_30 := exp(6.854 + 0.185 * log(area) -1.084 * log(30))][,Meixler_SAR_1 := exp(6.854 + 0.185 * log(area) -1.084 * log(1))][,Meixler_SAR_5 := exp(6.854 + 0.185 * log(area) -1.084 * log(5))][,Meixler_SAR_60 := exp(6.854 + 0.185 * log(area) -1.084 * log(60))][,Meixler_SAR_80 := exp(6.854 + 0.185 * log(area) -1.084 * log(80))][,Meixler_SAR_70 := exp(6.854 + 0.185 * log(area) -1.084 * log(70))][,Meixler_SAR_10 := exp(6.854 + 0.185 * log(area) -1.084 * log(10))] #includes alternative latitudes
+
+#wide to long
+testareas.l <- melt(testareas, measure.vars = c(2:ncol(testareas)))
+
+testareas.l$variable <- factor(testareas.l$variable, levels = c("Levin_SAR","Chittaro_SAR","Meixler_SAR_1" , "Meixler_SAR_5"  ,    "Meixler_SAR_10" ,  "Meixler_SAR_30" , "Meixler_SAR_60","Meixler_SAR_70",
+"Meixler_SAR_80" ))
+
+levels(testareas.l$variable)
+
+ggplot(data = testareas.l[variable == "Chittaro_SAR" | variable == "Levin_SAR"], aes(x = area)) +
+  geom_point(aes(y = value, color = variable)) +
+  labs(x = "Area km^2", y = "# spp") +
+  theme_classic()
+
+ggsave(file = "testing_SAR.jpg")
+
+```
+Continuing with Marci's calculations
+
+spp = exp(6.854 + (0.185 x log(A)) -  (1.084 * log(L)))
+
+Let's make this same figure as area_change_latitude but for species lost or gained instead of area lost or gained
+
+```{r change in # spp}
+#Meixler
+(spp_change_latitude_meixler  <- ggplot(data = shelf_areas) +
+  geom_col(aes(x=latitude_end, y=change_spp_predicted_meixler, fill = spp_change_pos_neg_meixler)) +
+ labs(x=paste0("Latitude ","\u00B0","E"), y = "Spp Richness") +
+     scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Meixler 2019\n\n Richness with 2\u00B0 Shift") +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) +
+  coord_flip() +
+  theme_classic() +
+   facet_wrap(~region, scales = "free"))
+  
+
+ggsave(spp_change_latitude_meixler, file = "mexlier_spprichness_change_latitude.jpg")
+
+#Meixler ONLY for regions it was calibrated for 
+
+#Meixler
+(spp_change_latitude_meixler_reduced  <- ggplot(data = shelf_areas[latitude_end_abs > 22 & latitude_end_abs > 46]) +
+  geom_col(aes(x=latitude_end, y=change_spp_predicted_meixler, fill = spp_change_pos_neg_meixler)) +
+ labs(x=paste0("Latitude ","\u00B0","E"), y = "Spp Richness") +
+     scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Meixler 2019\nChange in Species\n Richness with 2\u00B0 Shift") +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) +
+  coord_flip() +
+  theme_classic() +
+   facet_wrap(~region, scales = "free") +
+    lims(y = c(-120, 55)))
+  
+
+ggsave(spp_change_latitude_meixler_reduced, file = "spp_change_latitude_meixler_reduced.jpg")
+
+#Levin
+
+(spp_change_latitude_levin  <- ggplot(data = shelf_areas) +
+  geom_col(aes(x=latitude_end, y=change_spp_predicted_levin, fill = spp_change_pos_neg_levin)) +
+ labs(x=paste0("Latitude ","\u00B0","E"), y = "Spp Richness") +
+     scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Levin 2009\nChange in Species\n Richness with 2\u00B0 Shift") +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) +
+  coord_flip() +
+  theme_classic() +
+   facet_wrap(~region, scales = "free") +
+    lims(y = c(-120, 55)))
+  
+
+ggsave(spp_change_latitude_levin, file = "levin_spprichness_change_latitude.jpg")
+
+#Levin (only for limited Meixler latitudes)
+
+(spp_change_latitude_levin_reduced  <- ggplot(data = shelf_areas[latitude_end_abs > 22 & latitude_end_abs > 46]) +
+  geom_col(aes(x=latitude_end, y=change_spp_predicted_levin, fill = spp_change_pos_neg_levin)) +
+ labs(x=paste0("Latitude ","\u00B0","E"), y = "Spp Richness") +
+     scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Levin 2009\nChange in Species\n Richness with 2\u00B0 Shift") +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) +
+  coord_flip() +
+  theme_classic() +
+   facet_wrap(~region, scales = "free") +
+    lims(y = c(-120, 55)))
+  
+
+ggsave(spp_change_latitude_levin_reduced, file = "spp_change_latitude_levin_reduced.jpg")
+
+#view with area?
+plot_grid(area_change_latitude, spp_change_latitude_levin, nrow = 2, ncol = 1)
+```
+Try using Phil Levin Indices instead #Spp = 16.18*A^0.226
+
+What if we compare both?
+```{r compare Levin versus Meixler}
+ggplot(data = shelf_areas) +
+  geom_point(aes(x = latitude_end_abs, y = original_spp_predicted_meixler), color = "blue") +
+    geom_point(aes(x = latitude_end_abs, y = original_spp_predicted_levin), color = "green") +
+  theme_classic()
+```
+
+But, what about Chittaro et al. 2010 (Levin is on this paper as well)
+spp = 26.1*A^0.183
+```{r}
 
 ```
 
