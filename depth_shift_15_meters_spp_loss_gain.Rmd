@@ -1,0 +1,431 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Test with a single region
+
+---
+title: "Starting with Bathy for Shelves"
+output: html_notebook
+---
+
+```{r setup}
+library(raster)
+library(rgdal)
+library(sf)
+library(ncdf4)
+library(rmapshaper)
+library(tidyverse)
+library(diptest)
+library(moments)
+library(viridis) #colors
+library(data.table)
+library(hydroTSM) #hypsometric curves
+library(gridExtra)
+library(ggfortify)
+library(rgeos)
+library(ggridges) #allows for gradient in density plot
+library(psych) #summary statistics
+library(plyr) #round_any
+
+etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/etopo_shelf_df.rds")
+#bring in bathy for shelf regions
+
+#LMEs
+LME_spdf <- readOGR("LME66/LMEs66.shp")
+
+
+#get rid of Antarctica and the arctic
+LME_spdf <- LME_spdf[LME_spdf$LME_NUMBER != 61 & LME_spdf$LME_NUMBER != 64,]
+
+#equal area projection
+eaproj <- CRS("+proj=laea")
+LME_spdf.EA <- spTransform(LME_spdf, eaproj)
+
+
+```
+
+
+Let's just start with one LME to get started
+```{r LME_baltic}
+LME_baltic <- LME_spdf[1,]
+plot(LME_baltic)
+
+center <- gCentroid(LME_baltic)
+center@coords[2]
+```
+
+
+Make bathy layer into raster (I should see if this is different if I use equal area projection (To Do))
+```{r rasterize}
+proj <- crs(LME_spdf)
+etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = proj)
+
+
+#make figure of shelves
+  #png("etopo_shelf_bathy.png", height=5, width=7, units="in", res=300)
+  #plot(etopo_shelf_raster)
+  #dev.off()
+
+```
+
+Depth distribution
+```{r depth distribution}
+mean(etopo_shelf_raster$z)
+hist(etopo_shelf_raster$z)
+
+cellStats(etopo_shelf_raster, stat = 'mean')
+hist(etopo_shelf_raster)
+```
+
+Clip raster to each individual polygon
+
+```{r clip raster to polygon}
+#crop bathy layer to LME subset
+bathy_baltic_extent <- crop(etopo_shelf_raster, extent(LME_baltic))
+
+#which areas of raster fall within borders?
+bathy_baltic_mask <- mask(bathy_baltic_extent, LME_baltic)
+
+#convert to df for plotting
+
+  # First, to a SpatialPointsDataFrame
+  bathy_baltic_pts <- rasterToPoints(bathy_baltic_mask, spatial = TRUE)
+  # Then to a 'conventional' dataframe
+  bathy_baltic_dt  <- data.table(data.frame(bathy_baltic_pts))
+
+#keep depth positive  
+bathy_baltic_dt[,depth := -(z)]
+
+#fortify to plot shapefile on top
+#LME_baltic_df <- fortify(LME_baltic) (don't need because indstead I make polygon to surround raster)
+
+#To get a polygon that surrounds cells that are not NA
+
+  # make all values the same.
+  bathy_baltic_mask_1s <- reclassify(bathy_baltic_mask, cbind(-Inf, Inf, 1))
+  
+  # convert to polygons (you need to have package 'rgeos' installed for this to work)
+  bathy_baltic_polygon_1s <- rasterToPolygons(bathy_baltic_mask_1s, dissolve=TRUE) #single polygon
+  bathy_baltic_polygon <- rasterToPolygons(bathy_baltic_mask, dissolve=TRUE) #one polygon for each depth profile
+  
+  LME_reduced_baltic_df <- fortify(bathy_baltic_polygon)
+
+ggplot(bathy_baltic_dt) +
+  geom_tile(aes(x = x, y = y, fill = depth)) +
+  scale_fill_viridis(direction = -1, limits = c(0,2000)) +
+  theme_classic() +
+  labs(x = "Longitude", y = "Latitude", fill = "Depth (m)") +
+  guides(fill = guide_colorbar(reverse = T)) +
+  geom_path(data = LME_reduced_baltic_df, aes(x = long, y = lat, group = group), fill = NA, color = "black")
+
+summary(bathy_baltic_dt)
+
+#how to get area of raster
+
+  #get sizes of all cells in raster [km2]
+  cell_size<-area(bathy_baltic_mask, na.rm=TRUE, weights=FALSE)
+  #delete NAs from vector of all raster cells
+  ##NAs lie outside of the rastered region, can thus be omitted
+  cell_size<-cell_size[!is.na(cell_size)]
+  #compute area [km2] of all cells in geo_raster
+  bathy_raster_area<-length(cell_size)*median(cell_size)
+  
+#Also, try using raster::area on polygon
+
+#reproject
+#The Lambert azimuthal equal-area projection is a particular mapping from a sphere to a disk. It accurately represents area in all regions of the sphere, but it does not accurately represent angles.
+  equalareaprojection<- crs("+proj=laea")
+
+  bathy_baltic_polygon_1s.EA <- spTransform(bathy_baltic_polygon_1s, equalareaprojection)
+  bathy_baltic_polygon.EA <- spTransform(bathy_baltic_polygon, equalareaprojection)
+  
+    #get sizes of all polygons in shapefile (m^2)
+  polygon_area <- area(bathy_baltic_polygon.EA, dissolve = T)
+
+  polygon_area_kms <- polygon_area/1e6
+
+```
+
+Will have to be creative on how to map LMEs that cross 180 longitude, ex. Aleutian Islands
+```{r high longitude examples}
+LME_datatable <- LME_spdf@data
+LME_aleutian <- LME_spdf[LME_spdf$LME_NUMBER == 65,]
+
+#crop bathy layer to LME subset
+bathy_aleutian_extent <- crop(etopo_shelf_raster, extent(LME_aleutian))
+
+#which areas of raster fall within borders?
+bathy_aleutian_mask <- mask(bathy_aleutian_extent, LME_aleutian)
+
+#convert to df for plotting
+
+  # First, to a SpatialPointsDataFrame
+  bathy_aleutian_pts <- rasterToPoints(bathy_aleutian_mask, spatial = TRUE)
+  # Then to a 'conventional' dataframe
+  bathy_aleutian_dt  <- data.table(data.frame(bathy_aleutian_pts))
+
+#keep depth positive  
+bathy_aleutian_dt[,depth := -(z)]
+
+bathy_aleutian_dt$x_shift <- ifelse(bathy_aleutian_dt$x >0, bathy_aleutian_dt$x - 360, bathy_aleutian_dt$x)
+
+
+#To get a polygon that surrounds cells that are not NA
+
+  # make all values the same.
+  r <- reclassify(bathy_aleutian_mask, cbind(-Inf, Inf, 1))
+  
+  # convert to polygons (you need to have package 'rgeos' installed for this to work)
+  pp <- rasterToPolygons(r, dissolve=TRUE)
+  
+  LME_reduced_aleutian_df <- fortify(pp)
+  
+  
+LME_reduced_aleutian_df$long_shift <- ifelse(LME_reduced_aleutian_df$long >0, LME_reduced_aleutian_df$long - 360, LME_reduced_aleutian_df$long)
+  
+
+ggplot(bathy_aleutian_dt) +
+  geom_tile(aes(x = x_shift, y = y, fill = depth)) +
+  scale_fill_viridis(direction = -1, limits = c(0,2000)) +
+  theme_classic() +
+  labs(x = "Longitude (˚E)", y = "Latitude", fill = "Depth (m)") +
+  guides(fill = guide_colorbar(reverse = T)) +
+  geom_path(data = LME_reduced_aleutian_df, aes(x = long_shift, y = lat, group = group), fill = NA, color = "black")
+
+```
+
+How does area vary with depth
+```{r hyposometric curves}
+#list of values within raster
+bathy_baltic_depth_list <- getValues(bathy_baltic_mask)
+bathy_baltic_depth_list <- bathy_baltic_depth_list[!is.na(bathy_baltic_depth_list)]
+
+bathy_baltic_depth_list_pos <- -1*bathy_baltic_depth_list
+
+bathy_baltic_SGDF <- as(bathy_baltic_mask, 'SpatialGridDataFrame') # as spatial grid data frame
+hypsometric(bathy_baltic_SGDF)
+
+#dimensions of raster?
+dim(bathy_baltic_mask)
+
+#total number of cells?
+cells <- dim(bathy_baltic_mask)[1]*dim(bathy_baltic_mask)[2]
+
+
+#cells of each depth value in data table
+bathy_baltic_bydepth <- data.table(freq(bathy_baltic_mask))
+
+#NA cells
+na_cell_count <- bathy_baltic_bydepth[is.na(value),]$count
+
+#filled cells
+
+cells_filled <- cells-na_cell_count
+
+bathy_baltic_bydepth_complete <- bathy_baltic_bydepth[!is.na(value)]
+
+#calculate percent of total area in polygon
+bathy_baltic_bydepth_complete[,percent_area := count/sum(count)]
+
+
+bathy_baltic_bydepth_complete[,area := percent_area*bathy_raster_area][,depth := -value]
+
+
+
+(plot <- ggplot(data = bathy_baltic_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
+  geom_col(width = 15) +
+  theme_classic() +
+  labs(x = "Depth (m)", y = "Area (km^2)", fill = "Depth (m)") +
+  scale_y_continuous(expand = c(0, 0)) +
+  scale_x_continuous(expand = c(0,0)) +
+  scale_fill_gradientn(colors = rev(viridis(10)), limits = c(0, 2000)) +
+  guides(position = "bottom", fill = guide_colorbar(reverse = T)))
+  
+
+ggsave(plot, filename = "Baltic_Sea.png")
+```
+
+I now need a datatable with:
+
+depth bin              area         spp # 
+0-15, 16-30, etc. 
+
+TO DO: LOOK INTO WHAT COUNT MEANS
+```{r making depth bin table }
+bathy_baltic_bydepth_complete[, depth_15s := round_any(depth, 15, f = floor)] #grouping to 15 m depths
+
+#sum areas over depth bins
+bathy_baltic_bydepth_complete[, area_summed_15mbins :=  sum(area), depth_15s]
+
+bathy_baltic_bydepth_complete_15mbins <- unique(bathy_baltic_bydepth_complete[,.(depth_15s, area_summed_15mbins)])
+
+#make sure it looks right
+ggplot(data = bathy_baltic_bydepth_complete_15mbins, aes(x = depth_15s, y = area_summed_15mbins)) + geom_col() +
+  theme_classic()
+```
+TO DO: check if we're actually in km and not meters (yes, looks good)
+
+Calculate # spp using Levin et al. 2009
+```{r }
+bathy_baltic_bydepth_complete_15mbins[,original_spp_predicted_levin := 16.18*area_summed_15mbins^0.226]
+
+#spp by depth plot
+ggplot(data = bathy_baltic_bydepth_complete_15mbins, aes(x = depth_15s)) +
+  geom_col(aes(y = area_summed_15mbins/100)) +
+  geom_point(aes(y = original_spp_predicted_levin)) +
+  labs(x = "Depth  (15 m bins)", y = "Area (100s of km^2)") +
+  theme_classic()
+
+#be sure to order table so that shift is used accurately (I did this above also, this is just a check)
+#include absolute value of latitude end
+setkey(bathy_baltic_bydepth_complete_15mbins, depth_15s)
+
+bathy_baltic_bydepth_complete_15mbins[, change_spp_predicted_levin :=  original_spp_predicted_levin -  shift(original_spp_predicted_levin, n = 1, type = "lag")] #change in species from previous bin to this bin?
+
+bathy_baltic_bydepth_complete_15mbins[, spp_change_pos_neg_levin := ifelse(change_spp_predicted_levin > 0, "Positive","Negative")] #for coloring
+
+
+#overall sum of spp richness change
+total_spp_richness_change_baltic <- sum(bathy_baltic_bydepth_complete_15mbins$change_spp_predicted_levin, na.rm = T)
+
+
+#plot change in spp
+#spp by depth plot
+ggplot(data = bathy_baltic_bydepth_complete_15mbins, aes(x = depth_15s)) +
+  geom_col(aes(y = change_spp_predicted_levin, fill = spp_change_pos_neg_levin)) +
+   scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = paste0("Overall Species\nRichness Change: ", round(total_spp_richness_change_baltic,2), "\n\nDirection of Species\nRichness Change with\n15m Depth Shift"), labels = c("Negative", "Positive")) +
+  labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+  geom_hline(yintercept = 0) +
+  theme_classic()
+
+```
+Now I have to create this for each region in a loop, and then export to PDF
+
+```{r loop for spp loss or gain calculations}
+
+#reorder LME_spdf by LME # 
+LME_spdf_ordered <- LME_spdf[order(LME_spdf$LME_NUMBER),]
+
+
+LME_area_spp_change_stats <- as.data.table(matrix(nrow = nrow(LME_spdf)))
+LME_area_spp_change_stats[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][, total_area_change := as.numeric(V1)][, total_spp_change := as.numeric(V1)]
+
+LME_area_spp_change_stats[, V1 := NULL]
+
+
+lme_spp_change_plots <- vector("list", length = nrow(LME_spdf))
+lme_spp_count_area_sum_plots <- vector("list", length = nrow(LME_spdf))
+
+for (i in 1:nrow(LME_area_spp_change_stats)) {
+  LME_single <- LME_spdf_ordered[i,]
+  LME_area_spp_change_stats[i, "lme_name"] <- LME_single$LME_NAME
+  LME_area_spp_change_stats[i, "lme_number"] <- LME_single$LME_NUMBER
+  
+  #clip raster to LME
+  LME_extent <- crop(etopo_shelf_raster, extent(LME_single))
+  
+  #which areas of raster fall within borders?
+  LME_mask <- mask(LME_extent, LME_single)
+  
+  #conver to df for plotting
+    # First, to a SpatialPointsDataFrame
+    LME_points <- rasterToPoints(LME_mask, spatial = TRUE)
+    
+    # Then to a 'conventional' dataframe
+    LME_dt  <- data.table(data.frame(LME_points))
+  
+  #keep depth positive  
+  LME_dt[,depth := -(z)]
+  
+  LME_dt$x_shift <- ifelse(
+    max(LME_dt$x)-min(LME_dt$x) > 200 & LME_dt$x >0,
+    LME_dt$x - 360,
+    LME_dt$x)
+  
+  #size of raster  
+  #get sizes of all cells in raster [km2]
+    cell_size<-area(LME_mask, na.rm=TRUE, weights=FALSE)
+    #delete NAs from vector of all raster cells
+    ##NAs lie outside of the rastered region, can thus be omitted
+    cell_size<-cell_size[!is.na(cell_size)]
+    #compute area [km2] of all cells in geo_raster
+    bathy_raster_area<-length(cell_size)*median(cell_size)
+    
+    LME_area_spp_change_stats[i, "lme_area"] <- bathy_raster_area
+  
+  
+    #list of values within raster
+  LME_bathy_depth_list <- getValues(LME_mask)
+  LME_bathy_depth_list <- LME_bathy_depth_list[!is.na(LME_bathy_depth_list)]
+  
+  LME_bathy_depth_list_pos <- -1*LME_bathy_depth_list
+
+
+  #cells of each depth value in data table
+  LME_bathy_bydepth <- data.table(freq(LME_mask))
+  
+  LME_bathy_bydepth_complete <- LME_bathy_bydepth[!is.na(value)]
+  
+  #calculate percent of total area in polygon
+  LME_bathy_bydepth_complete[,percent_area := count/sum(count)]
+  
+  
+  LME_bathy_bydepth_complete[,area := percent_area*bathy_raster_area][,depth := -value]
+  
+  LME_bathy_bydepth_complete[, depth_15s := round_any(depth, 15, f = floor)] #grouping to 15 m depths
+
+  #sum areas over depth bins
+  LME_bathy_bydepth_complete[, area_summed_15mbins :=  sum(area), depth_15s]
+
+  LME_bathy_bydepth_complete_15mbins <- unique(LME_bathy_bydepth_complete[,.(depth_15s, area_summed_15mbins)])
+  
+  LME_bathy_bydepth_complete_15mbins[,original_spp_predicted_levin := 16.18*area_summed_15mbins^0.226]
+
+  #spp by depth plot
+  lme_spp_count_area_sum_plots[[i]] <- ggplot(data = LME_bathy_bydepth_complete_15mbins, aes(x = depth_15s)) +
+    geom_col(aes(y = area_summed_15mbins/100)) +
+    geom_point(aes(y = original_spp_predicted_levin)) +
+    labs(x = "Depth  (15 m bins)", y = "Area (100s of km^2)") +
+    theme_classic()
+
+  #be sure to order table so that shift is used accurately (I did this above also, this is just a check)
+  #include absolute value of latitude end
+  setkey(LME_bathy_bydepth_complete_15mbins, depth_15s)
+  
+  #change in area
+    LME_bathy_bydepth_complete_15mbins[, change_area :=  area_summed_15mbins -  shift(area_summed_15mbins, n = 1, type = "lag")] #change in species from previous bin to this bin?
+  #change in spp richness
+  LME_bathy_bydepth_complete_15mbins[, change_spp_predicted_levin :=  original_spp_predicted_levin -  shift(original_spp_predicted_levin, n = 1, type = "lag")] #change in species from previous bin to this bin?
+
+  LME_bathy_bydepth_complete_15mbins[, spp_change_pos_neg_levin := ifelse(change_spp_predicted_levin > 0, "Positive","Negative")] #for coloring
+
+    #overall change in area
+  LME_area_spp_change_stats[i, "total_area_change"] <- sum(LME_bathy_bydepth_complete_15mbins$change_area, na.rm = T)
+  
+  #overall sum of spp richness change
+  LME_area_spp_change_stats[i, "total_spp_change"] <- sum(LME_bathy_bydepth_complete_15mbins$change_spp_predicted_levin, na.rm = T)
+
+
+  #plot change in spp
+  #spp by depth plot
+  lme_spp_count_area_sum_plots[[i]] <- ggplot(data = LME_bathy_bydepth_complete_15mbins, aes(x = depth_15s)) +
+    geom_col(aes(y = change_spp_predicted_levin, fill = spp_change_pos_neg_levin)) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = paste0("Overall Species\nRichness Change: ", round(LME_area_spp_change_stats[i, "total_spp_change"],2), "\n\nDirection of Species\nRichness Change with\n15m Depth Shift"), labels = c("Negative", "Positive")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+    geom_hline(yintercept = 0) +
+    theme_classic()
+
+ 
+    print(paste(i, nrow(LME_area_spp_change_stats), sep = "/"))
+  
+
+}
+
+saveRDS(LME_area_spp_change_stats, file = "LME_area_spp_change_stats.RData")
+
+#plots to pdf
+ggsave("arranged_LME_sppchange.pdf", marrangeGrob(lme_spp_count_area_sum_plots, ncol=2, nrow = 2))
+```
+
