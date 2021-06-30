@@ -73,7 +73,7 @@ shelf_areas[,region := factor(region, levels = c("east_atl", "east_ind", "east_p
 (area_change_latitude  <- ggplot(data = shelf_areas) +
   geom_col(aes(x=latitude_end, y=area_change/1000, fill = change_dir)) +
  labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
-     scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Direction of Habitat\nArea Change\nWith 2\u00B0 Shift", labels = c("Negative", "Positive")) +
+     scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Direction of Shelf\nArea Change\nWith 2\u00B0 Shift", labels = c("Negative", "Positive")) +
   geom_vline(xintercept = 0) +
   geom_hline(yintercept = 0) +
   coord_flip() +
@@ -95,13 +95,16 @@ shelf_areas[, sum_change_hemis := sum(area_change, na.rm = T), hemisphere] #tota
 shelf_areas[, sum_change_hemis_reg := sum(area_change, na.rm = T), .(region, hemisphere)] #total change in area by both hemisphere and region
 
 shelf_areas[, original_area_reg := sum(area_rasterarea, na.rm = T), region] #original area by region
-shelf_areas[, final_area_reg := original_area_reg + sum(area_change, na.rm = T), region] #final area by region
+shelf_areas[, final_area_reg := original_area_reg + sum_change_reg, region] #final area by region
 
 (shelf_area_change_all_stats <- unique(shelf_areas[,.(region, hemisphere, sum_change, sum_change_reg, sum_change_hemis, sum_change_hemis_reg)]))
 
 (shelf_area_change_region_stats <- unique(shelf_areas[,.(region, sum_change_reg)]))
 (shelf_area_change_hemis_stats <- unique(shelf_areas[,.(hemisphere, sum_change_hemis)]))
 (shelf_area_change_hemis_reg_stats <- unique(shelf_areas[,.(hemisphere, region, sum_change_hemis_reg)]))
+
+#color by direction
+shelf_area_change_hemis_reg_stats[,change_direction := factor(ifelse(sum_change_hemis_reg >1, 1, 0))]
 
 #individual bins
 shelf_areas[, original_spp_predicted_meixler :=
@@ -117,13 +120,60 @@ setkey(shelf_areas, region, hemisphere, latitude_end_abs)
 shelf_areas[, change_spp_predicted_meixler :=  original_spp_predicted_meixler -  shift(original_spp_predicted_meixler, n = 1, type = "lag"), .(region, hemisphere)] #change in species from previous bin to this bin?
 #note that it's important to include grouping for region so that calculations are correct, and there's always a gain at the lowest latitude
 
-shelf_areas[, change_spp_predicted_levin :=  original_spp_predicted_levin -  shift(original_spp_predicted_levin, n = 1, type = "lag"), region] #change in species from previous bin to this bin?
+shelf_areas[, change_spp_predicted_levin :=  original_spp_predicted_levin -  shift(original_spp_predicted_levin, n = 1, type = "lag"), .(region, hemisphere)] #change in species from previous bin to this bin?
 
 #color code by direction of spp gain or loss
 shelf_areas[, spp_change_pos_neg_meixler := ifelse(change_spp_predicted_meixler > 0, "Positive","Negative")]
 shelf_areas[, spp_change_pos_neg_levin := ifelse(change_spp_predicted_levin > 0, "Positive","Negative")]
 
+#full stats for spp change
+shelf_areas[,spp_change_levin_by_reg := sum(change_spp_predicted_levin, na.rm = T), region]
+shelf_areas[,spp_change_levin_by_hemis := sum(change_spp_predicted_levin, na.rm = T), hemisphere]
+shelf_areas[,spp_change_levin_by_reg_hemis := sum(change_spp_predicted_levin, na.rm = T), .(region, hemisphere)]
+
+#summary for spp change
+(shelf_spp_change_region_stats <- unique(shelf_areas[,.(region, spp_change_levin_by_reg)]))
+(shelf_spp_change_hemis_stats <- unique(shelf_areas[,.(hemisphere, spp_change_levin_by_hemis)]))
+(shelf_spp_change_hemis_reg_stats <- unique(shelf_areas[,.(hemisphere, region, spp_change_levin_by_reg_hemis)]))
+
+#color by direction
+shelf_spp_change_hemis_reg_stats[,change_direction := factor(ifelse(spp_change_levin_by_reg_hemis > 0, 1, 0))]
+
 ```
+
+Plots instead of tables?
+```{r plot spp change}
+
+(change_area_reg_hemis <- ggplot(data = shelf_area_change_hemis_reg_stats) +
+  geom_col(aes(x = region, y = sum_change_hemis_reg/1000, fill = change_direction)) +
+  facet_wrap(~hemisphere, nrow = 2, ncol = 1, scales = "free") +
+  labs(x = "Region", y = expression(paste(Delta, " Area with 2˚ Latitudinal Shift (1000s of ", km^{2},")"))) +
+  scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Direction of Shelf\nArea Change\nWith 2\u00B0 Shift", labels = c("Negative", "Positive")) +
+  geom_hline(yintercept = 0) +
+  theme_classic())
+
+ggsave(height = 10, width = 3, file = "shelf_area_change_hemis_reg_stats.jpg")
+
+(change_spp_reg_hemis <- ggplot(data = shelf_spp_change_hemis_reg_stats) +
+  geom_col(aes(x = region, y = spp_change_levin_by_reg_hemis, fill = change_direction)) +
+  facet_wrap(~hemisphere, nrow = 2, ncol = 1, scales = "free") +
+  labs(x = "Region", y =expression(paste(Delta, " in Species Richness with 2˚ Latitudinal Shift"))) +
+  scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Change in Richness\nWith 2\u00B0 Shift", labels = c("Loss", "Gain")) +
+  geom_hline(yintercept = 0) +
+  theme_classic())
+
+ggsave(height = 10, width = 3, file = "shelf_spp_change_hemis_reg_stats.jpg")
+
+library(cowplot)
+
+plot_grid(change_area_reg_hemis, change_spp_reg_hemis)
+
+ggsave(height = 4, width = 15, file = "spp_area_change_Levin2009.jpg")
+
+```
+
+
+
 Species Area Curves
 
 How much total area to begin with? #FIX THIS
@@ -250,7 +300,8 @@ ggplot(data = shelf_areas) +
   theme_classic()
 ```
 
-But, what about Chittaro et al. 2010 (Levin is on this paper as well)
+But, what about Chittaro et al. 2010 (Levin is on this paper as well) (Honestly can't figure why #s are different, let's go with newer is better?)
+
 spp = 26.1*A^0.183
 ```{r}
 
