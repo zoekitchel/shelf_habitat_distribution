@@ -255,7 +255,24 @@ Modality: In mathematics, unimodality means possessing a unique mode. More gener
 
 Skew: In probability theory and statistics, skewness is a measure of the asymmetry of the probability distribution of a real-valued random variable about its mean. The skewness value can be positive, zero, negative, or undefined. (Wikipedia)
 
+Kolmogorov–Smirnov test for uniformity
+
+null = uniform distribution
+goal = reject the null (p<0.05)
+
+
+```{r uniformity test}
+plot(ecdf(bathy_baltic_depth_list_pos))
+curve(punif(x, min(bathy_baltic_depth_list_pos), max(bathy_baltic_depth_list_pos)), add=TRUE, col="red")
+ks.test <- ks.test(bathy_baltic_depth_list_pos, "punif", min(bathy_baltic_depth_list_pos), max(bathy_baltic_depth_list_pos))
+
+ks.test$p.value
+
+ks.test(table(bathy_baltic_depth_list_pos))
+```
+
 "The dip test measures multimodality in a sample by the maximum difference, over all sample points, between the empirical distribution function, and the unimodal distribution function that minimizes that maximum difference."
+
 
  Dip Test for Modality
 ```{r dip test for unimodality}
@@ -265,6 +282,7 @@ diptest <- dip.test(bathy_baltic_depth_list_pos, simulate.p.value = TRUE, B = 20
 p.value <- diptest$p.value
 
 ```
+
 
 Skew
 
@@ -276,15 +294,6 @@ skew <- skewness(bathy_baltic_depth_list_pos, na.rm = T)
 
 ```
 
-
-Maybe kurtosis too?
-
-Kurtosis is a statistical measure that defines how heavily the tails of a distribution differ from the tails of a normal distribution. In other words, kurtosis identifies whether the tails of a given distribution contain extreme values.
-```{r kurtosis}
-kurtosis <- kurtosis(bathy_baltic_depth_list_pos, na.rm = T)
-
-kurtosis
-```
 
 Mean depth value
 ```{r mean depth}
@@ -298,7 +307,7 @@ Possible groupings:
 Shallow dominant: High positive skew, unimodal
 Mid-Dominant: Relatively normal (low skew, kurtosis = 0, unimodal)
 Deep-Dominant: High negative skew, unimodal
-Uniform: kurtosis < -1.2, unimodal, little skew (None fit here, got rid of it)
+Uniform: reject the null for Kolmogorov–Smirnov test for uniformity
 Hourglass: Bimodality
 
 Text to add to plot:
@@ -311,10 +320,10 @@ Text to add to plot:
 ```{r full plot}
 
 plot +
+  annotate("text", x = 300, y = 4300, label =  paste0("Kolmogorov-Smirnov P-Value: ", signif(ks.test$p.value,2))) +
   annotate("text", x = 300, y = 4000, label = paste0("Dip Test: ", signif(diptest$statistic,2), " P-value = ", signif(p.value))) +
   annotate("text", x = 300, y = 3700, label = paste0("Skew: ", round(skew,2))) +
-  annotate("text", x = 300, y = 3400, label = paste0("Kurtosis: ",round(kurtosis,2))) +
-  annotate("text", x = 300, y = 3100, label = paste0("Mean: ",round(mean,2), " m")) +
+  annotate("text", x = 300, y = 3400, label = paste0("Mean: ",round(mean,2), " m")) +
   geom_vline(xintercept = mean, color = "red")
 ```
 --------
@@ -329,7 +338,7 @@ LME_spdf_ordered <- LME_spdf[order(LME_spdf$LME_NUMBER),]
 
 
 LME_bathy_statistics <- as.data.table(matrix(nrow = nrow(LME_spdf)))
-LME_bathy_statistics[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][, dip_test := as.numeric(V1)][, dip_p_value := as.numeric(V1)][, skew := as.numeric(V1)][, kurtosis := as.numeric(V1)][, mean_depth := as.numeric(V1)][, max_depth := as.numeric(V1)][, median_depth := as.numeric(V1)][, center_latitude := as.numeric(V1)]
+LME_bathy_statistics[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][,ks_test_pvalue := as.numeric(V1)][, dip_test := as.numeric(V1)][, dip_p_value := as.numeric(V1)][, skew := as.numeric(V1)][, kurtosis := as.numeric(V1)][, mean_depth := as.numeric(V1)][, max_depth := as.numeric(V1)][, median_depth := as.numeric(V1)][, center_latitude := as.numeric(V1)]
 
 LME_bathy_statistics[, V1 := NULL]
 
@@ -338,7 +347,7 @@ lme_maps <- vector("list", length = nrow(LME_spdf))
 lme_densityplots <- vector("list", length = nrow(LME_spdf))
 lme_areaplots <- vector("list", length = nrow(LME_spdf))
 
-for (i in 1:nrow(LME_bathy_statistics)) {
+for (i in 39:nrow(LME_bathy_statistics)) {
   LME_single <- LME_spdf_ordered[i,]
   LME_bathy_statistics[i, "lme_name"] <- LME_single$LME_NAME
   LME_bathy_statistics[i, "lme_number"] <- LME_single$LME_NUMBER
@@ -461,6 +470,9 @@ for (i in 1:nrow(LME_bathy_statistics)) {
                      max(LME_bathy_bydepth_complete$depth))) +
     guides(position = "bottom", fill = guide_colorbar(reverse = T))
   
+  #uniformity
+  ks_test <- ks.test(LME_bathy_depth_list_pos, "punif", min(LME_bathy_depth_list_pos), max(LME_bathy_depth_list_pos))
+  LME_bathy_statistics[i,"ks_test_pvalue"] <- ks_test$p.value
   
   #unimodality
   #Computes Hartigans’ dip test statistic for testing unimodality, and additionally the modal interval.
@@ -537,6 +549,8 @@ distributions with a dip value >0.01 and with significant (p<0.05) deviations fr
 
 For distributions with a dip value ≤0.01, we assigned those with a Type-I skewness ≥0.5 to shallow dominant, those with skewness ≤ −0.5 to deep dominant, and the remainder to diamond, representing those with approximately normal distributions. This is what Elsen and Tingley did. Now, I'm going to play around with skew cutoff of 1 rather than 0.5.
 
+If pvalue for uniformity test is >0.05 --> uniform
+
 ```{r expanded dataframe}
 LME_bathy_statistics[, skew_descriptor := ifelse(abs(skew) > 1, "high_skew", ifelse(abs(skew) < 0.5, "symmetric", "mod_skew"))]
 
@@ -552,17 +566,17 @@ LME_bathy_statistics[, mid_dominant := ifelse(dip_test <= 0.01,
                                           ifelse(abs(skew) <1, T, F), F)]
 
 #negative kurtosis (no tails)
-LME_bathy_statistics[, uniform := ifelse(kurtosis < 0, T, F)]
+LME_bathy_statistics[, uniform := ifelse(ks_test_pvalue >0.05,T,F)]
 
 ```
 
 Are all regions labeled by type?
 ```{r labeling check}
-LME_bathy_statistics[,type := ifelse(hourglass == T, "Multimodal",
-                                    ifelse(deep_dominant == T, "Deep Dominant",
+LME_bathy_statistics[,type := ifelse(uniform == T, "Uniform",
+                                     ifelse(hourglass == T, "Multimodal",
+                                        ifelse(deep_dominant == T, "Deep Dominant",
                                            ifelse(shallow_dominant == T, "Shallow Dominant",
-                                                  ifelse(mid_dominant == T, "Mid Dominant", 
-                                                         ifelse(uniform == T, "Uniform", "none")))))][,lme_name2 := lme_name]
+                                                  ifelse(mid_dominant == T, "Mid Dominant", "none")))))][,lme_name2 := lme_name]
 
 write.csv(LME_bathy_statistics, "LME_bathy_statistics.csv")
 saveRDS(LME_bathy_statistics, file = "LME_bathy_statistics.RData")

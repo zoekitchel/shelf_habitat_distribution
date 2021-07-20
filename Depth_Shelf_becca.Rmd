@@ -30,12 +30,18 @@ etopo2 <- raster("DepthShift2.0/Data/ETOPO2v2g_f4.nc")
 ```
 
 ### Restrict to depths less than 2000
-```{r etopo less than 2000}
-etopo2[etopo2 >=0] <- NA
+```{r etopo deeper than 0 but  less than 2000}
+#shapefile with everything below 0
+etopo2_10000 <- etopo2
+etopo2_10000[etopo2_10000 > 0] <- NA
+
+etopo2[etopo2 > 0] <- NA
 etopo2[etopo2< -2000] <- NA
 png("DepthShift2.0/Figures/bathy_2000m.png", height=5, width=7, units="in", res=300)
 plot(etopo2)
 dev.off()
+
+
 ```
 
 ### Convert etopo to dataframe
@@ -71,6 +77,18 @@ ggplot(shelf_simp) +
 #this takes a long time, so I'll just bring back in Becca's final product
 ```{r etopo crop}
 etopo_shelf <- mask(etopo2, shelf_simp) #raster of depth on continental shelf
+
+etopo_shelf_10000 <- mask(etopo2_10000, shelf_simp)
+
+summary(etopo_shelf)
+cellStats(etopo_shelf, function(i, ...) sum(!is.na(i)))
+summary(etopo_shelf_10000)
+cellStats(etopo_shelf_10000, function(i, ...) sum(!is.na(i)))
+
+depth_over_2000 <- cellStats(etopo_shelf_10000, function(i, ...) sum(!is.na(i)))-cellStats(etopo_shelf, function(i, ...) sum(!is.na(i))) #number of cells in shelf shape file that have depths >2000
+
+#percent of total
+depth_over_2000/cellStats(etopo_shelf_10000, function(i, ...) sum(!is.na(i)))*100
 
 
 writeRaster(etopo_shelf, "etoposhelf.grd")

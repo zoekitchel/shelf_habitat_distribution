@@ -92,20 +92,20 @@ Make map
 
 ```{r global map}
 
-global_LME_classification_map <- ggplot() + 
+(global_LME_classification_map <- ggplot() + 
     # add projected countries
     geom_polygon(data = Country.DT, 
                  aes(x = long, y = lat, group = group), 
                  colour = "gray70", 
                  fill = "gray90", 
-                 size = 0.1) +
-  geom_polygon(data = LME_spdf_working_proj.dt, aes(x = long, y = lat, group = group, fill = as.factor(type)), color = "darkslategrey", size = 0.1) +
+                 size = 0.05) +
+  geom_polygon(data = LME_spdf_working_proj.dt, aes(x = long, y = lat, group = group, fill = as.factor(type)), color = "darkslategrey", size = 0.03, alpha = 0.8) +
   scale_fill_viridis_d(option = "A", begin = 0.4, end = 0.9) +
   geom_text(data = label_points.df, aes(label = as.numeric(LME_NUMBER), x = x, y = y), size = 1.5) +
     # ensures that one unit on the x-axis is the same length as one unit on the y-axis
     coord_equal() +
   labs( x = expression("Longitude ("*~degree*E*")"), y = expression("Latitude ("*~degree*N*")")) +
-  theme_classic()
+  theme_classic())
 
 ggsave(global_LME_classification_map, filename = "map_global_type.jpg")
 ```
