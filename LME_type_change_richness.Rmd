@@ -25,6 +25,12 @@ Box plot
 ggplot(LME_stats_spp) +
   geom_boxplot(aes(x = type, y = total_spp_change)) +
   theme_classic()
+
+mod <- lm(total_spp_change~type, data = LME_stats_spp)
+
+summary(mod)
+
+anova(mod)
 ```
 Coding LME #s by region and hemisphere
 ```{r LME by region and hemisphere}

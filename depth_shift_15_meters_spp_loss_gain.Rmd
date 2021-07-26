@@ -432,3 +432,8 @@ saveRDS(LME_area_spp_change_stats, file = "LME_area_spp_change_stats.RData")
 ggsave("arranged_LME_sppchange.pdf", marrangeGrob(lme_spp_count_area_sum_plots, ncol=2, nrow = 2))
 ```
 
+Add column for percent loss of starting area
+```{r}
+LME_area_spp_change_stats[,percent_change := total_area_change/lme_area]
+```
+
