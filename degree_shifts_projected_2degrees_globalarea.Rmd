@@ -187,7 +187,7 @@ levels(shelf_spp_change_hemis_reg_stats$change_direction)
 shelf_spp_change_hemis_reg_stats[,change_direction := factor(change_direction, levels = c("Loss","Gain"))]
 
 (ordered_loss_gain_bycoastline <- ggplot(shelf_spp_change_hemis_reg_stats) +
-  geom_col(aes(x = reorder(Coastline, spp_change_levin_by_reg_hemis), y = spp_change_levin_by_reg_hemis, fill = change_direction)) +
+  geom_col(aes(x = reorder(Coastline, spp_change_levin_by_reg_hemis), y = spp_change_levin_by_reg_hemis, fill = change_direction), alpha = 0.8) +
   xlab("Coastline") +
   ylab("Predicted Species Richness\nChange With 2\u00B0 Latitudinal Shift") +
   theme_classic() +

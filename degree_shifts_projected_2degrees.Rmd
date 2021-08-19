@@ -276,12 +276,12 @@ Now, we will split each coastline raster into latitudinal bins of 2˚
 
 If these have already been done, load in from file instead of recreating because that takes some time.
 ```{r load in from files}
-load("west_pac_shelf_areas_2degrees.Rdata")
-load("west_atl_shelf_areas_2degrees.Rdata")
-load("west_ind_shelf_areas_2degrees.Rdata")
-load("east_pac_shelf_areas_2degrees.Rdata")
-load("east_atl_shelf_areas_2degrees.Rdata")
-load("east_ind_shelf_areas_2degrees.Rdata")
+#load("west_pac_shelf_areas_2degrees.Rdata")
+#load("west_atl_shelf_areas_2degrees.Rdata")
+#load("west_ind_shelf_areas_2degrees.Rdata")
+#load("east_pac_shelf_areas_2degrees.Rdata")
+#load("east_atl_shelf_areas_2degrees.Rdata")
+#load("east_ind_shelf_areas_2degrees.Rdata")
 ```
 
 
@@ -465,7 +465,7 @@ between -0.499 and 0.999 = no significant change
 
 For area metric here, I used the raster::area function applied to the projected shapefile
 ```{r percent shift western pacific}
-west_pac_shelf_areas[, percent_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))/shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
+west_pac_shelf_areas[, percent_change := (area_rasterarea-data.table::shift(area_rasterarea, type = "lag"))/data.table::shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
 
 west_pac_shelf_areas[,hemisphere := ifelse(latitude_end>0,"north","south")]
 
@@ -479,13 +479,14 @@ west_pac_shelf_areas_stats <- table(west_pac_shelf_areas[,.(change_above_2fold,h
 Model change for southern and northern hemisphere
 ```{r model northern versus southern western pacific}
 #add mid latitude
-west_pac_shelf_areas[,latitude_mid := (latitude_end+latitude_start)/2]
+west_pac_shelf_areas[,latitude_mid := abs((latitude_end+latitude_start)/2)]
 
-west_pac_north_mod <- lm(data = west_pac_shelf_areas[latitude_mid > 0], area_rasterarea ~ latitude_mid)
+west_pac_north_mod <- lm(data = west_pac_shelf_areas[hemisphere == "north"], area_rasterarea ~ latitude_mid)
 summary(west_pac_north_mod)
 
-west_pac_south_mod <- lm(data = west_pac_shelf_areas[latitude_mid < 0], area_rasterarea ~ latitude_mid)
+west_pac_south_mod <- lm(data = west_pac_shelf_areas[hemisphere == "south"], area_rasterarea ~ latitude_mid)
 summary(west_pac_south_mod)
+
 ```
 
 
@@ -662,7 +663,7 @@ save(east_pac_shelf_areas, file = "east_pac_shelf_areas_2degrees.Rdata")
 ```
 
 ```{r percent shift eastern pacific}
-east_pac_shelf_areas[, percent_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))/shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
+east_pac_shelf_areas[, percent_change := (area_rasterarea-data.table::shift(area_rasterarea, type = "lag"))/data.table::shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
 
 east_pac_shelf_areas[,hemisphere := ifelse(latitude_end>0,"north","south")]
 
@@ -676,12 +677,12 @@ east_pac_shelf_areas_stats <- table(east_pac_shelf_areas[,.(change_above_2fold, 
 Model change for southern and northern hemisphere
 ```{r model northern versus southern eastern pacific}
 #add mid latitude
-east_pac_shelf_areas[,latitude_mid := (latitude_end+latitude_start)/2]
+east_pac_shelf_areas[,latitude_mid := abs((latitude_end+latitude_start)/2)]
 
-east_pac_north_mod <- lm(data = east_pac_shelf_areas[latitude_mid > 0], area_rasterarea ~ latitude_mid)
+east_pac_north_mod <- lm(data = east_pac_shelf_areas[hemisphere == "north"], area_rasterarea ~ latitude_mid)
 summary(east_pac_north_mod)
 
-east_pac_south_mod <- lm(data = east_pac_shelf_areas[latitude_mid < 0], area_rasterarea ~ latitude_mid)
+east_pac_south_mod <- lm(data = east_pac_shelf_areas[hemisphere == "south"], area_rasterarea ~ latitude_mid)
 summary(east_pac_south_mod)
 ```
 
@@ -727,7 +728,6 @@ for (i in 1:(length(west_atl_north_latitudes)-1)) {
   west_atl_shelf_areas[i, "area_rasterarea"] <- 0
   west_atl_shelf_areas[i, "area_rgeos_gArea"] <- 0
 
-  
   print(i)
     
   } else { #if there is shelf area within the bin, calculate area of slice
@@ -856,7 +856,7 @@ cor(west_atl_shelf_areas[,3:5], use = "complete.obs")
 ```
 
 ```{r percent shift western atlantic}
-west_atl_shelf_areas[, percent_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))/shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
+west_atl_shelf_areas[, percent_change := (area_rasterarea-data.table::shift(area_rasterarea, type = "lag"))/data.table::shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
 
 west_atl_shelf_areas[,hemisphere := ifelse(latitude_end>0,"north","south")]
 
@@ -870,12 +870,12 @@ west_atl_shelf_areas_stats <- table(west_atl_shelf_areas[,.(change_above_2fold, 
 Model change for southern and northern hemisphere
 ```{r model northern versus southern western atlantic}
 #add mid latitude
-west_atl_shelf_areas[,latitude_mid := (latitude_end+latitude_start)/2]
+west_atl_shelf_areas[,latitude_mid := abs((latitude_end+latitude_start)/2)]
 
-west_atl_north_mod <- lm(data = west_atl_shelf_areas[latitude_mid > 0], area_rasterarea ~ latitude_mid)
+west_atl_north_mod <- lm(data = west_atl_shelf_areas[hemisphere == "north"], area_rasterarea ~ latitude_mid)
 summary(west_atl_north_mod)
 
-west_atl_south_mod <- lm(data = west_atl_shelf_areas[latitude_mid < 0], area_rasterarea ~ latitude_mid)
+west_atl_south_mod <- lm(data = west_atl_shelf_areas[hemisphere == "south"], area_rasterarea ~ latitude_mid)
 summary(west_atl_south_mod)
 ```
 
@@ -1050,7 +1050,7 @@ cor(east_atl_shelf_areas[,3:5], use = "complete.obs")
 ```
 
 ```{r percent shift eastern atlantic}
-east_atl_shelf_areas[, percent_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))/shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
+east_atl_shelf_areas[, percent_change := (area_rasterarea-data.table::shift(area_rasterarea, type = "lag"))/data.table::shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
 
 east_atl_shelf_areas[,hemisphere := ifelse(latitude_end>0,"north","south")]
 
@@ -1064,12 +1064,12 @@ east_atl_shelf_areas_stats <- table(east_atl_shelf_areas[,.(change_above_2fold, 
 Model change for southern and northern hemisphere
 ```{r model northern versus southern eastern atlantic}
 #add mid latitude
-east_atl_shelf_areas[,latitude_mid := (latitude_end+latitude_start)/2]
+east_atl_shelf_areas[,latitude_mid := abs((latitude_end+latitude_start)/2)]
 
-east_atl_north_mod <- lm(data = east_atl_shelf_areas[latitude_mid > 0], area_rasterarea ~ latitude_mid)
+east_atl_north_mod <- lm(data = east_atl_shelf_areas[hemisphere == "north"], area_rasterarea ~ latitude_mid)
 summary(east_atl_north_mod)
 
-east_atl_south_mod <- lm(data = east_atl_shelf_areas[latitude_mid < 0], area_rasterarea ~ latitude_mid)
+east_atl_south_mod <- lm(data = east_atl_shelf_areas[hemisphere == "south"], area_rasterarea ~ latitude_mid)
 summary(east_atl_south_mod)
 ```
 
@@ -1243,7 +1243,7 @@ cor(west_ind_shelf_areas[,3:5], use = "complete.obs")
 ```
 
 ```{r percent shift western indian}
-west_ind_shelf_areas[, percent_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))/shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
+west_ind_shelf_areas[, percent_change := (area_rasterarea-data.table::shift(area_rasterarea, type = "lag"))/data.table::shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
 
 west_ind_shelf_areas[,hemisphere := ifelse(latitude_end>0,"north","south")]
 
@@ -1257,12 +1257,12 @@ west_ind_shelf_areas_stats <- table(west_ind_shelf_areas[,.(change_above_2fold, 
 Model change for southern and northern hemisphere
 ```{r model northern versus southern western indian}
 #add mid latitude
-west_ind_shelf_areas[,latitude_mid := (latitude_end+latitude_start)/2]
+west_ind_shelf_areas[,latitude_mid := abs((latitude_end+latitude_start)/2)]
 
-west_ind_north_mod <- lm(data = west_ind_shelf_areas[latitude_mid > 0], area_rasterarea ~ latitude_mid)
+west_ind_north_mod <- lm(data = west_ind_shelf_areas[hemisphere == "north"], area_rasterarea ~ latitude_mid)
 summary(west_ind_north_mod)
 
-west_ind_south_mod <- lm(data = west_ind_shelf_areas[latitude_mid < 0], area_rasterarea ~ latitude_mid)
+west_ind_south_mod <- lm(data = west_ind_shelf_areas[hemisphere == "south"], area_rasterarea ~ latitude_mid)
 summary(west_ind_south_mod)
 ```
 
@@ -1437,7 +1437,7 @@ cor(east_ind_shelf_areas[,3:5], use = "complete.obs")
 ```
 
 ```{r percent shift eastern indian}
-east_ind_shelf_areas[, percent_change := (area_rasterarea-shift(area_rasterarea, type = "lag"))/shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
+east_ind_shelf_areas[, percent_change := (area_rasterarea-data.table::shift(area_rasterarea, type = "lag"))/data.table::shift(area_rasterarea, type = "lag")][,area_1000s := area_rasterarea/1000]
 
 east_ind_shelf_areas[,hemisphere := ifelse(latitude_end>0,"north","south")]
 
@@ -1451,12 +1451,12 @@ east_ind_shelf_areas_stats <- table(east_ind_shelf_areas[,.(change_above_2fold,h
 Model change for southern and northern hemisphere
 ```{r model northern versus southern eastern indian}
 #add mid latitude
-east_ind_shelf_areas[,latitude_mid := (latitude_end+latitude_start)/2]
+east_ind_shelf_areas[,latitude_mid := abs((latitude_end+latitude_start)/2)]
 
-east_ind_north_mod <- lm(data = east_ind_shelf_areas[latitude_mid > 0], area_rasterarea ~ latitude_mid)
+east_ind_north_mod <- lm(data = east_ind_shelf_areas[hemisphere == "north"], area_rasterarea ~ latitude_mid)
 summary(east_ind_north_mod)
 
-east_ind_south_mod <- lm(data = east_ind_shelf_areas[latitude_mid < 0], area_rasterarea ~ latitude_mid)
+east_ind_south_mod <- lm(data = east_ind_shelf_areas[hemisphere == "south"], area_rasterarea ~ latitude_mid)
 summary(east_ind_south_mod)
 ```
 
@@ -1488,7 +1488,7 @@ east_ind_south_data[,area_1000s := east_ind_south_mod$coefficients[[1]]/1000+eas
   geom_line(data = east_ind_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
   geom_rug(data = east_ind_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
  labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
-  scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
+  scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Associated Change\nin Shelf Area", labels = c("Contraction", "Expansion")) +
   ##annotate("text", x =22, y = 70000, label = "Eastern Indian Ocean") +
   geom_vline(xintercept = 0) +
   xlim(min(east_ind_shelf_areas$latitude_end), max(east_ind_shelf_areas$latitude_end)) +
@@ -1515,7 +1515,7 @@ west_ind_south_data[,area_1000s := west_ind_south_mod$coefficients[[1]]/1000+wes
   geom_line(data = west_ind_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
     geom_rug(data = west_ind_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
  labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
-  scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
+  scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Associated Change\nin Shelf Area", labels = c("Contraction", "Expansion")) +
   #annotate("text", x = 30, y = 33000, label = "Western Indian Ocean") +
   geom_vline(xintercept = 0) +
   xlim(min(west_ind_shelf_areas$latitude_end), max(west_ind_shelf_areas$latitude_end)) +
@@ -1535,12 +1535,12 @@ west_atl_south_data[,area_1000s := west_atl_south_mod$coefficients[[1]]/1000+wes
 
 area_latitude_west_atl  <- ggplot() +
   geom_line(data = west_atl_north_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
-  geom_line(data = west_atl_south_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
+  geom_line(data = west_atl_south_data, aes(x=-latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
   geom_point(data = west_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) + 
   geom_line(data = west_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
   geom_rug(data = west_atl_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
  labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
-  scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
+  scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Associated Change\nin Shelf Area", labels = c("Contraction", "Expansion")) +
   #annotate("text", x = 80, y = 120000, label = "Western Atlantic Ocean") +
   geom_vline(xintercept = 0) +
   xlim(min(west_atl_shelf_areas$latitude_end), max(west_atl_shelf_areas$latitude_end)) +
@@ -1561,12 +1561,12 @@ east_atl_south_data[,area_1000s := east_atl_south_mod$coefficients[[1]]/1000+eas
 
 area_latitude_east_atl  <- ggplot() +
   geom_line(data = east_atl_north_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
-  geom_line(data = east_atl_south_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
+  geom_line(data = east_atl_south_data, aes(x=-latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
   geom_point(data = east_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) + 
   geom_line(data = east_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
   geom_rug(data = east_atl_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
  labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
-  scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
+  scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Associated Change\nin Shelf Area", labels = c("Contraction", "Expansion")) +
   #annotate("text", x = 82.5, y = 110000, label = "Eastern Atlantic Ocean") +
   geom_vline(xintercept = 0) +
   xlim(min(east_atl_shelf_areas$latitude_end), max(east_atl_shelf_areas$latitude_end)) +
@@ -1592,7 +1592,7 @@ area_latitude_east_pac  <- ggplot() +
   geom_line(data = east_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
   geom_rug(data = east_pac_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
  labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
-  scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
+  scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Associated Change\nin Shelf Area", labels = c("Contraction", "Expansion")) +
   #annotate("text", x = 80, y = 130000, label = "Eastern Pacific Ocean") +
   geom_vline(xintercept = 0) +
   xlim(min(east_pac_shelf_areas$latitude_end), max(east_pac_shelf_areas$latitude_end)) +
@@ -1613,12 +1613,12 @@ west_pac_south_data[,area_1000s := west_pac_south_mod$coefficients[[1]]/1000+wes
 
 (area_latitude_west_pac <- ggplot() +
   geom_line(data = west_pac_north_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
-  geom_line(data = west_pac_south_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
+  geom_line(data = west_pac_south_data, aes(x=-latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
   geom_point(data = west_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) + 
   geom_line(data = west_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
   geom_rug(data = west_pac_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
  labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
-  scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Instances of 2 Fold\n Habitat Change", labels = c("Contraction", "Expansion")) +
+  scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Associated Change\nin Shelf Area", labels = c("Contraction", "Expansion")) +
   #annotate("text", x = 90, y = 130000, label = "Western Pacific Ocean") +
   geom_vline(xintercept = 0) +
   xlim(min(west_pac_shelf_areas$latitude_end), max(west_pac_shelf_areas$latitude_end)) +
@@ -1632,12 +1632,14 @@ west_pac_south_data[,area_1000s := west_pac_south_mod$coefficients[[1]]/1000+wes
 
 ```
 
-How many experience 'significant' changes in habitat (at least -50% or +200% change from one bin to another) I will go with IUCN 50% loss -> vulnerable species designation.
+How many experience 'significant' changes in habitat (at least -50% or +100% change from one bin to another) I will go with IUCN 50% loss -> vulnerable species designation.
 
 Bin shifts --> contractions (loss of 50%) versus expansions (gain of 200%) versus neutral
 ```{r bin shift categorization}
+
+library(ggrepel)
 #call all objects in environment with "stats" string
-stats_string<-grep("_stats",names(.GlobalEnv),value=TRUE)
+stats_string<-grep("areas_stats",names(.GlobalEnv),value=TRUE)
 stats_string_list<-do.call("list",mget(stats_string))
 names(stats_string_list) #check
 
@@ -1678,30 +1680,37 @@ viridis_exp_cont <-viridis_pal(begin = 0.3, end = 0.7, option = "A")(2)
 #by hemisphere
 
 ggplot(data = significant_changes.long, aes(x="", y = percent_by_hemisphere, fill = type)) +
-  geom_bar(stat = "identity", width = 1) +
+  geom_bar(stat = "identity", width = 1, alpha = 0.8) +
   coord_polar("y", start=0) +
-  scale_fill_manual(values = c(viridis_exp_cont[1], "grey94", viridis_exp_cont[2]), name = "Habitat Change", labels = c(">= 2 Fold Contraction", "< 2 Fold Change", ">= 2 Fold Expansion")) +
+  scale_fill_manual(values = c(viridis_exp_cont[1], "grey94", viridis_exp_cont[2]), name = "Shelf Area Change", labels = c("Contraction", "Neither", "Expansion")) +
   facet_grid(hemisphere~region_names) +
- # geom_text(aes(label = paste0(percent_by_hemisphere,"%")), position = position_stack(vjust = 0.1), size = 1.5) +
+  geom_text_repel(aes(label = paste0(round(percent_by_hemisphere,1),"%")), size = 1, fontface = "bold", position = position_stack(vjust = 0.3)) +
   scale_x_discrete(expand = c(0,0)) +
   blank_theme +
   theme(axis.text.x=element_blank(),
-        strip.text = element_text(size = 7))
+        strip.text = element_text(size = 7),
+        legend.title = element_text(size = 9), 
+        legend.text = element_text(size = 7)) +
+  guides(shape = guide_legend(override.aes = list(size = 0.5)), 
+         fill = guide_legend(override.aes = list(size = 0.5)))
 
-ggsave(filename = "figure6_habitatloss_gain_2fold_byhemisphere.pdf", height = 2, width = 6, unit = "in")
+ggsave(filename = "figure6_habitatloss_gain_2fold_byhemisphere.jpg", height = 2, width = 6, unit = "in")
+ggsave(filename = "figure6_habitatloss_gain_2fold_byhemisphere.eps", height = 2, width = 6, unit = "in")
+
 
 #by region (hemisphere's compressed)
 ggplot(data = unique(significant_changes.long[,.(region_names,type,percent_by_region)]), aes(x="", y = percent_by_region, fill = type)) +
   geom_bar(stat = "identity", width = 1) +
   coord_polar("y", start=0) +
-  scale_fill_manual(values = c(viridis_exp_cont[1], "grey94", viridis_exp_cont[2]), name = "Habitat Change", labels = c(">= 2 Fold Contraction", "< 2 Fold Change", ">= 2 Fold Expansion")) +
+  scale_fill_manual(values = c(viridis_exp_cont[1], "grey94", viridis_exp_cont[2]), name = "Shelf Area Change", labels = c("Contraction", "Neither", "Expansion")) +
   facet_wrap(~region_names) +
   geom_text(aes(label = paste0(percent_by_region,"%")), position = position_stack(vjust = 0.1), size = 2) +
   scale_x_discrete(expand = c(0,0)) +
   blank_theme +
   theme(axis.text.x=element_blank())
 
-ggsave(filename = "figure6_habitatloss_gain_2fold_byregion.pdf", height = 4, width = 8, unit = "in")
+ggsave(filename = "figure6_habitatloss_gain_2fold_byregion.jpg", height = 4, width = 8, unit = "in")
+ggsave(filename = "figure6_habitatloss_gain_2fold_byregion.eps", height = 4, width = 8, unit = "in")
 
 
 ```
@@ -2029,15 +2038,15 @@ ggsave(plot = east_indian_merge_map_plot, filename = "east_indian_merge_map_plot
 ```
 And now final merge for figures 3-5
 ```{r final merge figures}
-indian_latitude_2_plots <- ggarrange(west_indian_merge_map_plot, east_indian_merge_map_plot)
+indian_latitude_2_plots <- ggarrange(west_indian_merge_map_plot, east_indian_merge_map_plot, nrow = 2, ncol = 1)
 ggsave(indian_latitude_2_plots, file = "indian_latitude_2_plots.jpg", height = 6, unit = "in")
 ggsave(indian_latitude_2_plots, file = "indian_latitude_2_plots.pdf", height = 6, unit = "in")
 
-pacific_latitude_2_plots <- ggarrange(west_pacific_merge_map_plot, east_pacific_merge_map_plot)
+pacific_latitude_2_plots <- ggarrange(west_pacific_merge_map_plot, east_pacific_merge_map_plot, nrow = 2, ncol = 1)
 ggsave(pacific_latitude_2_plots, file = "pacific_latitude_2_plots.jpg", height = 6, unit = "in")
 ggsave(pacific_latitude_2_plots, file = "pacific_latitude_2_plots.pdf", height = 6, unit = "in")
 
-atlantic_latitude_2_plots <- ggarrange(west_atlantic_merge_map_plot, east_atlantic_merge_map_plot)
+atlantic_latitude_2_plots <- ggarrange(west_atlantic_merge_map_plot, east_atlantic_merge_map_plot, nrow = 2, ncol = 1)
 ggsave(atlantic_latitude_2_plots, file = "atlantic_latitude_2_plots.jpg", height = 6, unit = "in")
 ggsave(atlantic_latitude_2_plots, file = "atlantic_latitude_2_plots.pdf", height = 6, unit = "in")
 ```
