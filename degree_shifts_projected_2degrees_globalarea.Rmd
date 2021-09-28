@@ -52,6 +52,9 @@ shelf_areas[,hemisphere := ifelse(latitude_end >0, "Northern", "Southern")]
 shelf_areas[,latitude_end_abs  := abs(latitude_end)]
 setkey(shelf_areas, region, hemisphere, latitude_end_abs) #sort by region, and then hemisphere, and then latitude_end_abs increasing (because we want to be moving outward from the equator)
 
+#include mid_latitude value for plotting
+shelf_areas[,latitude_mid  := (latitude_start+latitude_end)/2]
+
 
 
 ```
@@ -122,6 +125,13 @@ shelf_areas[, change_spp_predicted_meixler :=  original_spp_predicted_meixler - 
 
 shelf_areas[, change_spp_predicted_levin :=  original_spp_predicted_levin -  data.table::shift(original_spp_predicted_levin, n = 1, type = "lag"), .(region, hemisphere)] #change in species from previous bin to this bin?
 
+#percent change
+shelf_areas[, percent_change_richness := (original_spp_predicted_levin-data.table::shift(original_spp_predicted_levin, type = "lag"))/data.table::shift(original_spp_predicted_levin, type = "lag"), .(region,hemisphere)]
+shelf_areas[,spp_per_change_significant := ifelse(percent_change_richness >= 1, "Gain",ifelse(percent_change_richness <= -0.5, "Loss","NA"))]
+
+#new data table with only these values
+shelf_areas_highlight <- shelf_areas[spp_per_change_significant == "Gain" | spp_per_change_significant == "Loss"]
+
 #color code by direction of spp gain or loss
 shelf_areas[, spp_change_pos_neg_meixler := ifelse(change_spp_predicted_meixler > 0, "Positive","Negative")]
 shelf_areas[, spp_change_pos_neg_levin := ifelse(change_spp_predicted_levin > 0, "Positive","Negative")]
@@ -137,9 +147,50 @@ shelf_areas[,spp_change_levin_by_reg_hemis := sum(change_spp_predicted_levin, na
 (shelf_spp_change_hemis_reg_stats <- unique(shelf_areas[,.(hemisphere, region, spp_change_levin_by_reg_hemis)]))
 
 #color by direction
-shelf_spp_change_hemis_reg_stats[,change_direction := factor(ifelse(spp_change_levin_by_reg_hemis > 0, "Gain", "Loss"))]
+shelf_spp_change_hemis_reg_stats[,change_direction := factor(ifelse(spp_change_levin_by_reg_hemis > 0, "Gain", "Loss"))] 
 
+#save data table
+save(shelf_areas, file = here::here("table_outputs","shelf_areas.RData"))
+  
 ```
+Figure for spp richness per latitude
+```{r spp richness per latitude}
+(spp_change_latitude  <- ggplot(data = shelf_areas, aes(x=latitude_mid, y=original_spp_predicted_levin)) +
+   geom_area(fill = "azure3") +
+ labs(x=paste0("Latitude ","\u00B0","E"), y = "Species Richness") +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) +
+  coord_flip() +
+  theme_classic() +
+   facet_wrap(~region, scales = "free"))
+```
+Mark 50% loss or 200% gain of species (this isn't useful)
+```{r gain loss of substantial # of species}
+(spp_change_latitude  <- ggplot() +
+   geom_area(data = shelf_areas, aes(x=latitude_mid, y = original_spp_predicted_levin), fill = "azure3") +
+   geom_rug(data = shelf_areas_highlight, aes(x=latitude_mid, color = spp_per_change_significant)) +
+ labs(x=paste0("Latitude ","\u00B0","E"), y = "Species Richness") +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) +
+  coord_flip() +
+  theme_classic() +
+   facet_wrap(~region, scales = "free"))
+```
+
+
+Figure for spp richness change by latitude
+```{r spp change lat}
+(spp_change_latitude  <- ggplot(data = shelf_areas) +
+  geom_col(aes(x=latitude_end, y=change_spp_predicted_levin, fill = change_dir)) +
+ labs(x=paste0("Latitude ","\u00B0","E"), y = "Change in Richness\nwith 2\u00B0 Shift") +
+     scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Direction of\nRichness Change\nWith 2\u00B0 Shift", labels = c("Negative", "Positive")) +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) +
+  coord_flip() +
+  theme_classic() +
+   facet_wrap(~region, scales = "free"))
+```
+
 
 Plots instead of tables?
 ```{r plot spp change}

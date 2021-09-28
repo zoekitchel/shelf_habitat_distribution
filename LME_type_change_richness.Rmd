@@ -58,7 +58,7 @@ LME_richness_change <- ggplot(LME_stats_spp) +
   ylab("Predicted Species Richness\nChange With 15 m Depth Shift") +
   labs(fill = "Classification") +
   theme_classic() +
-  scale_fill_viridis_d(option = "A", begin = 0.4, end = 0.9, alpha = 0.8) +
+  scale_fill_manual(values = c("#4A9B7D","#3D4F88", "#FAA23D")) +
   theme(axis.text.x = element_text(angle = 90, size = 4, hjust = 1, vjust = 0.5), legend.title = element_blank())
 
 ggsave(filename = "spp_loss_by_LME.jpg", height = 3, width = 5)

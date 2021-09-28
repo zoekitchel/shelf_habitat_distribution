@@ -31,6 +31,7 @@ library(rgeos)
 library(SpaDES)
 library(rnaturalearth)
 library(rnaturalearthdata)
+library(ggnewscale)
 
 
 etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/etopo_shelf_df.rds")
@@ -276,12 +277,12 @@ Now, we will split each coastline raster into latitudinal bins of 2˚
 
 If these have already been done, load in from file instead of recreating because that takes some time.
 ```{r load in from files}
-#load("west_pac_shelf_areas_2degrees.Rdata")
-#load("west_atl_shelf_areas_2degrees.Rdata")
-#load("west_ind_shelf_areas_2degrees.Rdata")
-#load("east_pac_shelf_areas_2degrees.Rdata")
-#load("east_atl_shelf_areas_2degrees.Rdata")
-#load("east_ind_shelf_areas_2degrees.Rdata")
+load("west_pac_shelf_areas_2degrees.Rdata")
+load("west_atl_shelf_areas_2degrees.Rdata")
+load("west_ind_shelf_areas_2degrees.Rdata")
+load("east_pac_shelf_areas_2degrees.Rdata")
+load("east_atl_shelf_areas_2degrees.Rdata")
+load("east_ind_shelf_areas_2degrees.Rdata")
 ```
 
 
@@ -1613,6 +1614,7 @@ west_pac_south_data[,area_1000s := west_pac_south_mod$coefficients[[1]]/1000+wes
 
 (area_latitude_west_pac <- ggplot() +
   geom_line(data = west_pac_north_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
+    scale_color_manual(values = "gray60", labels = "Area ~ Latitude\nLinear Regression") +
   geom_line(data = west_pac_south_data, aes(x=-latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") +
   geom_point(data = west_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) + 
   geom_line(data = west_pac_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
@@ -1629,7 +1631,23 @@ west_pac_south_data[,area_1000s := west_pac_south_mod$coefficients[[1]]/1000+wes
   
 
   ggsave(area_latitude_west_pac, filename = "area_latitude_west_pac_2degrees.jpg", height = 4, units = c("in"))
+  
+  #pull generic rug legend only
+area_latitude_rug_legend <- get_legend(area_latitude_west_pac)
+save(area_latitude_rug_legend, file = here::here("Figures", "Figure3_5", "area_latitude_rug_legend.RData"))
 
+```
+Dumby graph to just make additional legend component
+```{r additional legend component}
+legend_lat_area_regression <- get_legend(
+  ggplot() +
+  geom_line(data = west_pac_north_data, aes(x=latitude_mid, y = area_1000s, color = "value"), size = 0.8, linetype = "longdash") +
+    scale_color_manual(values = "gray60", labels = "Area ~ Latitude\nLinear Regression") +
+    coord_flip() +
+  theme_classic() +
+  theme(plot.margin = margin(10, 40, 10, 10), legend.title = element_blank()))
+
+save(legend_lat_area_regression, file = here::here("Figures", "Figure3_5", "legend_lat_area_regression.RData"))
 ```
 
 How many experience 'significant' changes in habitat (at least -50% or +100% change from one bin to another) I will go with IUCN 50% loss -> vulnerable species designation.
@@ -1726,12 +1744,12 @@ library(ggspatial)
 
 # ~~~~~~~~~~~ Download shapefile from www.naturalearthdata.com ~~~~~~~~~~~ #
 # Download countries data
-download.file(url = "http://www.naturalearthdata.com/http//www.naturalearthdata.com/download/110m/cultural/ne_110m_admin_0_countries.zip", 
-              destfile = "ne_110m_admin_0_countries.zip")
+#download.file(url = "http://www.naturalearthdata.com/http//www.naturalearthdata.com/download/110m/cultural/ne_110m_admin_0_countries.zip", 
+#              destfile = "ne_110m_admin_0_countries.zip")
 # unzip the shapefile in the directory mentioned with "exdir" argument
-unzip(zipfile="ne_110m_admin_0_countries.zip", exdir = "ne_110m_admin_0_countries")
+#unzip(zipfile="ne_110m_admin_0_countries.zip", exdir = "ne_110m_admin_0_countries")
 # delete the zip file
-file.remove("ne_110m_admin_0_countries.zip")
+#file.remove("ne_110m_admin_0_countries.zip")
 # read the shapefile with readOGR from rgdal package
 NE_countries <- readOGR(dsn = "ne_110m_admin_0_countries", layer = "ne_110m_admin_0_countries")
 class(NE_countries) # is a SpatialPolygonsDataFrame object
@@ -1884,7 +1902,7 @@ for (i in 1:length(region_names)) {
                  colour = "gray70", 
                  fill = "gray90", 
                  size = 0.25) +
-    geom_tile(data = region_df, aes(x = x, y = y, fill = value), color = "seagreen4") +
+    geom_tile(data = region_df, aes(x = x, y = y, fill = value, color = "lightsteelblue4"), color = "lightsteelblue4") +
     coord_sf(x = c(region_spdf_mask_1s_extent[1], region_spdf_mask_1s_extent[2]), y = c(region_spdf_mask_1s_extent[3], region_spdf_mask_1s_extent[4])) +
     labs( x = paste0("Longitude ", "\u00B0E"), y = paste0("Latitude ", "\u00B0E")) +
     geom_abline(intercept = 0, slope = 0) +
@@ -1912,19 +1930,30 @@ for (i in 1:length(region_names)) {
                  colour = "gray70", 
                  fill = "gray90", 
                  size = 0.25) +
-    geom_tile(data = region_df, aes(x = x, y = y, fill = value), color = "seagreen4") +
+    geom_tile(data = region_df, aes(x = x, y = y, fill = as.factor(value))) +
+      scale_fill_manual(values = "lightsteelblue4", labels = "Continental Shelf Area") +
     coord_sf(x = c(region_spdf_mask_1s_extent[1], region_spdf_mask_1s_extent[2]), y = c(region_spdf_mask_1s_extent[3], region_spdf_mask_1s_extent[4])) +
     labs( x = paste0("Longitude ", "\u00B0E"), y = paste0("Latitude ", "\u00B0N")) +
     geom_abline(intercept = 0, slope = 0) +
     theme_classic() +
-    theme(legend.position = "none"))
+      theme(legend.title = element_blank()))
   
   filename <- paste0(region_names[i], "_map_2degrees.jpg")
   ggsave(plot = region_maps[[i]], filename = filename, height = 4, units = c("in"))
   
   }
   
-  }
+}
+
+region_map_legend <- get_legend(region_maps[[6]])
+
+#save maps
+save(region_maps, file = here::here("Figures","Figure3_5", "region_maps.RData"))
+#save map legend
+save(region_map_legend, file = here::here("Figures","Figure3_5", "region_maps_legend.RData"))
+
+#save all area versus latitude plots 
+save(area_latitude_east_pac , area_latitude_west_pac , area_latitude_east_atl , area_latitude_west_atl , area_latitude_east_ind , area_latitude_west_ind, file = here::here("Figures","Figure3_5", "latitude_2degree_maps.RData"))
 ```
 
 Combining plots
@@ -1939,6 +1968,11 @@ region_maps:
 
 Plots of area versus latitude
 area_latitude_east_pac
+area_latitude_west_pac
+area_latitude_east_atl
+area_latitude_west_atl
+area_latitude_east_ind
+area_latitude_west_ind
 
 Now, combine plots
 
@@ -1977,6 +2011,53 @@ ggsave(plot = west_pacific_merge_map_plot, filename = "west_pacific_merge_map_pl
 
 ggsave(plot = east_pacific_merge_map_plot, filename = "east_pacific_merge_map_plot_2degrees.jpg", width = 7, height = 3, units = "in")
 
+#both together
+library(cowplot)
+figure_3_pacific_merge_top <- egg::ggarrange(region_maps[[1]] + theme(axis.title.x = element_blank(), plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm")),
+          area_latitude_west_pac + 
+               theme(axis.text.y = element_blank(),
+                     axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     axis.title.x = element_blank(),
+                     legend.position = "none",
+                     plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm")),
+          nrow = 1, ncol = 2, top = T, bottom = T, widths = c(1.5,1))
+
+figure_3_pacific_merge_bottom <- egg::ggarrange(region_maps[[2]] + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm")),
+          area_latitude_east_pac + 
+               theme(axis.text.y = element_blank(),
+                     axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     legend.position = "none",
+                     plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm")),
+          nrow = 1, ncol = 2, top = T, bottom = T, widths = c(1.5,1))
+
+legend <- get_legend(area_latitude_east_pac)
+
+figure_3_pacific_merge <- plot_grid(figure_3_pacific_merge_top, figure_3_pacific_merge_bottom, ncol = 1, nrow = 2, labels = c("a.","b."), axis = "l", align = "v", hjust = -7, rel_heights = c(1,1.5))
+
+figure_3_pacific_merge_legend <- plot_grid(figure_3_pacific_merge, legend, ncol = 2, nrow = 1, rel_widths = c(4,1))
+
+ggsave(figure_3_pacific_merge_legend, path = here::here("Figures", "Figure3_5"), filename = "Figure3_Pacific_latitude_area.jpg", height = 4, width = 6, unit = "in")
+
+```
+
+
+```{r atlantic ocean}
+#east atlantic
+(east_atlantic_merge_map_plot <- egg::ggarrange(region_maps[[5]], 
+          area_latitude_east_atl
+          + 
+               theme(axis.text.y = element_blank(),
+                     axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank() )
+          , 
+
+          nrow = 1,
+          top = T,
+          widths = c(2,1)))
+
+ggsave(plot = east_atlantic_merge_map_plot, filename = "east_atlantic_merge_map_plot_2degrees.jpg", width = 7, height = 3, units = "in")
 
 #west atlantic
 (west_atlantic_merge_map_plot <- egg::ggarrange(region_maps[[3]], 
@@ -1993,6 +2074,37 @@ ggsave(plot = east_pacific_merge_map_plot, filename = "east_pacific_merge_map_pl
 
 ggsave(plot = west_atlantic_merge_map_plot, filename = "west_atlantic_merge_map_plot_2degrees.jpg", width = 7, height = 3, units = "in")
 
+#both together
+library(cowplot)
+figure_4_atlantic_merge_top <- egg::ggarrange(region_maps[[3]] + theme(axis.title.x = element_blank(), plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm")),
+          area_latitude_west_atl + 
+               theme(axis.text.y = element_blank(),
+                     axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     axis.title.x = element_blank(),
+                     legend.position = "none",
+                     plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm")),
+          nrow = 1, ncol = 2, top = T, bottom = T, widths = c(1.5,1))
+
+figure_4_atlantic_merge_bottom <- egg::ggarrange(region_maps[[5]] + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm")),
+          area_latitude_east_atl + 
+               theme(axis.text.y = element_blank(),
+                     axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     legend.position = "none",
+                     plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm")),
+          nrow = 1, ncol = 2, top = T, bottom = T, widths = c(1.5,1))
+
+legend <- get_legend(area_latitude_east_atl)
+
+figure_4_atlantic_merge <- plot_grid(figure_4_atlantic_merge_top, figure_4_atlantic_merge_bottom, ncol = 1, nrow = 2, labels = c("a.","b."), axis = "l", align = "v", hjust = -7, rel_heights = c(1.1,1))
+
+figure_4_atlantic_merge_legend <- plot_grid(figure_4_atlantic_merge, legend, ncol = 2, nrow = 1, rel_widths = c(4,1))
+
+ggsave(figure_4_atlantic_merge_legend, path = here::here("Figures", "Figure3_5"), filename = "Figure4_atlantic_latitude_area.jpg", height = 4, width = 6, unit = "in")
+```
+
+```{r indian ocean}
 #west indian
 (west_indian_merge_map_plot <- egg::ggarrange(region_maps[[4]], 
           area_latitude_west_ind 
@@ -2007,20 +2119,6 @@ ggsave(plot = west_atlantic_merge_map_plot, filename = "west_atlantic_merge_map_
 
 ggsave(plot = west_indian_merge_map_plot, filename = "west_indian_merge_map_plot_2degrees.jpg", width = 7, height = 3, units = "in")
 
-#east atlantic
-(east_atlantic_merge_map_plot <- egg::ggarrange(region_maps[[5]], 
-          area_latitude_east_atl
-          + 
-               theme(axis.text.y = element_blank(),
-                     axis.ticks.y = element_blank(),
-                     axis.title.y = element_blank() )
-          , 
-
-          nrow = 1,
-          top = T,
-          widths = c(2,1)))
-
-ggsave(plot = east_atlantic_merge_map_plot, filename = "east_atlantic_merge_map_plot_2degrees.jpg", width = 7, height = 3, units = "in")
 
 #east indian
 (east_indian_merge_map_plot <- egg::ggarrange(region_maps[[6]], 
@@ -2035,6 +2133,35 @@ ggsave(plot = east_atlantic_merge_map_plot, filename = "east_atlantic_merge_map_
           top = T))
 
 ggsave(plot = east_indian_merge_map_plot, filename = "east_indian_merge_map_plot_2degrees.jpg", width = 7, height = 3, units = "in")
+
+#both together
+library(cowplot)
+figure_5_indian_merge_top <- egg::ggarrange(region_maps[[4]] + theme(axis.title.x = element_blank(), plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm")),
+          area_latitude_west_ind + 
+               theme(axis.text.y = element_blank(),
+                     axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     axis.title.x = element_blank(),
+                     legend.position = "none",
+                     plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm")),
+          nrow = 1, ncol = 2, top = T, bottom = T, widths = c(1.5,1))
+
+figure_5_indian_merge_bottom <- egg::ggarrange(region_maps[[6]] + theme(plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm")),
+          area_latitude_east_ind + 
+               theme(axis.text.y = element_blank(),
+                     axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     legend.position = "none",
+                     plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm")),
+          nrow = 1, ncol = 2, top = T, bottom = T, widths = c(1.5,1))
+
+legend <- get_legend(area_latitude_east_ind)
+
+figure_5_indian_merge <- plot_grid(figure_5_indian_merge_top, figure_5_indian_merge_bottom, ncol = 1, nrow = 2, labels = c("a.","b."), axis = "l", align = "v", hjust = -7, rel_heights = c(1,1.2))
+
+figure_5_indian_merge_legend <- plot_grid(figure_5_indian_merge, legend, ncol = 2, nrow = 1, rel_widths = c(4,1))
+
+ggsave(figure_5_indian_merge_legend, path = here::here("Figures", "Figure3_5"), filename = "Figure5_indian_latitude_area.jpg", height = 4, width = 6, unit = "in")
 ```
 And now final merge for figures 3-5
 ```{r final merge figures}
