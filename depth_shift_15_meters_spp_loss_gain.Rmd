@@ -432,6 +432,112 @@ saveRDS(LME_area_spp_change_stats, file = "LME_area_spp_change_stats.RData")
 ggsave("arranged_LME_sppchange.pdf", marrangeGrob(lme_spp_count_area_sum_plots, ncol=2, nrow = 2))
 ```
 
+Instead of change in spp richness, I will just try plotting overall richness for each 15 m depth bin
+```{r richness each 15 m depth bin}
+
+#reorder LME_spdf by LME # 
+LME_spdf_ordered <- LME_spdf[order(LME_spdf$LME_NUMBER),]
+
+
+LME_area_spp_richness_stats <- as.data.table(matrix(nrow = nrow(LME_spdf)))
+LME_area_spp_richness_stats[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][, total_area := as.numeric(V1)][, total_spp_richness := as.numeric(V1)]
+
+LME_area_spp_richness_stats[, V1 := NULL]
+
+lme_spp_richness_plots <- vector("list", length = nrow(LME_spdf))
+
+for (i in 1:nrow(LME_area_spp_richness_stats)) {
+  LME_single <- LME_spdf_ordered[i,]
+  LME_area_spp_richness_stats[i, "lme_name"] <- LME_single$LME_NAME
+  LME_area_spp_richness_stats[i, "lme_number"] <- LME_single$LME_NUMBER
+  
+  #clip raster to LME
+  LME_extent <- crop(etopo_shelf_raster, extent(LME_single))
+  
+  #which areas of raster fall within borders?
+  LME_mask <- mask(LME_extent, LME_single)
+  
+  #conver to df for plotting
+    # First, to a SpatialPointsDataFrame
+    LME_points <- rasterToPoints(LME_mask, spatial = TRUE)
+    
+    # Then to a 'conventional' dataframe
+    LME_dt  <- data.table(data.frame(LME_points))
+  
+  #keep depth positive  
+  LME_dt[,depth := -(z)]
+  
+  LME_dt$x_shift <- ifelse(
+    max(LME_dt$x)-min(LME_dt$x) > 200 & LME_dt$x >0,
+    LME_dt$x - 360,
+    LME_dt$x)
+  
+  #size of raster  
+  #get sizes of all cells in raster [km2]
+    cell_size<-area(LME_mask, na.rm=TRUE, weights=FALSE)
+    #delete NAs from vector of all raster cells
+    ##NAs lie outside of the rastered region, can thus be omitted
+    cell_size<-cell_size[!is.na(cell_size)]
+    #compute area [km2] of all cells in geo_raster
+    bathy_raster_area<-length(cell_size)*median(cell_size)
+    
+    LME_area_spp_richness_stats[i, "lme_area"] <- bathy_raster_area
+  
+  
+    #list of values within raster
+  LME_bathy_depth_list <- getValues(LME_mask)
+  LME_bathy_depth_list <- LME_bathy_depth_list[!is.na(LME_bathy_depth_list)]
+  
+  LME_bathy_depth_list_pos <- -1*LME_bathy_depth_list
+
+
+  #cells of each depth value in data table
+  LME_bathy_bydepth <- data.table(freq(LME_mask))
+  
+  LME_bathy_bydepth_complete <- LME_bathy_bydepth[!is.na(value)]
+  
+  #calculate percent of total area in polygon
+  LME_bathy_bydepth_complete[,percent_area := count/sum(count)]
+  
+  
+  LME_bathy_bydepth_complete[,area := percent_area*bathy_raster_area][,depth := -value]
+  
+  LME_bathy_bydepth_complete[, depth_15s := round_any(depth, 15, f = floor)] #grouping to 15 m depths
+
+  #sum areas over depth bins
+  LME_bathy_bydepth_complete[, area_summed_15mbins :=  sum(area), depth_15s]
+
+  LME_bathy_bydepth_complete_15mbins <- unique(LME_bathy_bydepth_complete[,.(depth_15s, area_summed_15mbins)])
+  
+  LME_bathy_bydepth_complete_15mbins[,original_spp_predicted_levin := 16.18*area_summed_15mbins^0.226]
+
+
+  #plot change in spp
+  #spp by depth plot
+  lme_spp_richness_plots[[i]] <- ggplot(data = LME_bathy_bydepth_complete_15mbins, aes(x = depth_15s)) +
+    geom_area(aes(y = original_spp_predicted_levin), fill= "bisque") +
+    labs(x = "Depth (15 m bins)", y = "Species Richness", title = LME_single$LME_NAME) +
+    scale_x_continuous(expand=c(0,0)) +
+    scale_y_continuous(expand=c(0,0)) +
+    theme_classic() +
+    theme(legend.title = element_text(size = 4), 
+               legend.text = element_text(size = 4), 
+                legend.key.size = unit(.5,'cm'))
+
+ 
+    print(paste(i, nrow(LME_area_spp_richness_stats), sep = "/"))
+  
+
+}
+
+saveRDS(LME_area_spp_richness_stats, file = "LME_area_spp_richness_stats.RData")
+
+#plots to pdf
+ggsave("arranged_LME_spp_richness.pdf", marrangeGrob(lme_spp_richness_plots, ncol=2, nrow = 2))
+```
+```
+
+
 Add column for percent loss of starting area
 ```{r}
 LME_area_spp_change_stats[,percent_change := total_area_change/lme_area]
