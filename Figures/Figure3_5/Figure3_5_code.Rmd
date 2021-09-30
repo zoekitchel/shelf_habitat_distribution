@@ -8,6 +8,8 @@ Map, area, richness
 ```{r}
 library(data.table)
 library(ggplot2)
+library(cowplot)
+library(egg)
 
 
 load(here::here("Figures","Figure3_5", "region_maps.RData")) #maps
@@ -18,10 +20,13 @@ load(file = here::here("Figures", "Figure3_5", "area_latitude_rug_legend.RData")
 load(here::here("table_outputs","shelf_areas.RData")) #spp richness stats
 ```
 
+
 #East Atlantic
 ```{r east atlantic plots}
-(east_atlantic_spprichness <- ggplot(data = shelf_areas[region == "East Atlantic"], aes(x=latitude_mid, y=original_spp_predicted_levin)) +
-   geom_area(fill = "bisque") +
+(east_atlantic_spprichness <- ggplot(data = shelf_areas[region == "East Atlantic"], aes(x=latitude_start, y=change_spp_predicted_levin)) +
+   geom_col(aes(fill=spp_change_pos_neg_levin), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = paste0("Overall Species\nRichness Change: ", round(shelf_areas[region == "East Atlantic"]$spp_change_levin_by_reg,0), "\n\nDirection of Species\nRichness Change with\n2\u00B0 Latitudinal Shift"), labels = c("Negative", "Positive")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
  labs(x=paste0("Latitude ","\u00B0","E"), y = "Species Richness") +
   scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
   scale_y_continuous(expand = c(0, 0)) +
@@ -34,8 +39,10 @@ load(here::here("table_outputs","shelf_areas.RData")) #spp richness stats
 #West Atlantic
 
 ```{r west atlantic plots}
-(west_atlantic_spprichness <- ggplot(data = shelf_areas[region == "West Atlantic"], aes(x=latitude_mid, y=original_spp_predicted_levin)) +
-   geom_area(fill = "bisque") +
+(west_atlantic_spprichness <- ggplot(data = shelf_areas[region == "West Atlantic"], aes(x=latitude_start, y=change_spp_predicted_levin)) +
+   geom_col(aes(fill=spp_change_pos_neg_levin), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = paste0("Overall Species\nRichness Change: ", round(shelf_areas[region == "West Atlantic"]$spp_change_levin_by_reg,0), "\n\nDirection of Species\nRichness Change with\n2\u00B0 Latitudinal Shift"), labels = c("Negative", "Positive")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
  labs(x=paste0("Latitude ","\u00B0","E"), y = "Species Richness") +
   scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
   scale_y_continuous(expand = c(0, 0)) +
@@ -43,10 +50,14 @@ load(here::here("table_outputs","shelf_areas.RData")) #spp richness stats
   coord_flip() +
   theme_classic())
 
+direction_spp_richness_change_legend <- get_legend(west_atlantic_spprichness)
+
 ```
 #merged legend for all plots
 ```{r merged legends}
-merged_legends <- plot_grid(region_map_legend, area_latitude_rug_legend,  legend_lat_area_regression,  ncol = 1, nrow = 3)
+merged_legends <- plot_grid(region_map_legend, area_latitude_rug_legend,  legend_lat_area_regression, direction_spp_richness_change_legend,  ncol = 1, nrow = 4)
+
+plot(merged_legends)
 ```
 
 #Atlantic merge
@@ -65,7 +76,8 @@ figure_4_atlantic_merge_top <- egg::ggarrange(region_maps[[3]] + theme(axis.titl
                      axis.ticks.y = element_blank(),
                      axis.title.y = element_blank(),
                      axis.title.x = element_blank(),
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")),
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "none"),
           nrow = 1, ncol = 3, top = T, bottom = T, widths = c(1,0.7,0.7))
 
 figure_4_atlantic_merge_bottom <- egg::ggarrange(region_maps[[5]] + theme(plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")),
@@ -79,7 +91,8 @@ figure_4_atlantic_merge_bottom <- egg::ggarrange(region_maps[[5]] + theme(plot.m
             theme(axis.text.y = element_blank(),
                 axis.ticks.y = element_blank(),
                 axis.title.y = element_blank(),
-                plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")),
+                plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "none"),
           nrow = 1, ncol = 3, top = T, bottom = T, widths = c(1,0.7,0.7))
 
 legend_panel2 <- get_legend(area_latitude_east_atl)
