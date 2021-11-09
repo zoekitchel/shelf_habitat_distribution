@@ -175,20 +175,21 @@ west_ind_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% west_ind,]
 east_atl_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% east_atl,]
 east_ind_spdf <- east_ind_fao
 
-#for subregions that span 360, we need to change CRS a bit
-newCRS_west <- "+proj=longlat +datum=WGS84 +lon_wrap=180" #this shifts 180 degrees
-west_pac_spdf_shift <- spTransform(west_pac_spdf, CRS(newCRS_west))
-west_pac_spdf_shift <- gBuffer(west_pac_spdf_shift, byid=TRUE, width=0) #gets rid of buffers, allows for union
-
-newCRS_east <- "+proj=longlat +datum=WGS84 +lon_wrap=180" #this shifts 180 degrees
-east_pac_spdf_shift <- spTransform(east_pac_spdf, CRS(newCRS_east))
-east_pac_spdf_shift <- gBuffer(east_pac_spdf_shift, byid=TRUE, width=0) #gets rid of buffers, allows for union
 
 #rotate raster for bathymetry (guided by extent of etoposhelf raster,  that's why wacky #s)
 x1 <- crop(etopo_shelf_raster, extent(-180.0167, -0.0167, -90.01667, 90.01667))
 x2 <- crop(etopo_shelf_raster, extent(0, 180.0167, -90.01667, 90.01667))   
 extent(x1) <- c(180.0167, 360.0167, -90.01667 , 90.01667)
 etopo_shelf_raster_180 <- merge(x1, x2)
+
+#for subregions that span 360, we need to change CRS a bit
+newCRS_west <- "+proj=longlat +datum=WGS84 +lon_wrap=180" #this shifts 180 degrees
+west_pac_spdf_shift <- spTransform(west_pac_spdf, CRS(newCRS_west))
+west_pac_spdf_shift <- gBuffer(west_pac_spdf_shift, byid=TRUE, width=0) #gets rid of buffers, allows for union
+
+newCRS_east <- "+proj=longlat +datum=WGS84 +lon_wrap=180" #this shifts 180 degrees
+east_pac_spdf_shift <- sp::spTransform(east_pac_spdf, newCRS_east)
+east_pac_spdf_shift <- gBuffer(east_pac_spdf_shift, byid=TRUE, width=0) #gets rid of buffers, allows for union
 
 #get rid of buffer for east atl as well to allow for union
 
@@ -232,24 +233,30 @@ for (i in 1:length(region_names_noshift)) {
   
 
 }
+```
 
-#edit for east_pac_spdf_shift and west_pac_spdf_shift (+180˚)
+Rotate rasters that span pacific ocean 
 
-for (i in 1:length(region_names_shift[1:2])) {
-#crop bathy layer to LME subset
-  raster_extent <-
-       crop(etopo_shelf_raster_180, extent(get(paste0(region_names_shift[i], "_agg"))))
+```{r rotate rasters that span pacific}
+#east pacific
+#(guided by extent of etoposhelf raster,  that's why wacky #s)
+east_pac_spdf_shift_mask_1 <- crop(east_pac_spdf_shift_mask, extent(-179.9833, -0.0167, -57.51667, 79.01667))
+east_pac_spdf_shift_mask_2 <- crop(east_pac_spdf_shift_mask, extent(0, 180.0167, -57.51667, 79.01667))   
+extent(east_pac_spdf_shift_mask_1) <- c(180.0167, 359.9833, -57.51667, 79.01667)
+east_pac_spdf_shift_mask_180 <- merge(east_pac_spdf_shift_mask_1, east_pac_spdf_shift_mask_2)
 
-#which areas of raster fall within borders?
-  assign(paste0(region_names_shift[i], "_mask"),
-       mask(raster_extent, get(paste0(region_names_shift[i], "_agg"))))
-  
-    assign(paste0(region_names_shift[i], "_mask_1s"),
-       reclassify(get(paste0(region_names_shift[i], "_mask")), cbind(-Inf, Inf, 1)))
+east_pac_spdf_shift_mask_1s <- reclassify(east_pac_spdf_shift_mask_180, cbind(-Inf, Inf, 1))
 
-}
+#west pacific
+west_pac_spdf_shift_mask_1 <- crop(west_pac_spdf_shift_mask, extent(-179.9833, -0.0167, -47.18333, 82.98333))
+west_pac_spdf_shift_mask_2 <- crop(west_pac_spdf_shift_mask, extent(0, 180.0167, -47.18333, 82.98333))   
+extent(west_pac_spdf_shift_mask_1) <- c(180.0167, 359.9833, -47.18333, 82.98333)
+west_pac_spdf_shift_mask_180 <- merge(west_pac_spdf_shift_mask_1, west_pac_spdf_shift_mask_2)
+
+west_pac_spdf_shift_mask_1s <- reclassify(west_pac_spdf_shift_mask_180, cbind(-Inf, Inf, 1))
 
 ```
+
 
 Merge in areas unaccounted for by LMEs (Philippines, Sumatra, Papua New Guinea)
 
@@ -2034,7 +2041,9 @@ figure_3_pacific_merge_bottom <- egg::ggarrange(region_maps[[2]] + theme(plot.ma
 
 legend <- get_legend(area_latitude_east_pac)
 
-figure_3_pacific_merge <- plot_grid(figure_3_pacific_merge_top, figure_3_pacific_merge_bottom, ncol = 1, nrow = 2, labels = c("a.","b."), axis = "l", align = "v", hjust = -7, rel_heights = c(1,1.5))
+figure_3_pacific_merge <- plot_grid(figure_3_pacific_merge_top, figure_3_pacific_merge_bottom, ncol = 1, nrow = 2, labels = c("a.","b.")
+                                    #, axis = "l", align = "v", hjust = -7, rel_heights = c(1,1.5)
+                                    )
 
 figure_3_pacific_merge_legend <- plot_grid(figure_3_pacific_merge, legend, ncol = 2, nrow = 1, rel_widths = c(4,1))
 
@@ -2226,4 +2235,3 @@ fwrite(regional_statistics, file = "Table1_regional_stats.csv")
 save(significant_changes.long, significant_changes, file = "significant_changes_2degrees.Rdata")
 
 ```
-
