@@ -5,18 +5,23 @@ output: html_notebook
 
 Map, area, richness
 
-```{r}
+```{r setup}
 library(data.table)
 library(ggplot2)
 library(cowplot)
 library(egg)
 
+load("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/west_pac_shelf_areas_2degrees.Rdata")
+load("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/west_atl_shelf_areas_2degrees.Rdata")
+load("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/west_ind_shelf_areas_2degrees.Rdata")
+load("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/east_pac_shelf_areas_2degrees.Rdata")
+load("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/east_atl_shelf_areas_2degrees.Rdata")
+load("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/east_ind_shelf_areas_2degrees.Rdata")
+
+load("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/latitude_area_plots.RData")
 
 load(here::here("Figures","Figure3_5", "region_maps.RData")) #maps
-load(file = here::here("Figures","Figure3_5", "region_maps_legend.RData"))#map legend
 load(here::here("Figures","Figure3_5", "latitude_2degree_maps.RData")) #latitude area plots
-load(file = here::here("Figures", "Figure3_5", "legend_lat_area_regression.RData"))#lat area plot legend 1
-load(file = here::here("Figures", "Figure3_5", "area_latitude_rug_legend.RData"))#lat area plot legend 2
 load(here::here("table_outputs","shelf_areas.RData")) #spp richness stats
 ```
 
@@ -25,11 +30,11 @@ load(here::here("table_outputs","shelf_areas.RData")) #spp richness stats
 ```{r east atlantic plots}
 (east_atlantic_spprichness <- ggplot(data = shelf_areas[region == "East Atlantic"], aes(x=latitude_start, y=change_spp_predicted_levin)) +
    geom_col(aes(fill=spp_change_pos_neg_levin), alpha = 0.5) +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = paste0("Overall Species\nRichness Change: ", round(shelf_areas[region == "East Atlantic"]$spp_change_levin_by_reg,0), "\n\nDirection of Species\nRichness Change with\n2\u00B0 Latitudinal Shift"), labels = c("Negative", "Positive")) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
     labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
- labs(x=paste0("Latitude ","\u00B0","E"), y = "Species Richness") +
-  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
-  scale_y_continuous(expand = c(0, 0)) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
   coord_flip() +
   theme_classic())
@@ -41,11 +46,11 @@ load(here::here("table_outputs","shelf_areas.RData")) #spp richness stats
 ```{r west atlantic plots}
 (west_atlantic_spprichness <- ggplot(data = shelf_areas[region == "West Atlantic"], aes(x=latitude_start, y=change_spp_predicted_levin)) +
    geom_col(aes(fill=spp_change_pos_neg_levin), alpha = 0.5) +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = paste0("Overall Species\nRichness Change: ", round(shelf_areas[region == "West Atlantic"]$spp_change_levin_by_reg,0), "\n\nDirection of Species\nRichness Change with\n2\u00B0 Latitudinal Shift"), labels = c("Negative", "Positive")) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
     labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
- labs(x=paste0("Latitude ","\u00B0","E"), y = "Species Richness") +
-  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
-  scale_y_continuous(expand = c(0, 0)) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y =expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
   coord_flip() +
   theme_classic())
@@ -53,65 +58,77 @@ load(here::here("table_outputs","shelf_areas.RData")) #spp richness stats
 direction_spp_richness_change_legend <- get_legend(west_atlantic_spprichness)
 
 ```
-#merged legend for all plots
-```{r merged legends}
-merged_legends <- plot_grid(region_map_legend, area_latitude_rug_legend,  legend_lat_area_regression, direction_spp_richness_change_legend,  ncol = 1, nrow = 4)
-
-plot(merged_legends)
-```
 
 #Atlantic merge
 ```{r atlantic merge}
-library(cowplot)
-figure_4_atlantic_merge_top <- egg::ggarrange(region_maps[[3]] + theme(axis.title.x = element_blank(), plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm")),
+figure_4_atlantic_full <- egg::ggarrange(region_maps[[3]] + 
+                                                theme(legend.position = "top",
+                                                      axis.title.x = element_blank(),
+                                                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+ ylim(y=c(min(west_atl_shelf_areas$latitude_start),max(west_atl_shelf_areas$latitude_start))) +
+                                                scale_y_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
           area_latitude_west_atl + 
                theme(axis.text.y = element_blank(),
-                     axis.ticks.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
                      axis.title.y = element_blank(),
                      axis.title.x = element_blank(),
-                     legend.position = "none",
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")),
+                     legend.position = "top",
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+      guides(color = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
+            xlim(x=c(min(west_atl_shelf_areas$latitude_start),max(west_atl_shelf_areas$latitude_start))) +
+                                                scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
           west_atlantic_spprichness +
                            theme(axis.text.y = element_blank(),
-                     axis.ticks.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
                      axis.title.y = element_blank(),
                      axis.title.x = element_blank(),
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
-                legend.position = "none"),
-          nrow = 1, ncol = 3, top = T, bottom = T, widths = c(1,0.7,0.7))
-
-figure_4_atlantic_merge_bottom <- egg::ggarrange(region_maps[[5]] + theme(plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")),
+                legend.position = "top") +
+      guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
+   xlim(x=c(min(west_atl_shelf_areas$latitude_start),max(west_atl_shelf_areas$latitude_start))) +
+                                                scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
+ region_maps[[5]] + theme(legend.position = "none",
+                                                                          plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+                                                scale_y_continuous(breaks = c(-40,-20,0,20,40,60,80)),
           area_latitude_east_atl + 
                theme(axis.text.y = element_blank(),
-                     axis.ticks.y = element_blank(),
+           #          axis.ticks.y = element_blank(),
                      axis.title.y = element_blank(),
                      legend.position = "none",
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")),
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+                                                scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)),
           east_atlantic_spprichness +
             theme(axis.text.y = element_blank(),
-                axis.ticks.y = element_blank(),
+            #    axis.ticks.y = element_blank(),
                 axis.title.y = element_blank(),
                 plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
-                legend.position = "none"),
-          nrow = 1, ncol = 3, top = T, bottom = T, widths = c(1,0.7,0.7))
+                legend.position = "none") +
+                                                 scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)),
+ nrow = 2, top = T, bottom = T, widths = c(1,0.7,0.7,1.7,1,1))
 
-legend_panel2 <- get_legend(area_latitude_east_atl)
 
-figure_4_atlantic_merge <- plot_grid(figure_4_atlantic_merge_top, figure_4_atlantic_merge_bottom, ncol = 1, nrow = 2, labels = c("a.","b."), axis = "tblr", align = "hv", hjust = -7, rel_heights = c(1,1.1))
+figure_4_atlantic_full
 
-figure_4_atlantic_merge_legend_spprichness <- plot_grid(figure_4_atlantic_merge, merged_legends, ncol = 2, nrow = 1, rel_widths = c(4,1))
-
-ggsave(figure_4_atlantic_merge_legend_spprichness, path = here::here("Figures", "Figure3_5"), filename = "Figure4_atlantic_latitude_area_spprichness.jpg", height = 6, width = 10, unit = "in")
+ggsave(figure_4_atlantic_full, path = here::here("Figures", "Figure3_5"), filename = "Figure4_atlantic_latitude_area_spprichness.pdf", height = 6, width = 10, unit = "in")
+ggsave(figure_4_atlantic_full, path = here::here("Figures", "Figure3_5"), filename = "Figure4_atlantic_latitude_area_spprichness.jpg", height = 6, width = 10, unit = "in")
 ```
 
 #East pacific
 ```{r east pacific plots}
-(east_pacific_spprichness <- ggplot(data = shelf_areas[region == "East Pacific"], aes(x=latitude_mid, y=original_spp_predicted_levin)) +
-   geom_area(fill = "bisque") +
- labs(x=paste0("Latitude ","\u00B0","E"), y = "Species Richness") +
-  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
-  scale_y_continuous(expand = c(0, 0)) +
+(east_pacific_spprichness <- ggplot(data = shelf_areas[region == "East Pacific"], aes(x=latitude_start, y=change_spp_predicted_levin)) +
+   geom_col(aes(fill=spp_change_pos_neg_levin), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
+  xlim(x=c(min(shelf_areas[region == "East Pacific"]$latitude_start),max(shelf_areas[region == "East Pacific"]$latitude_start))) +
+scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)) +
   coord_flip() +
   theme_classic())
 
@@ -120,12 +137,16 @@ ggsave(figure_4_atlantic_merge_legend_spprichness, path = here::here("Figures", 
 #West pacific
 
 ```{r west pacific plots}
-(west_pacific_spprichness <- ggplot(data = shelf_areas[region == "West Pacific"], aes(x=latitude_mid, y=original_spp_predicted_levin)) +
-   geom_area(fill = "bisque") +
- labs(x=paste0("Latitude ","\u00B0","E"), y = "Species Richness") +
-  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
-  scale_y_continuous(expand = c(0, 0)) +
+(west_pacific_spprichness <- ggplot(data = shelf_areas[region == "West Pacific"], aes(x=latitude_start, y=change_spp_predicted_levin)) +
+   geom_col(aes(fill=spp_change_pos_neg_levin), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
+  xlim(x=c(min(shelf_areas[region == "West Pacific"]$latitude_start),max(shelf_areas[region == "West Pacific"]$latitude_start))) +
+                                                 scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)) +
   coord_flip() +
   theme_classic())
 
@@ -133,53 +154,80 @@ ggsave(figure_4_atlantic_merge_legend_spprichness, path = here::here("Figures", 
 
 #pacific merge
 ```{r pacific merge}
-library(cowplot)
-figure_3_pacific_merge_top <- egg::ggarrange(region_maps[[1]] + theme(axis.title.x = element_blank(), plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm")),
+figure_3_pacific_full <- egg::ggarrange(region_maps[[1]] + 
+                                                theme(legend.position = "top",
+                                                      legend.title = element_blank(),
+                                                      axis.title.x = element_blank(),
+                                                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+ ylim(y=c(min(west_pac_shelf_areas$latitude_start),max(west_pac_shelf_areas$latitude_start))) +
+                                                scale_y_continuous(breaks = c(-40,-20,0,20,40,60,80)),
           area_latitude_west_pac + 
                theme(axis.text.y = element_blank(),
-                     axis.ticks.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
                      axis.title.y = element_blank(),
                      axis.title.x = element_blank(),
-                     legend.position = "none",
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")),
+                     legend.position = "top",
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+      guides(color = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
+            xlim(x=c(min(west_pac_shelf_areas$latitude_start),max(west_pac_shelf_areas$latitude_start))) +
+                                                scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)),
           west_pacific_spprichness +
                            theme(axis.text.y = element_blank(),
-                     axis.ticks.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
                      axis.title.y = element_blank(),
                      axis.title.x = element_blank(),
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")),
-          nrow = 1, ncol = 3, top = T, bottom = T, widths = c(1,0.7,0.7))
-
-figure_3_pacific_merge_bottom <- egg::ggarrange(region_maps[[2]] + theme(plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")),
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "top") +
+      guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
+   xlim(x=c(min(west_pac_shelf_areas$latitude_start),max(west_pac_shelf_areas$latitude_start))) +
+                                                scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
+ region_maps[[2]] + theme(legend.position = "none",
+                                                                          plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+                                                scale_y_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
           area_latitude_east_pac + 
                theme(axis.text.y = element_blank(),
-                     axis.ticks.y = element_blank(),
+           #          axis.ticks.y = element_blank(),
                      axis.title.y = element_blank(),
                      legend.position = "none",
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")),
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+                                                scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
           east_pacific_spprichness +
             theme(axis.text.y = element_blank(),
-                axis.ticks.y = element_blank(),
+            #    axis.ticks.y = element_blank(),
                 axis.title.y = element_blank(),
-                plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")),
-          nrow = 1, ncol = 3, top = T, bottom = T, widths = c(1,0.7,0.7))
+                plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "none") +
+                                                 scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
+ nrow = 2, top = T, bottom = T, widths = c(1,0.7,0.7,1.7,1,1))
 
-figure_3_pacific_merge <- plot_grid(figure_3_pacific_merge_top, figure_3_pacific_merge_bottom, ncol = 1, nrow = 2, labels = c("a.","b."), axis = "tblr", align = "hv", hjust = -7, rel_heights = c(1,1.1))
 
-figure_3_pacific_merge_legend_spprichness <- plot_grid(figure_3_pacific_merge, merged_legends, ncol = 2, nrow = 1, rel_widths = c(4,1))
+figure_3_pacific_full
 
-ggsave(figure_3_pacific_merge_legend_spprichness, path = here::here("Figures", "Figure3_5"), filename = "Figure3_pacific_latitude_area_spprichness.jpg", height = 6, width = 10, unit = "in")
+ggsave(figure_3_pacific_full, path = here::here("Figures", "Figure3_5"), filename = "Figure3_pacific_latitude_area_spprichness.pdf", height = 6, width = 10, unit = "in")
+ggsave(figure_3_pacific_full, path = here::here("Figures", "Figure3_5"), filename = "Figure3_pacific_latitude_area_spprichness.jpg", height = 6, width = 10, unit = "in")
+
+
+
+
 ```
 #Indian
 
 #East indian
 ```{r east indian plots}
-(east_indian_spprichness <- ggplot(data = shelf_areas[region == "East Indian"], aes(x=latitude_mid, y=original_spp_predicted_levin)) +
-   geom_area(fill = "bisque") +
- labs(x=paste0("Latitude ","\u00B0","E"), y = "Species Richness") +
-  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
-  scale_y_continuous(expand = c(0, 0)) +
+(east_indian_spprichness <- ggplot(data = shelf_areas[region == "East Indian"], aes(x=latitude_start, y=change_spp_predicted_levin)) +
+   geom_col(aes(fill=spp_change_pos_neg_levin), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
+  xlim(x=c(min(shelf_areas[region == "East Indian"]$latitude_start),max(shelf_areas[region == "East Indian"]$latitude_start))) +
+                                                 scale_x_continuous(breaks = c(-60,-40,-20,0,20)) +
   coord_flip() +
   theme_classic())
 
@@ -188,12 +236,16 @@ ggsave(figure_3_pacific_merge_legend_spprichness, path = here::here("Figures", "
 #West indian
 
 ```{r west indian plots}
-(west_indian_spprichness <- ggplot(data = shelf_areas[region == "West Indian"], aes(x=latitude_mid, y=original_spp_predicted_levin)) +
-   geom_area(fill = "bisque") +
- labs(x=paste0("Latitude ","\u00B0","E"), y = "Species Richness") +
-  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
-  scale_y_continuous(expand = c(0, 0)) +
+(west_indian_spprichness <- ggplot(data = shelf_areas[region == "West Indian"], aes(x=latitude_start, y=change_spp_predicted_levin)) +
+   geom_col(aes(fill=spp_change_pos_neg_levin), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
+  xlim(x=c(min(shelf_areas[region == "West Indian"]$latitude_start),max(shelf_areas[region == "West Indian"]$latitude_start))) +
+                                                 scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)) +
   coord_flip() +
   theme_classic())
 
@@ -201,42 +253,61 @@ ggsave(figure_3_pacific_merge_legend_spprichness, path = here::here("Figures", "
 
 #indian merge
 ```{r indian merge}
-library(cowplot)
-figure_5_indian_merge_top <- egg::ggarrange(region_maps[[4]] + theme(axis.title.x = element_blank(), plot.margin = unit(c(0.5,0.5,0.5,0.5),"cm")),
+figure_5_indian_full <- egg::ggarrange(region_maps[[4]] + 
+                                                theme(legend.position = "top",
+                                                      axis.title.x = element_blank(),
+                                                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+ ylim(y=c(min(west_ind_shelf_areas$latitude_start),max(west_ind_shelf_areas$latitude_start))) +
+                                                scale_y_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)),
           area_latitude_west_ind + 
                theme(axis.text.y = element_blank(),
-                     axis.ticks.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
                      axis.title.y = element_blank(),
                      axis.title.x = element_blank(),
-                     legend.position = "none",
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")),
+                     legend.position = "top",
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+      guides(color = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
+            xlim(x=c(min(west_ind_shelf_areas$latitude_start),max(west_ind_shelf_areas$latitude_start))) +
+                                                scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)),
           west_indian_spprichness +
                            theme(axis.text.y = element_blank(),
-                     axis.ticks.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
                      axis.title.y = element_blank(),
                      axis.title.x = element_blank(),
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")),
-          nrow = 1, ncol = 3, top = T, bottom = T, widths = c(1,0.7,0.7))
-
-figure_5_indian_merge_bottom <- egg::ggarrange(region_maps[[6]] + theme(plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"), legend.position = "none"),
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "top") +
+      guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
+   xlim(x=c(min(west_ind_shelf_areas$latitude_start),max(west_ind_shelf_areas$latitude_start))) +
+                                                scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)),
+ region_maps[[6]] + theme(legend.position = "none",
+                                                                          plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+                                                scale_y_continuous(breaks = c(-60,-40,-20,0,20)),
           area_latitude_east_ind + 
                theme(axis.text.y = element_blank(),
-                     axis.ticks.y = element_blank(),
+           #          axis.ticks.y = element_blank(),
                      axis.title.y = element_blank(),
                      legend.position = "none",
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")),
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+                                                scale_x_continuous(breaks = c(-60,-40,-20,0,20)),
           east_indian_spprichness +
             theme(axis.text.y = element_blank(),
-                axis.ticks.y = element_blank(),
+            #    axis.ticks.y = element_blank(),
                 axis.title.y = element_blank(),
-                plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")),
-          nrow = 1, ncol = 3, top = T, bottom = T, widths = c(1,0.7,0.7))
+                plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "none") +
+                                                 scale_x_continuous(breaks = c(-60,-40,-20,0,20)),
+ nrow = 2, top = T, bottom = T, widths = c(1,0.7,0.7,1.7,1,1))
 
-figure_5_indian_merge <- plot_grid(figure_5_indian_merge_top, figure_5_indian_merge_bottom, ncol = 1, nrow = 2, labels = c("a.","b."), axis = "tblr", align = "hv", hjust = -7, rel_heights = c(1,1.1))
 
-figure_5_indian_merge_legend_spprichness <- plot_grid(figure_5_indian_merge, merged_legends, ncol = 2, nrow = 1, rel_widths = c(4,1))
+figure_5_indian_full
 
-ggsave(figure_5_indian_merge_legend_spprichness, path = here::here("Figures", "Figure3_5"), filename = "Figure5_indian_latitude_area_spprichness.jpg", height = 6, width = 10, unit = "in")
+ggsave(figure_5_indian_full, path = here::here("Figures", "Figure3_5"), filename = "Figure5_indian_latitude_area_spprichness.pdf", height = 6, width = 10, unit = "in")
+ggsave(figure_5_indian_full, path = here::here("Figures", "Figure3_5"), filename = "Figure5_indian_latitude_area_spprichness.jpg", height = 6, width = 10, unit = "in")
+
 ```
 
 
@@ -269,7 +340,7 @@ area_latitude_west_atl_2axes  <- ggplot() +
   scale_y_continuous(
     #expand = c(0, 0),
     # Add a second axis and specify its features
-    sec.axis = sec_axis(trans = ~., name="Species Richness")) +
+    sec.axis = sec_axis(trans = ~., name=paste0(expression(delta)," Species Richness"))) +
     scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
   coord_flip() +
   theme_classic() +
@@ -296,7 +367,7 @@ area_latitude_west_atl_2axes  <- ggplot() +
   scale_y_continuous(
 #    expand = c(0, 0),
     # Add a second axis and specify its features
-    sec.axis = sec_axis(trans = ~., name="Species Richness"),
+    sec.axis = sec_axis(trans = ~., name=paste0(expression(delta)," Species Richness")),
      limits = c(0,max(east_atl_shelf_areas$area_1000s))) +
     scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
   coord_flip() +
