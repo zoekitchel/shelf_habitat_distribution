@@ -8,7 +8,7 @@ library(raster)
 library(rgdal)
 library(sf)
 library(ncdf4)
-library(rmapshaper)
+#library(rmapshaper)
 library(tidyverse)
 library(diptest)
 library(moments)
@@ -27,9 +27,13 @@ etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_ha
 #LMEs
 LME_spdf <- readOGR("LME66/LMEs66.shp")
 
+#keep Antarctica and the arctic
+LME_poles <- LME_spdf[LME_spdf$LME_NUMBER == 61 | LME_spdf$LME_NUMBER == 64,]
+
 
 #get rid of Antarctica and the arctic
 LME_spdf <- LME_spdf[LME_spdf$LME_NUMBER != 61 & LME_spdf$LME_NUMBER != 64,]
+
 
 #equal area projection
 eaproj <- CRS("+proj=laea")
@@ -70,6 +74,47 @@ hist(etopo_shelf_raster$z)
 cellStats(etopo_shelf_raster, stat = 'mean')
 hist(etopo_shelf_raster)
 ```
+Depth distribution for Antarctica and Arctic specifically
+```{r Antarctic & Arctic}
+#crop bathy layer to LME subset
+bathy_arctic_extent <- crop(etopo_shelf_raster, extent(LME_poles[2,]))
+
+#which areas of raster fall within borders?
+bathy_arctic_mask <- mask(bathy_arctic_extent, LME_poles[2,])
+
+#convert to df for plotting
+
+  # First, to a SpatialPointsDataFrame
+  bathy_arctic_pts <- rasterToPoints(bathy_arctic_mask, spatial = TRUE)
+  # Then to a 'conventional' dataframe
+  bathy_arctic_dt  <- data.table(data.frame(bathy_arctic_pts))
+
+#keep depth positive  
+bathy_arctic_dt[,depth := -(z)]
+
+#fortify to plot shapefile on top
+#LME_arctic_df <- fortify(LME_arctic) (don't need because indstead I make polygon to surround raster)
+
+#To get a polygon that surrounds cells that are not NA
+
+  # make all values the same.
+  bathy_arctic_mask_1s <- reclassify(bathy_arctic_mask, cbind(-Inf, Inf, 1))
+  
+  # convert to polygons (you need to have package 'rgeos' installed for this to work)
+  bathy_arctic_polygon_1s <- rasterToPolygons(bathy_arctic_mask_1s, dissolve=TRUE) #single polygon
+  bathy_arctic_polygon <- rasterToPolygons(bathy_arctic_mask, dissolve=TRUE) #one polygon for each depth profile
+  
+  LME_reduced_arctic_df <- fortify(bathy_arctic_polygon)
+
+ggplot(bathy_arctic_dt) +
+  geom_tile(aes(x = x, y = y, fill = depth)) +
+  scale_fill_viridis(direction = -1, limits = c(0,2000)) +
+  theme_classic() +
+  labs(x = "Longitude", y = "Latitude", fill = "Depth (m)") +
+  guides(fill = guide_colorbar(reverse = T)) +
+  geom_path(data = LME_reduced_arctic_df, aes(x = long, y = lat, group = group), fill = NA, color = "black")
+```
+
 
 Clip raster to each individual polygon
 
