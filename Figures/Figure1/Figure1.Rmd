@@ -1,0 +1,109 @@
+---
+title: "Figure 1 Code"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r setup}
+library(ggplot2)
+library(data.table)
+library(cowplot)
+library(here)
+
+lme_areaplots <- readRDS("lme_areaplots.rds")
+lme_maps <- readRDS("lme_maps.rds")
+lme_spp_count_area_sum_plots <- readRDS("lme_spp_count_area_sum_plots.rds")
+
+#dummy legend for richness plot
+dummy_legend_depth_richness_plot <- readRDS(here::here("Figures","Figure1","dummy_legend_richness_plot.rds"))
+```
+
+```{r plot maps in row}
+
+plot_grid(lme_maps[[4]] + theme(legend.position = "none"),
+          lme_maps[[21]] +  theme(legend.position = "none"),
+          lme_maps[[29]] +  theme(legend.position = "none"),
+          get_legend(lme_maps[[4]]),
+          ncol = 4, nrow = 1, rel_widths = c(1,1,1,0.3))
+
+
+```
+
+```{r plot hypsometric curves in row}
+
+lme_areaplots_figure1 <- list()
+
+for (i in c(4,21,29)) {
+  #get max y value to set label location
+  ggp <- ggplot_build(lme_areaplots[[i]])
+max_y <- ggp$layout$panel_scales_y[[1]]$range$range[[2]]  #y range
+  
+#full plot
+  lme_areaplots_figure1[[i]] <- lme_areaplots[[i]] +
+    geom_vline(xintercept = LME_bathy_statistics[i,mean_depth], color = "red", alpha = 0.3) +
+    annotate("text", x=Inf, y = max_y-4*max_y/20, hjust=1, label = paste0("Dip Test: ", signif(LME_bathy_statistics[i,"dip_test"],2), " P-value = ", signif(LME_bathy_statistics[i,"dip_p_value"], 2)), size = 2) +
+    annotate("text", x=Inf, y = max_y-5*max_y/20, hjust=1, label = paste0("Skew: ", round(LME_bathy_statistics[i,"skew"],2)), size = 2) +
+#    annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2)), size = 2) +
+    annotate("text", x=Inf, y = max_y-6*max_y/20, hjust=1, label = paste0("Mean: ",round(LME_bathy_statistics[i,"mean_depth"],2), " m"), size = 2)
+
+}
+
+
+plot_grid(lme_areaplots_figure1[[4]] + theme(legend.position = "none"),
+          lme_areaplots_figure1[[21]] +  theme(legend.position = "none"),
+          lme_areaplots_figure1[[29]] +  theme(legend.position = "none"),
+          get_legend(lme_areaplots_figure1[[4]]),
+          ncol = 4, nrow = 1, rel_widths = c(1,1,1,0.3)) 
+```
+
+Map and hypsometric 
+```{r}
+figure1_map_hyp <- plot_grid(lme_maps[[4]] + ylab(paste0("Latitude ","\u00B0","N")) + xlab(paste0("Longitude ","\u00B0","E")) + theme(legend.position = "none"),
+          lme_maps[[21]] +  ylab(paste0("Latitude ","\u00B0","N")) + xlab(paste0("Longitude ","\u00B0","E")) + theme(legend.position = "none", axis.title.y = element_blank()),
+          lme_maps[[29]] +  ylab(paste0("Latitude ","\u00B0","N")) + xlab(paste0("Longitude ","\u00B0","E")) + theme(legend.position = "none", axis.title.y = element_blank()),
+          lme_areaplots_figure1[[4]] + theme(legend.position = "none"),
+          lme_areaplots_figure1[[21]] +  theme(legend.position = "none", axis.title.y = element_blank()),
+          lme_areaplots_figure1[[29]] +  theme(legend.position = "none", axis.title.y = element_blank()),
+          ncol = 3, nrow = 2)
+
+figure1_map_hyp.legend <- plot_grid(figure1_map_hyp, get_legend(lme_maps[[4]]), ncol = 2, nrow = 1, rel_widths = c(10,1))
+```
+
+Richness
+```{r richness by lme}
+plot_grid(lme_spp_count_area_sum_plots[[4]] + theme(legend.position = "none"),
+          lme_spp_count_area_sum_plots[[21]] +  theme(legend.position = "none", axis.title.y = element_blank()),
+          lme_spp_count_area_sum_plots[[29]] +  theme(legend.position = "none", axis.title.y = element_blank()),
+          get_legend(dummy_legend_depth_richness_plot + theme(legend.title = element_text(size = 10), legend.text = element_text(size = 10))),
+          ncol = 4, nrow = 1, rel_widths = c(1,1,1,1)) 
+
+
+
+```
+
+All nine plots together
+```{r}
+figure1_map_hyp_richness <- plot_grid(lme_maps[[4]] + ylab(paste0("Latitude ","\u00B0","N")) + xlab(paste0("Longitude ","\u00B0","E")) + theme(legend.position = "none", plot.margin = margin(1,0,0,0,unit = "cm")),
+          lme_maps[[21]] +  ylab(paste0("Latitude ","\u00B0","N")) + xlab(paste0("Longitude ","\u00B0","E")) + theme(legend.position = "none", axis.title.y = element_blank(), plot.margin = margin(1,0,0,0,unit = "cm")),
+          lme_maps[[29]] +  ylab(paste0("Latitude ","\u00B0","N")) + xlab(paste0("Longitude ","\u00B0","E")) + theme(legend.position = "none", axis.title.y = element_blank(), plot.margin = margin(1,0,0,0,unit = "cm")),
+          lme_areaplots_figure1[[4]] + theme(legend.position = "none"),
+          lme_areaplots_figure1[[21]] +  theme(legend.position = "none", axis.title.y = element_blank()),
+          lme_areaplots_figure1[[29]] +  theme(legend.position = "none", axis.title.y = element_blank()),
+          lme_spp_count_area_sum_plots[[4]] + theme(legend.position = "none"),
+          lme_spp_count_area_sum_plots[[21]] +  theme(legend.position = "none", axis.title.y = element_blank()),
+          lme_spp_count_area_sum_plots[[29]] +  theme(legend.position = "none", axis.title.y = element_blank()),
+          ncol = 3, nrow = 3, 
+          labels = c("Shallow Dominant","Multimodal","Mid Dominant","","","","","",""), 
+          hjust = -0.5, label_size = 14, label_fontface = "bold")
+
+legends <- plot_grid(get_legend(lme_maps[[4]]), 
+                     get_legend(dummy_legend_depth_richness_plot + theme(legend.title = element_blank(), legend.text = element_text(size = 11))), nrow  = 2, ncol = 1)
+
+figure1_map_hyp_rich.legend <- plot_grid(figure1_map_hyp_richness, legends, ncol = 2, nrow = 1, rel_widths = c(7,1))
+
+ggsave(figure1_map_hyp_rich.legend, height = 10, width = 10, unit = "in", path = here::here("Figures","Figure1"), filename = "figure1_map_hyp_rich.legend.jpg")
+```
+

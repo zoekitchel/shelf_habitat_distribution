@@ -395,9 +395,9 @@ for (i in 1:nrow(LME_area_spp_change_stats)) {
   setkey(LME_bathy_bydepth_complete_15mbins, depth_15s)
   
   #change in area
-    LME_bathy_bydepth_complete_15mbins[, change_area :=  area_summed_15mbins -  shift(area_summed_15mbins, n = 1, type = "lag")] #change in species from previous bin to this bin?
+    LME_bathy_bydepth_complete_15mbins[, change_area :=  area_summed_15mbins -  data.table::shift(area_summed_15mbins, n = 1, type = "lag")] #change in species from previous bin to this bin?
   #change in spp richness
-  LME_bathy_bydepth_complete_15mbins[, change_spp_predicted_levin :=  original_spp_predicted_levin -  shift(original_spp_predicted_levin, n = 1, type = "lag")] #change in species from previous bin to this bin?
+  LME_bathy_bydepth_complete_15mbins[, change_spp_predicted_levin :=  original_spp_predicted_levin -  data.table::shift(original_spp_predicted_levin, n = 1, type = "lag")] #change in species from previous bin to this bin?
 
   LME_bathy_bydepth_complete_15mbins[, spp_change_pos_neg_levin := ifelse(change_spp_predicted_levin > 0, "Positive","Negative")] #for coloring
 
@@ -412,8 +412,8 @@ for (i in 1:nrow(LME_area_spp_change_stats)) {
   #spp by depth plot
   lme_spp_count_area_sum_plots[[i]] <- ggplot(data = LME_bathy_bydepth_complete_15mbins, aes(x = depth_15s)) +
     geom_col(aes(y = change_spp_predicted_levin, fill=spp_change_pos_neg_levin), alpha = 0.5) +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = paste0("LME: ", LME_area_spp_change_stats[i, "lme_number"],"\n", LME_area_spp_change_stats[[i, "lme_name"]],"\n\nOverall Species\nRichness Change: ", round(LME_area_spp_change_stats[i, "total_spp_change"],2), "\n\nDirection of Species\nRichness Change with\n15m Depth Shift"), labels = c("Negative", "Positive")) +
-    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = paste0("LME: ", LME_area_spp_change_stats[i, "lme_number"],"\n", LME_area_spp_change_stats[[i, "lme_name"]],"\n\nSpecies Richness Change: ", round(LME_area_spp_change_stats[i, "total_spp_change"],2), "\n\nSpecies Richness Change\nwith 15m Depth Shift"), breaks = c("Positive","Negative"), labels = c("Gain", "Loss")) +
+    labs(x = "Depth  (15 m bins)", y = expression(Delta~'Species Richness')) +
 #    geom_hline(yintercept = 0) +
     theme_classic() +
     scale_x_continuous(expand = c(0,0)) +
@@ -428,14 +428,29 @@ for (i in 1:nrow(LME_area_spp_change_stats)) {
 
 }
 
-saveRDS(LME_area_spp_change_stats, file = "LME_area_spp_change_stats.RData")
+saveRDS(LME_area_spp_change_stats, file = "LME_area_spp_change_stats.rds")
+saveRDS(lme_spp_count_area_sum_plots, file = "lme_spp_count_area_sum_plots.rds")
 
 #plots to pdf
 ggsave("arranged_LME_sppchange.pdf", marrangeGrob(lme_spp_count_area_sum_plots, ncol=2, nrow = 2))
 
-lme_spp_count_area_sum_plots[[i]]
-LME_bathy_bydepth_complete_15mbins
 ```
+Dummy legend
+```{r}
+dummy_legend_depth_richness_plot <- ggplot(data = LME_bathy_bydepth_complete_15mbins, aes(x = depth_15s)) +
+    geom_col(aes(y = change_spp_predicted_levin, fill=spp_change_pos_neg_levin), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, breaks = c("Positive","Negative"), labels = c("Gain", "Loss")) +
+    labs(x = "Depth  (15 m bins)", y = expression(Delta~'Species Richness')) +
+    theme_classic() +
+    scale_x_continuous(expand = c(0,0)) +
+    scale_y_continuous(expand = c(0,0)) +
+    theme(legend.title = element_text(size = 4), 
+               legend.text = element_text(size = 4), 
+                legend.key.size = unit(.5,'cm'))
+
+saveRDS(dummy_legend_depth_richness_plot, here::here("Figures","Figure1","dummy_legend_richness_plot.rds"))
+```
+
 
 Instead of change in spp richness, I will just try plotting overall richness for each 15 m depth bin
 ```{r richness each 15 m depth bin}

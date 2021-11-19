@@ -110,7 +110,7 @@ ggplot(bathy_arctic_dt) +
   geom_tile(aes(x = x, y = y, fill = depth)) +
   scale_fill_viridis(direction = -1, limits = c(0,2000)) +
   theme_classic() +
-  labs(x = "Longitude", y = "Latitude", fill = "Depth (m)") +
+  labs(x = paste0("Longitude ","\u00B0","E"), y = paste0("Latitude ","\u00B0","N"), fill = "Depth (m)") +
   guides(fill = guide_colorbar(reverse = T)) +
   geom_path(data = LME_reduced_arctic_df, aes(x = long, y = lat, group = group), fill = NA, color = "black")
 ```
@@ -153,7 +153,7 @@ ggplot(bathy_baltic_dt) +
   geom_tile(aes(x = x, y = y, fill = depth)) +
   scale_fill_viridis(direction = -1, limits = c(0,2000)) +
   theme_classic() +
-  labs(x = "Longitude", y = "Latitude", fill = "Depth (m)") +
+labs(x = paste0("Longitude ","\u00B0","E"), y = paste0("Latitude ","\u00B0","N"), fill = "Depth (m)") +
   guides(fill = guide_colorbar(reverse = T)) +
   geom_path(data = LME_reduced_baltic_df, aes(x = long, y = lat, group = group), fill = NA, color = "black")
 
@@ -227,7 +227,7 @@ ggplot(bathy_aleutian_dt) +
   geom_tile(aes(x = x_shift, y = y, fill = depth)) +
   scale_fill_viridis(direction = -1, limits = c(0,2000)) +
   theme_classic() +
-  labs(x = "Longitude (˚E)", y = "Latitude", fill = "Depth (m)") +
+  labs(x = paste0("Longitude ","\u00B0","E"), y = paste0("Latitude ","\u00B0","N"), fill = "Depth (m)") +
   guides(fill = guide_colorbar(reverse = T)) +
   geom_path(data = LME_reduced_aleutian_df, aes(x = long_shift, y = lat, group = group), fill = NA, color = "black")
 
@@ -313,7 +313,6 @@ ks.test <- ks.test(bathy_baltic_depth_list_pos, "punif", min(bathy_baltic_depth_
 
 ks.test$p.value
 
-ks.test(table(bathy_baltic_depth_list_pos))
 ```
 
 "The dip test measures multimodality in a sample by the maximum difference, over all sample points, between the empirical distribution function, and the unimodal distribution function that minimizes that maximum difference."
@@ -392,7 +391,7 @@ lme_maps <- vector("list", length = nrow(LME_spdf))
 lme_densityplots <- vector("list", length = nrow(LME_spdf))
 lme_areaplots <- vector("list", length = nrow(LME_spdf))
 
-for (i in 39:nrow(LME_bathy_statistics)) {
+for (i in 1:nrow(LME_bathy_statistics)) {
   LME_single <- LME_spdf_ordered[i,]
   LME_bathy_statistics[i, "lme_name"] <- LME_single$LME_NAME
   LME_bathy_statistics[i, "lme_number"] <- LME_single$LME_NUMBER
@@ -470,7 +469,7 @@ for (i in 39:nrow(LME_bathy_statistics)) {
                      500,
                      max(LME_dt$depth))) +
     theme_classic() +
-    labs(x = "Longitude", y = "Latitude", fill = "Depth (m)") +
+      labs(x = paste0("Longitude ","\u00B0","E"), y = paste0("Latitude ","\u00B0","N"), fill = "Depth (m)") +
     guides(fill = guide_colorbar(reverse = T)) +
   #  geom_path(data = LME_reduced_df, aes(x = long_shift, y = lat, group = group), color = "black") +
     annotate("text", x=Inf, y = max(LME_reduced_df$lat)+1, hjust=1, label = paste0("LME ", LME_bathy_statistics[i,lme_number], ":\n ", LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2.5)
@@ -544,10 +543,10 @@ for (i in 39:nrow(LME_bathy_statistics)) {
 
 }
 
-saveRDS(LME_bathy_statistics, file = "LME_bathy_statistics.RData")
-saveRDS(lme_densityplots, file = "lme_densityplots.Rdata")
-saveRDS(lme_areaplots, file = "lme_areaplots.Rdata")
-saveRDS(lme_maps, file = "lme_maps.Rdata")
+saveRDS(LME_bathy_statistics, file = "LME_bathy_statistics.rds")
+saveRDS(lme_densityplots, file = "lme_densityplots.rds")
+saveRDS(lme_areaplots, file = "lme_areaplots.rds")
+saveRDS(lme_maps, file = "lme_maps.rds")
 
 #plots to pdf
 ggsave("arranged_maps.pdf", marrangeGrob(lme_maps, ncol=2, nrow = 2))
@@ -624,7 +623,7 @@ LME_bathy_statistics[,type := ifelse(uniform == T, "Uniform",
                                                   ifelse(mid_dominant == T, "Mid Dominant", "none")))))][,lme_name2 := lme_name]
 
 write.csv(LME_bathy_statistics, "LME_bathy_statistics.csv")
-saveRDS(LME_bathy_statistics, file = "LME_bathy_statistics.RData")
+saveRDS(LME_bathy_statistics, file = "LME_bathy_statistics.rds")
 
 #if already loaded
 #LME_bathy_statistics <- readRDS(file = "LME_bathy_statistics.RData") 
