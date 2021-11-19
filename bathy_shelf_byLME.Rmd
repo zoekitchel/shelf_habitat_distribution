@@ -472,7 +472,8 @@ for (i in 1:nrow(LME_bathy_statistics)) {
       labs(x = paste0("Longitude ","\u00B0","E"), y = paste0("Latitude ","\u00B0","N"), fill = "Depth (m)") +
     guides(fill = guide_colorbar(reverse = T)) +
   #  geom_path(data = LME_reduced_df, aes(x = long_shift, y = lat, group = group), color = "black") +
-    annotate("text", x=Inf, y = max(LME_reduced_df$lat)+1, hjust=1, label = paste0("LME ", LME_bathy_statistics[i,lme_number], ":\n ", LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2.5)
+    labs(title = paste0("LME ", LME_bathy_statistics[i,lme_number], "/n", LME_bathy_statistics[i,lme_name])) +
+    theme(plot.title = element_text(hjust=0.5, size = 11, face = "bold"))
   
   
     #list of values within raster
