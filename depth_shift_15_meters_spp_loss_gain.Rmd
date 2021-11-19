@@ -412,7 +412,7 @@ for (i in 1:nrow(LME_area_spp_change_stats)) {
   #spp by depth plot
   lme_spp_count_area_sum_plots[[i]] <- ggplot(data = LME_bathy_bydepth_complete_15mbins, aes(x = depth_15s)) +
     geom_col(aes(y = change_spp_predicted_levin, fill=spp_change_pos_neg_levin), alpha = 0.5) +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = paste0("LME: ", LME_area_spp_change_stats[i, "lme_number"],"\n", LME_area_spp_change_stats[[i, "lme_name"]],"\n\nSpecies Richness Change: ", round(LME_area_spp_change_stats[i, "total_spp_change"],2), "\n\nSpecies Richness Change\nwith 15m Depth Shift"), breaks = c("Positive","Negative"), labels = c("Gain", "Loss")) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = paste0("LME: ", LME_area_spp_change_stats[i, "lme_number"],"\n", LME_area_spp_change_stats[[i, "lme_name"]],"\n\nRichness Change with\n15m Depth Shift"), breaks = c("Positive","Negative"), labels = c("Gain", "Loss")) +
     labs(x = "Depth  (15 m bins)", y = expression(Delta~'Species Richness')) +
 #    geom_hline(yintercept = 0) +
     theme_classic() +
