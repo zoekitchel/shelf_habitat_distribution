@@ -292,12 +292,15 @@ Now, we will split each coastline raster into latitudinal bins of 2˚
 
 If these have already been done, load in from file instead of recreating because that takes some time.
 ```{r load in from files}
-load("west_pac_shelf_areas_2degrees.Rdata")
-load("west_atl_shelf_areas_2degrees.Rdata")
-load("west_ind_shelf_areas_2degrees.Rdata")
-load("east_pac_shelf_areas_2degrees.Rdata")
-load("east_atl_shelf_areas_2degrees.Rdata")
-load("east_ind_shelf_areas_2degrees.Rdata")
+
+#RESAVE THESE
+
+west_pac_shelf_areas <- readRDS("west_pac_shelf_areas_2degrees.rds")
+west_atl_shelf_areas <- readRDS("west_atl_shelf_areas_2degrees.rds")
+west_ind_shelf_areas <- readRDS("west_ind_shelf_areas_2degrees.rds")
+east_pac_shelf_areas <- readRDS("east_pac_shelf_areas_2degrees.rds")
+east_atl_shelf_areas <- readRDS("east_atl_shelf_areas_2degrees.rds")
+east_ind_shelf_areas <- readRDS("east_ind_shelf_areas_2degrees.rds")
 ```
 
 
@@ -487,6 +490,8 @@ west_pac_shelf_areas[, percent_change := (area_rasterarea-data.table::shift(area
 west_pac_shelf_areas[,hemisphere := ifelse(latitude_end>0,"north","south")]
 
 west_pac_shelf_areas[, change_above_2fold := ifelse((percent_change>=1 & percent_change<Inf), 1, ifelse(percent_change<=-0.5, -1, 0))]
+
+saveRDS(west_pac_shelf_areas, "west_pac_shelf_areas_2degrees.rds")
 
 west_pac_shelf_areas_highlight <- west_pac_shelf_areas[change_above_2fold != 0,]
 
@@ -686,6 +691,8 @@ east_pac_shelf_areas[,hemisphere := ifelse(latitude_end>0,"north","south")]
 
 east_pac_shelf_areas[, change_above_2fold := ifelse((percent_change>=1 & percent_change<Inf), 1, ifelse(percent_change<=-0.5, -1, 0))]
 
+saveRDS(east_pac_shelf_areas, "east_pac_shelf_areas_2degrees.rds")
+
 east_pac_shelf_areas_highlight <- east_pac_shelf_areas[change_above_2fold != 0,]
 
 east_pac_shelf_areas_stats <- table(east_pac_shelf_areas[,.(change_above_2fold, hemisphere)])
@@ -882,6 +889,8 @@ west_atl_shelf_areas[, percent_change := (area_rasterarea-data.table::shift(area
 west_atl_shelf_areas[,hemisphere := ifelse(latitude_end>0,"north","south")]
 
 west_atl_shelf_areas[, change_above_2fold := ifelse((percent_change>=1 & percent_change<Inf), 1, ifelse(percent_change<=-0.5, -1, 0))]
+
+saveRDS(west_atl_shelf_areas, "west_atl_shelf_areas_2degrees.rds")
 
 west_atl_shelf_areas_highlight <- west_atl_shelf_areas[change_above_2fold != 0,]
 
@@ -1081,6 +1090,8 @@ east_atl_shelf_areas[,hemisphere := ifelse(latitude_end>0,"north","south")]
 
 east_atl_shelf_areas[, change_above_2fold := ifelse((percent_change>=1 & percent_change<Inf), 1, ifelse(percent_change<=-0.5, -1, 0))]
 
+saveRDS(east_atl_shelf_areas, "east_atl_shelf_areas_2degrees.rds")
+
 east_atl_shelf_areas_highlight <- east_atl_shelf_areas[change_above_2fold != 0,]
 
 east_atl_shelf_areas_stats <- table(east_atl_shelf_areas[,.(change_above_2fold, hemisphere)])
@@ -1277,6 +1288,8 @@ west_ind_shelf_areas[, percent_change := (area_rasterarea-data.table::shift(area
 west_ind_shelf_areas[,hemisphere := ifelse(latitude_end>0,"north","south")]
 
 west_ind_shelf_areas[, change_above_2fold := ifelse((percent_change>=1 & percent_change<Inf), 1, ifelse(percent_change<=-0.5, -1, 0))]
+
+saveRDS(west_ind_shelf_areas, "west_ind_shelf_areas_2degrees.rds")
 
 west_ind_shelf_areas_highlight <- west_ind_shelf_areas[change_above_2fold != 0,]
 
@@ -1475,6 +1488,8 @@ east_ind_shelf_areas[, percent_change := (area_rasterarea-data.table::shift(area
 east_ind_shelf_areas[,hemisphere := ifelse(latitude_end>0,"north","south")]
 
 east_ind_shelf_areas[, change_above_2fold := ifelse((percent_change>=1 & percent_change<Inf), 1, ifelse(percent_change<=-0.5, -1, 0))]
+
+saveRDS(east_ind_shelf_areas, "east_ind_shelf_areas_2degrees.rds")
 
 east_ind_shelf_areas_highlight <- east_ind_shelf_areas[change_above_2fold != 0,]
 
@@ -2264,10 +2279,18 @@ for (i in 1:length(shelf_areas)) {
 
 }
 
-view(regional_statistics)
+
+#what about change in area stats?
+load(here::here("table_outputs","shelf_areas.RData")) #spp richness stats
+
+shelf_areas[,area_change_hemis_reg := sum(area_change, na.rm = T),.(region, hemisphere)]
+
+shelf_areas.unique <- unique(shelf_areas[,.(region, hemisphere, area_change_hemis_reg)])
+
+regional_statistics_final <- regional_statistics[shelf_areas.unique, on = c("region", "hemisphere")]
 
 #save
-fwrite(regional_statistics, file = "Table1_regional_stats.csv")
+fwrite(regional_statistics_final, file = "Table1_regional_stats.csv")
 ```
 
 

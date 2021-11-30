@@ -218,17 +218,19 @@ ggsave(figure_3_pacific_full, path = here::here("Figures", "Figure3_5"), filenam
 
 #East indian
 ```{r east indian plots}
+#pull values from maps
+west_ind_map <- ggplot_build(region_maps[[4]])
+east_ind_map <- ggplot_build(region_maps[[6]])
+
 (east_indian_spprichness <- ggplot(data = shelf_areas[region == "East Indian"], aes(x=latitude_start, y=change_spp_predicted_levin)) +
    geom_col(aes(fill=spp_change_pos_neg_levin), alpha = 0.5) +
     scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
     labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
  labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
-#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
-#  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
-  xlim(x=c(min(shelf_areas[region == "East Indian"]$latitude_start),max(shelf_areas[region == "East Indian"]$latitude_start))) +
-                                                 scale_x_continuous(breaks = c(-60,-40,-20,0,20)) +
-  coord_flip() +
+  coord_flip() +   
+  scale_x_continuous(breaks = c(-60,-40,-20,0,20)) +
+  xlim(min(east_ind_map$data[[2]]$y), max(east_ind_map$data[[2]]$y)) +
   theme_classic())
 
 ```
@@ -246,6 +248,7 @@ ggsave(figure_3_pacific_full, path = here::here("Figures", "Figure3_5"), filenam
   geom_vline(xintercept = 0) +
   xlim(x=c(min(shelf_areas[region == "West Indian"]$latitude_start),max(shelf_areas[region == "West Indian"]$latitude_start))) +
                                                  scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)) +
+   xlim(min(west_ind_map$data[[2]]$y), max(west_ind_map$data[[2]]$y)) +
   coord_flip() +
   theme_classic())
 
@@ -253,11 +256,12 @@ ggsave(figure_3_pacific_full, path = here::here("Figures", "Figure3_5"), filenam
 
 #indian merge
 ```{r indian merge}
+
 figure_5_indian_full <- egg::ggarrange(region_maps[[4]] + 
                                                 theme(legend.position = "top",
                                                       axis.title.x = element_blank(),
-                                                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
- ylim(y=c(min(west_ind_shelf_areas$latitude_start),max(west_ind_shelf_areas$latitude_start))) +
+                                                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"))+
+   ylim(min(west_ind_map$data[[2]]$y), max(west_ind_map$data[[2]]$y)) +
                                                 scale_y_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)),
           area_latitude_west_ind + 
                theme(axis.text.y = element_blank(),
@@ -269,8 +273,9 @@ figure_5_indian_full <- egg::ggarrange(region_maps[[4]] +
                     legend.title=element_text(size=10),
                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
       guides(color = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
-            xlim(x=c(min(west_ind_shelf_areas$latitude_start),max(west_ind_shelf_areas$latitude_start))) +
-                                                scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)),
+            xlim(min(west_ind_map$data[[1]]$y), max(west_ind_map$data[[1]]$y)) +
+                                                scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30))  +
+   xlim(min(west_ind_map$data[[2]]$y), max(west_ind_map$data[[2]]$y)),
           west_indian_spprichness +
                            theme(axis.text.y = element_blank(),
                     # axis.ticks.y = element_blank(),
@@ -281,19 +286,23 @@ figure_5_indian_full <- egg::ggarrange(region_maps[[4]] +
                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
                 legend.position = "top") +
       guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
-   xlim(x=c(min(west_ind_shelf_areas$latitude_start),max(west_ind_shelf_areas$latitude_start))) +
                                                 scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)),
+ 
  region_maps[[6]] + theme(legend.position = "none",
-                                                                          plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-                                                scale_y_continuous(breaks = c(-60,-40,-20,0,20)),
+                          plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+                                                scale_y_continuous(breaks = c(-60,-40,-20,0,20)) +
+   ylim(min(east_ind_map$data[[2]]$y), max(east_ind_map$data[[2]]$y)),
           area_latitude_east_ind + 
+   xlim(min(east_ind_map$data[[1]]$y), max(east_ind_map$data[[1]]$y)) +
                theme(axis.text.y = element_blank(),
            #          axis.ticks.y = element_blank(),
                      axis.title.y = element_blank(),
                      legend.position = "none",
                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-                                                scale_x_continuous(breaks = c(-60,-40,-20,0,20)),
+                                                scale_x_continuous(breaks = c(-60,-40,-20,0,20)) +
+   xlim(min(east_ind_map$data[[2]]$y), max(east_ind_map$data[[2]]$y)),
           east_indian_spprichness +
+   xlim(min(east_ind_map$data[[1]]$y), max(east_ind_map$data[[1]]$y)) +
             theme(axis.text.y = element_blank(),
             #    axis.ticks.y = element_blank(),
                 axis.title.y = element_blank(),
