@@ -32,6 +32,7 @@ library(SpaDES)
 library(rnaturalearth)
 library(rnaturalearthdata)
 library(ggnewscale)
+library(cowplot) #getlegend
 
 
 etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/etopo_shelf_df.rds")
@@ -205,6 +206,8 @@ for (i in 1:length(region_names)) {
   assign(name, gUnaryUnion(get(region_names[i]))) #dissolve polygons within coastline region into one
 }
 
+rm(x1,x2)
+
 ```
 
 
@@ -227,6 +230,10 @@ for (i in 1:length(region_names)) {
 
   
 }
+
+rm(etopo_shelf_raster)
+rm(etopo_shelf_raster_180)
+rm(etopo_shelf_df)
 ```
 
 Rotate rasters that span pacific ocean 
@@ -249,6 +256,11 @@ west_pac_spdf_shift_mask_180 <- merge(west_pac_spdf_shift_mask_1, west_pac_spdf_
 
 west_pac_spdf_shift_mask_1s <- reclassify(west_pac_spdf_shift_mask_180, cbind(-Inf, Inf, 1))
 
+rm(east_pac_spdf_shift, east_pac_spdf_shift_agg, east_pac_spdf_shift_mask, east_pac_spdf_shift_mask_180, east_pac_spdf_shift_mask_1, east_pac_spdf_shift_mask_1)
+
+rm(west_pac_spdf_shift_mask_180, west_pac_spdf_shift_mask_1, west_pac_spdf_shift_mask_2, west_pac_spdf_shift_agg, west_pac_spdf_shift_agg, west_pac_spdf_shift_mask)
+
+
 ```
 
 
@@ -257,6 +269,8 @@ Merge in areas unaccounted for by LMEs (Philippines, Sumatra, Papua New Guinea)
 ```{r merge non-LME regions}
 #western pacific ocean
 west_pac_spdf_mask_full <- merge(west_pac_fao.raster, west_pac_spdf_shift_mask_1s)
+
+
 ```
 
 
@@ -452,8 +466,9 @@ ggplot(data = west_pac_shelf_areas) +
 
 cor(west_pac_shelf_areas[,3:5], use = "complete.obs")
 
-save(west_pac_shelf_areas, file = "west_pac_shelf_areas_2degrees.Rdata")
-load("west_pac_shelf_areas_2degrees.Rdata")
+saveRDS(west_pac_shelf_areas, file = "west_pac_shelf_areas_2degrees.rds")
+
+rm(west_pac_spdf_shift_agg_north, west_pac_spdf_shift_agg_south)
 
 ```
 
@@ -660,7 +675,7 @@ ggplot(data = east_pac_shelf_areas) +
 
 cor(east_pac_shelf_areas[,3:5], use = "complete.obs")
 
-save(east_pac_shelf_areas, file = "east_pac_shelf_areas_2degrees.Rdata")
+saveRDS(east_pac_shelf_areas, file = "east_pac_shelf_areas_2degrees.rds")
 
 ```
 
@@ -854,6 +869,10 @@ ggplot(data = west_atl_shelf_areas) +
   theme_classic()
 
 cor(west_atl_shelf_areas[,3:5], use = "complete.obs")
+
+saveRDS(west_atl_shelf_areas, file = "west_atl_shelf_areas_2degrees.rds")
+
+rm(west_atl_spdf_shift_agg_north, west_atl_spdf_shift_agg_south)
 
 ```
 
@@ -1049,6 +1068,10 @@ ggplot(data = east_atl_shelf_areas) +
 
 cor(east_atl_shelf_areas[,3:5], use = "complete.obs")
 
+saveRDS(east_atl_shelf_areas, file = "east_atl_shelf_areas_2degrees.rds")
+
+rm(east_atl_spdf_shift_agg_north, east_atl_spdf_shift_agg_south)
+
 ```
 
 ```{r percent shift eastern atlantic}
@@ -1242,6 +1265,10 @@ ggplot(data = west_ind_shelf_areas) +
   theme_classic()
 
 cor(west_ind_shelf_areas[,3:5], use = "complete.obs")
+
+saveRDS(west_ind_shelf_areas, file = "west_ind_shelf_areas_2degrees.rds")
+
+rm(west_ind_spdf_shift_agg_north, west_ind_spdf_shift_agg_south)
 ```
 
 ```{r percent shift western indian}
@@ -1435,6 +1462,10 @@ ggplot(data = east_ind_shelf_areas) +
   theme_classic()
 
 cor(east_ind_shelf_areas[,3:5], use = "complete.obs")
+
+saveRDS(east_ind_shelf_areas, file = "east_ind_shelf_areas_2degrees.rds")
+
+rm(east_ind_spdf_shift_agg_north, east_ind_spdf_shift_agg_south)
 
 ```
 
@@ -1870,10 +1901,14 @@ east_ind_spdf_mask_full <- east_ind_spdf_mask_1s
 
 
 
+rm(east_pac_spdf_shift_mask_1s, west_atl_spdf_mask_1s, west_ind_spdf_mask_1s, east_atl_spdf_nobuf_mask_1s, west_pac_spdf_mask_full, east_ind_spdf_mask_1s)
+
+
+
 
 for (i in 1:length(region_names)) {
   
-  region_spdf <- get(paste0(region_names[i], "_mask"))
+  #region_spdf <- get(paste0(region_names[i], "_mask"))
   
   if(region_names[i] %in% regions_shift_projection) {
   
@@ -2187,12 +2222,21 @@ ggsave(atlantic_latitude_2_plots, file = "atlantic_latitude_2_plots.pdf", height
 
 Summary Table of Shifts away from Equator
 
+Save mods from earlier
+```{r}
+area_lat_mods <- save(west_pac_north_mod, east_pac_north_mod, west_atl_north_mod, west_ind_north_mod, east_atl_north_mod, east_ind_north_mod, west_pac_south_mod, east_pac_south_mod, west_atl_south_mod, west_ind_south_mod, east_atl_south_mod, east_ind_south_mod, file = here::here("table_outputs","area_lat_mods.RData"))
+```
+
+
 
 ```{r statistics table}
 regional_statistics <- data.table()
 regional_statistics[,region := rep(c("West Pacific", "East Pacific", "West Atlantic", "West Indian", "East Atlantic", "East Indian"),each = 2)][,hemisphere := rep(c("Northern", "Southern"),6)][,contractions := as.numeric(NA)][,expansions := as.numeric(NA)][,coef := as.numeric(NA)][,pvalue := as.numeric(NA)]
 
 shelf_areas <- c("west_pac_shelf_areas", "east_pac_shelf_areas", "west_atl_shelf_areas", "west_ind_shelf_areas", "east_atl_shelf_areas", "east_ind_shelf_areas")
+
+#load in mods if they are not already loaded
+#load(file = here::here("table_outputs","area_lat_mods.RData"))
 
 north_mods <- c("west_pac_north_mod", "east_pac_north_mod", "west_atl_north_mod", "west_ind_north_mod", "east_atl_north_mod", "east_ind_north_mod")
 
@@ -2212,11 +2256,11 @@ for (i in 1:length(shelf_areas)) {
     
     #northern mod
     regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Northern", "coef"] <- round(get(north_mods[i])$coefficients[2],2)
-    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Northern", "pvalue"] <- round(summary(get(north_mods[i]))$coefficients[,"Pr(>|t|)"][2],2)
+    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Northern", "pvalue"] <- summary(get(north_mods[i]))$coefficients[,"Pr(>|t|)"][2]
     
     #southern mod
     regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Southern", "coef"] <- round(get(south_mods[i])$coefficients[2],2)
-    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Southern", "pvalue"] <- round(summary(get(south_mods[i]))$coefficients[,"Pr(>|t|)"][2],2)
+    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Southern", "pvalue"] <- summary(get(south_mods[i]))$coefficients[,"Pr(>|t|)"][2]
 
 }
 

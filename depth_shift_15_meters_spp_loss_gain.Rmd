@@ -314,6 +314,7 @@ LME_area_spp_change_stats[, lme_name := as.factor(V1)][, lme_number := as.numeri
 
 LME_area_spp_change_stats[, V1 := NULL]
 
+LME_bathy_bydepth_complete_15mbins <- data.table(depth_15s = numeric(), area_summed_15mbins = numeric(), original_spp_predicted_levin = numeric(), change_area = numeric(), change_spp_predicted_levin = numeric(), spp_change_pos_neg_levin = factor(), lme_number = numeric(), lme_name = numeric())
 
 lme_spp_change_plots <- vector("list", length = nrow(LME_spdf))
 lme_spp_count_area_sum_plots <- vector("list", length = nrow(LME_spdf))
@@ -379,12 +380,12 @@ for (i in 1:nrow(LME_area_spp_change_stats)) {
   #sum areas over depth bins
   LME_bathy_bydepth_complete[, area_summed_15mbins :=  sum(area), depth_15s]
 
-  LME_bathy_bydepth_complete_15mbins <- unique(LME_bathy_bydepth_complete[,.(depth_15s, area_summed_15mbins)])
+  LME_bathy_bydepth_complete_15mbins_single <- unique(LME_bathy_bydepth_complete[,.(depth_15s, area_summed_15mbins)])
   
-  LME_bathy_bydepth_complete_15mbins[,original_spp_predicted_levin := 16.18*area_summed_15mbins^0.226]
+  LME_bathy_bydepth_complete_15mbins_single[,original_spp_predicted_levin := 16.18*area_summed_15mbins^0.226]
 
   #spp by depth plot
-  lme_spp_count_area_sum_plots[[i]] <- ggplot(data = LME_bathy_bydepth_complete_15mbins, aes(x = depth_15s)) +
+  lme_spp_count_area_sum_plots[[i]] <- ggplot(data = LME_bathy_bydepth_complete_15mbins_single, aes(x = depth_15s)) +
     geom_col(aes(y = area_summed_15mbins/100)) +
     geom_point(aes(y = original_spp_predicted_levin)) +
     labs(x = "Depth  (15 m bins)", y = "Area (100s of km^2)") +
@@ -392,14 +393,20 @@ for (i in 1:nrow(LME_area_spp_change_stats)) {
 
   #be sure to order table so that shift is used accurately (I did this above also, this is just a check)
   #include absolute value of latitude end
-  setkey(LME_bathy_bydepth_complete_15mbins, depth_15s)
+  setkey(LME_bathy_bydepth_complete_15mbins_single, depth_15s)
   
   #change in area
-    LME_bathy_bydepth_complete_15mbins[, change_area :=  area_summed_15mbins -  data.table::shift(area_summed_15mbins, n = 1, type = "lag")] #change in species from previous bin to this bin?
+    LME_bathy_bydepth_complete_15mbins_single[, change_area :=  area_summed_15mbins -  data.table::shift(area_summed_15mbins, n = 1, type = "lag")] #change in species from previous bin to this bin?
   #change in spp richness
-  LME_bathy_bydepth_complete_15mbins[, change_spp_predicted_levin :=  original_spp_predicted_levin -  data.table::shift(original_spp_predicted_levin, n = 1, type = "lag")] #change in species from previous bin to this bin?
+  LME_bathy_bydepth_complete_15mbins_single[, change_spp_predicted_levin :=  original_spp_predicted_levin -  data.table::shift(original_spp_predicted_levin, n = 1, type = "lag")] #change in species from previous bin to this bin?
 
-  LME_bathy_bydepth_complete_15mbins[, spp_change_pos_neg_levin := ifelse(change_spp_predicted_levin > 0, "Positive","Negative")] #for coloring
+  LME_bathy_bydepth_complete_15mbins_single[, spp_change_pos_neg_levin := ifelse(change_spp_predicted_levin > 0, "Positive","Negative")] #for coloring
+  
+  #add reference LME number and name
+  LME_bathy_bydepth_complete_15mbins_single[, lme_number := LME_single$LME_NUMBER][, lme_name := LME_single$LME_NAME]
+  
+  #add to overall summary data table
+  LME_bathy_bydepth_complete_15mbins <- rbind(LME_bathy_bydepth_complete_15mbins, LME_bathy_bydepth_complete_15mbins_single)
 
     #overall change in area
   LME_area_spp_change_stats[i, "total_area_change"] <- sum(LME_bathy_bydepth_complete_15mbins$change_area, na.rm = T)
@@ -410,7 +417,7 @@ for (i in 1:nrow(LME_area_spp_change_stats)) {
 
   #plot change in spp
   #spp by depth plot
-  lme_spp_count_area_sum_plots[[i]] <- ggplot(data = LME_bathy_bydepth_complete_15mbins, aes(x = depth_15s)) +
+  lme_spp_count_area_sum_plots[[i]] <- ggplot(data = LME_bathy_bydepth_complete_15mbins_single, aes(x = depth_15s)) +
     geom_col(aes(y = change_spp_predicted_levin, fill=spp_change_pos_neg_levin), alpha = 0.5) +
     scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = paste0("LME: ", LME_area_spp_change_stats[i, "lme_number"],"\n", LME_area_spp_change_stats[[i, "lme_name"]],"\n\nRichness Change with\n15m Depth Shift"), breaks = c("Positive","Negative"), labels = c("Gain", "Loss")) +
     labs(x = "Depth  (15 m bins)", y = expression(Delta~'Species Richness')) +
@@ -428,7 +435,15 @@ for (i in 1:nrow(LME_area_spp_change_stats)) {
 
 }
 
+setkey(LME_bathy_bydepth_complete_15mbins, lme_name, depth_15s)
+
+#percent change
+LME_bathy_bydepth_complete_15mbins[, percent_change_richness := (original_spp_predicted_levin-data.table::shift(original_spp_predicted_levin, type = "lag"))/data.table::shift(original_spp_predicted_levin, type = "lag"), .(lme_name)]
+
 saveRDS(LME_area_spp_change_stats, file = "LME_area_spp_change_stats.rds")
+saveRDS(LME_bathy_bydepth_complete_15mbins, here::here("table_outputs","LME_bathy_bydepth_complete_15mbins.rds"))
+#LME_area_spp_change_stats <- readRDS("LME_area_spp_change_stats.rds")
+#LME_bathy_bydepth_complete_15mbins <- readRDS(here::here("table_outputs","LME_bathy_bydepth_complete_15mbins.rds"))
 saveRDS(lme_spp_count_area_sum_plots, file = "lme_spp_count_area_sum_plots.rds")
 
 #plots to pdf
