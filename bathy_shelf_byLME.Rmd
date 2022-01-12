@@ -1,6 +1,8 @@
 ---
 title: "Starting with Bathy for Shelves"
-output: html_notebook
+output:
+  pdf_document: default
+  html_notebook: default
 ---
 
 ```{r setup}
@@ -21,11 +23,11 @@ library(rgeos)
 library(ggridges) #allows for gradient in density plot
 library(psych) #summary statistics
 
-etopo_shelf_df <- readRDS("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/etopo_shelf_df.rds")
+etopo_shelf_df <- readRDS("raw_data/etopo_shelf_df.rds")
 #bring in bathy for shelf regions
 
 #LMEs
-LME_spdf <- readOGR("LME66/LMEs66.shp")
+LME_spdf <- readOGR("raw_data/LME66/LMEs66.shp")
 
 #keep Antarctica and the arctic
 LME_poles <- LME_spdf[LME_spdf$LME_NUMBER == 61 | LME_spdf$LME_NUMBER == 64,]
@@ -167,7 +169,7 @@ summary(bathy_baltic_dt)
   ##NAs lie outside of the rastered region, can thus be omitted
   cell_size<-cell_size[!is.na(cell_size)]
   #compute area [km2] of all cells in geo_raster
-  bathy_raster_area<-length(cell_size)*median(cell_size)
+  bathy_raster_area <- sum(cell_size)
   
 #Also, try using raster::area on polygon
 
@@ -349,7 +351,7 @@ mean
 Possible groupings:
 
 Shallow dominant: High positive skew, unimodal
-Mid-Dominant: Relatively normal (low skew, kurtosis = 0, unimodal)
+Mid-Dominant: Relatively normal (low skew, unimodal)
 Deep-Dominant: High negative skew, unimodal
 Uniform: reject the null for Kolmogorov–Smirnov test for uniformity
 Hourglass: Bimodality
@@ -382,7 +384,7 @@ LME_spdf_ordered <- LME_spdf[order(LME_spdf$LME_NUMBER),]
 
 
 LME_bathy_statistics <- as.data.table(matrix(nrow = nrow(LME_spdf)))
-LME_bathy_statistics[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][,ks_test_pvalue := as.numeric(V1)][, dip_test := as.numeric(V1)][, dip_p_value := as.numeric(V1)][, skew := as.numeric(V1)][, kurtosis := as.numeric(V1)][, mean_depth := as.numeric(V1)][, max_depth := as.numeric(V1)][, median_depth := as.numeric(V1)][, center_latitude := as.numeric(V1)]
+LME_bathy_statistics[, lme_name := as.factor(V1)][, lme_number := as.numeric(V1)][,lme_area := as.numeric(V1)][,ks_test_pvalue := as.numeric(V1)][, dip_test := as.numeric(V1)][, dip_p_value := as.numeric(V1)][, skew := as.numeric(V1)][, mean_depth := as.numeric(V1)][, max_depth := as.numeric(V1)][, median_depth := as.numeric(V1)][, center_latitude := as.numeric(V1)]
 
 LME_bathy_statistics[, V1 := NULL]
 
@@ -481,22 +483,37 @@ for (i in 1:nrow(LME_bathy_statistics)) {
   LME_bathy_depth_list <- LME_bathy_depth_list[!is.na(LME_bathy_depth_list)]
   
   LME_bathy_depth_list_pos <- -1*LME_bathy_depth_list
-
-
-  #cells of each depth value in data table
-  LME_bathy_bydepth <- data.table(freq(LME_mask))
   
-  LME_bathy_bydepth_complete <- LME_bathy_bydepth[!is.na(value)]
+  #assign specific values to each grid cell
+  cell_size_cell_value <- data.table(cell_size = cell_size, depth = LME_bathy_depth_list_pos)
+  
+  #sum area across cells with same depth
+  cell_size_cell_value[,sum_area := sum(cell_size), by = depth]
+
+  #reduce to frequency table
+  freq_table_raster <- unique(cell_size_cell_value, by = c("depth", "sum_area"))
+
+  freq_table_raster[,cell_size := NULL] #remove cell size column
   
   #calculate percent of total area in polygon
-  LME_bathy_bydepth_complete[,percent_area := count/sum(count)]
+  #generate vector of values for modality calculation with diptest package
+  freq_table_raster[,prop_area :=  sum_area/sum(sum_area)] #calculate proportional area
+
+  freq_table_raster[,area_rounddown := round(prop_area * 10000000, 0)] #check, do I actually need this many sig figs?
+
+  #empty vector
+  LME_data_vector <- vector()
+
+  #populate vector
+    for (i in 1:nrow(freq_table_raster)){
+    add <- rep(freq_table_raster[i,depth], freq_table_raster[i,area_rounddown])
+    LME_data_vector <- append(LME_data_vector, add, after = length(LME_data_vector))
+    
+    }
   
   
-  LME_bathy_bydepth_complete[,area := percent_area*bathy_raster_area][,depth := -value]
-  
-  
-  
-  lme_areaplots[[i]] <- ggplot(data = LME_bathy_bydepth_complete, aes(x = depth, y = area, fill = depth)) +
+  #plot
+  lme_areaplots[[i]] <- ggplot(data = freq_table_raster, aes(x = depth, y = sum_area, fill = depth)) +
     geom_col(width = 5) +
 #    geom_smooth(method = "gam", se = F, color = "black", size = 1) +
     theme_classic() +
@@ -522,19 +539,22 @@ for (i in 1:nrow(LME_bathy_statistics)) {
   #unimodality
   #Computes Hartigans’ dip test statistic for testing unimodality, and additionally the modal interval.
   
-  diptest <- dip.test(LME_bathy_depth_list_pos, simulate.p.value = TRUE, B = 2000)
+   diptest <- dip.test(LME_data_vector, simulate.p.value = TRUE, B = 2000)
+#this takes a while, probably more than 30 minutes
   LME_bathy_statistics[i,"dip_test"] <- diptest$statistic[1]
   p.value <- diptest$p.value
   LME_bathy_statistics[i,"dip_p_value"] <- p.value
-  skew <- skewness(LME_bathy_depth_list_pos, na.rm = T)
+  
+  skew <- skewness(LME_data_vector, na.rm = T)
   LME_bathy_statistics[i,"skew"] <- skew
-  kurtosis <- kurtosis(LME_bathy_depth_list_pos, na.rm = T)
-  LME_bathy_statistics[i,"kurtosis"] <- kurtosis
-  mean <- mean(LME_bathy_depth_list_pos)
+  
+  mean <- mean(LME_data_vector)
   LME_bathy_statistics[i,"mean_depth"] <- mean
-  max_depth <- max(LME_bathy_depth_list_pos)
+  
+  max_depth <- max(LME_data_vector)
   LME_bathy_statistics[i, "max_depth"] <- max_depth
-  median_depth <- median(LME_bathy_depth_list_pos)
+  
+  median_depth <- median(LME_data_vector)
   LME_bathy_statistics[i, "median_depth"] <- median_depth
   
   max_area <- max(LME_bathy_bydepth_complete$area)
@@ -648,7 +668,6 @@ max_y <- ggp$layout$panel_scales_y[[1]]$range$range[[2]]  #y range
         annotate("text", x=Inf, y = max_y-3*max_y/20, hjust=1, label = paste0("Classification: ", LME_bathy_statistics[i,type]), size = 2) +
     annotate("text", x=Inf, y = max_y-4*max_y/20, hjust=1, label = paste0("Dip Test: ", signif(LME_bathy_statistics[i,dip_test],2), " P-value = ", signif(LME_bathy_statistics[i,dip_p_value], 2)), size = 2) +
     annotate("text", x=Inf, y = max_y-5*max_y/20, hjust=1, label = paste0("Skew: ", round(LME_bathy_statistics[i,skew],2)), size = 2) +
-#    annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2)), size = 2) +
     annotate("text", x=Inf, y = max_y-6*max_y/20, hjust=1, label = paste0("Mean: ",round(LME_bathy_statistics[i,mean_depth],2), " m"), size = 2)
 
 
