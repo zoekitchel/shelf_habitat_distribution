@@ -1,8 +1,6 @@
 ---
 title: "Starting with Bathy for Shelves"
-output:
-  pdf_document: default
-  html_notebook: default
+output: html_notebook
 ---
 
 ```{r setup}
@@ -170,7 +168,7 @@ summary(bathy_baltic_dt)
   ##NAs lie outside of the rastered region, can thus be omitted
   cell_size<-cell_size[!is.na(cell_size)]
   #compute area [km2] of all cells in geo_raster
-  bathy_raster_area <- sum(cell_size)
+  bathy_raster_area<-length(cell_size)*median(cell_size)
   
 #Also, try using raster::area on polygon
 
@@ -352,7 +350,7 @@ mean
 Possible groupings:
 
 Shallow dominant: High positive skew, unimodal
-Mid-Dominant: Relatively normal (low skew, unimodal)
+Mid-Dominant: Relatively normal (low skew, kurtosis = 0, unimodal)
 Deep-Dominant: High negative skew, unimodal
 Uniform: reject the null for Kolmogorov–Smirnov test for uniformity
 Hourglass: Bimodality
@@ -434,7 +432,7 @@ for (i in 1:nrow(LME_bathy_statistics)) {
     ##NAs lie outside of the rastered region, can thus be omitted
     cell_size<-cell_size[!is.na(cell_size)]
     #compute area [km2] of all cells in geo_raster
-    bathy_raster_area<-length(cell_size)*median(cell_size)
+    bathy_raster_area <- sum(cell_size)
     
     LME_bathy_statistics[i, "lme_area"] <- bathy_raster_area
     
@@ -444,7 +442,7 @@ for (i in 1:nrow(LME_bathy_statistics)) {
     r <- reclassify(LME_mask, cbind(-Inf, Inf, 1))
     
     # convert to polygons (you need to have package 'rgeos' installed for this to work)
-    pp <- rasterToPolygons(r, dissolve=TRUE) #longest step
+    pp <- rasterToPolygons(r, dissolve=TRUE) #long step
     
     LME_reduced_df <- fortify(pp)
     
@@ -475,7 +473,7 @@ for (i in 1:nrow(LME_bathy_statistics)) {
       labs(x = paste0("Longitude ","\u00B0","E"), y = paste0("Latitude ","\u00B0","N"), fill = "Depth (m)") +
     guides(fill = guide_colorbar(reverse = T)) +
   #  geom_path(data = LME_reduced_df, aes(x = long_shift, y = lat, group = group), color = "black") +
-    labs(title = paste0("LME ", LME_bathy_statistics[i,lme_number], "/n", LME_bathy_statistics[i,lme_name])) + #change direction of  / if running on annotate (PC versus mac problem)
+    labs(title = paste0("LME ", LME_bathy_statistics[i,lme_number], "/n", LME_bathy_statistics[i,lme_name])) + #switch direction of / for annotate
     theme(plot.title = element_text(hjust=0.5, size = 11, face = "bold"))
   
   
@@ -500,14 +498,14 @@ for (i in 1:nrow(LME_bathy_statistics)) {
   #generate vector of values for modality calculation with diptest package
   freq_table_raster[,prop_area :=  sum_area/sum(sum_area)] #calculate proportional area
 
-  freq_table_raster[,area_rounddown := round(prop_area * 10000000, 0)] #check, do I actually need this many sig figs?
+  freq_table_raster[,area_rounddown := round(prop_area * 1000000, 0)] #three sig figs should be enough
 
   #empty vector
   LME_data_vector <- vector()
 
-  #populate vector
-    for (i in 1:nrow(freq_table_raster)){
-    add <- rep(freq_table_raster[i,depth], freq_table_raster[i,area_rounddown])
+  #populate vector where each depth is counted the same # of times as area_rounddown
+    for (j in 1:nrow(freq_table_raster)){
+    add <- rep(freq_table_raster[j,depth], freq_table_raster[j,area_rounddown])
     LME_data_vector <- append(LME_data_vector, add, after = length(LME_data_vector))
     
     }
@@ -523,14 +521,14 @@ for (i in 1:nrow(LME_bathy_statistics)) {
     scale_x_continuous(expand = c(0,0)) +
     scale_fill_gradientn(
   colours=c("#f98f3e","#f9be3e","#E3E247", "#46AF78", "#3B5088","#592f83","#420d54", "#420d54"),
-  breaks = c(min(LME_bathy_bydepth_complete$depth),
+  breaks = c(min(freq_table_raster$depth),
                     100,
                     200,
                     300,
                     400,
                      500,
                      500,
-                     max(LME_bathy_bydepth_complete$depth))) +
+                     max(freq_table_raster$depth))) +
     guides(position = "bottom", fill = guide_colorbar(reverse = T))
   
   #uniformity
@@ -558,7 +556,7 @@ for (i in 1:nrow(LME_bathy_statistics)) {
   median_depth <- median(LME_data_vector)
   LME_bathy_statistics[i, "median_depth"] <- median_depth
   
-  max_area <- max(LME_bathy_bydepth_complete$area)
+  max_area <- max(freq_table_raster$area)
  
     print(paste(i, nrow(LME_bathy_statistics), sep = "/"))
   
@@ -611,11 +609,11 @@ Add classifications to data frame
 * If skewness is between -1 and -0.5 or between 0.5 and 1, the distribution is moderately skewed.
 * If skewness is between -0.5 and 0.5, the distribution is approximately symmetric.
 
-distributions with a dip value >0.01 and with significant (p<0.05) deviations from unimodality to the hourglass classification. 
+Distributions with a dip value >0.01 and with significant (p<0.05) deviations from unimodality to the hourglass classification. 
 
-For distributions with a dip value ≤0.01, we assigned those with a Type-I skewness ≥0.5 to shallow dominant, those with skewness ≤ −0.5 to deep dominant, and the remainder to diamond, representing those with approximately normal distributions. This is what Elsen and Tingley did. Now, I'm going to play around with skew cutoff of 1 rather than 0.5.
+For distributions with a dip value ≤0.01, we assigned those with a Type-I skewness ≥0.5 to shallow dominant, those with skewness ≤ −0.5 to deep dominant, and the remainder to diamond, representing those with approximately normal distributions. This is what Elsen and Tingley did. Instead, we will use skew cutoff of 1.
 
-If pvalue for uniformity test is >0.05 --> uniform
+If p-value for uniformity test is > 0.05 --> uniform
 
 ```{r expanded dataframe}
 LME_bathy_statistics[, skew_descriptor := ifelse(abs(skew) > 1, "high_skew", ifelse(abs(skew) < 0.5, "symmetric", "mod_skew"))]
@@ -669,6 +667,7 @@ max_y <- ggp$layout$panel_scales_y[[1]]$range$range[[2]]  #y range
         annotate("text", x=Inf, y = max_y-3*max_y/20, hjust=1, label = paste0("Classification: ", LME_bathy_statistics[i,type]), size = 2) +
     annotate("text", x=Inf, y = max_y-4*max_y/20, hjust=1, label = paste0("Dip Test: ", signif(LME_bathy_statistics[i,dip_test],2), " P-value = ", signif(LME_bathy_statistics[i,dip_p_value], 2)), size = 2) +
     annotate("text", x=Inf, y = max_y-5*max_y/20, hjust=1, label = paste0("Skew: ", round(LME_bathy_statistics[i,skew],2)), size = 2) +
+#    annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2)), size = 2) +
     annotate("text", x=Inf, y = max_y-6*max_y/20, hjust=1, label = paste0("Mean: ",round(LME_bathy_statistics[i,mean_depth],2), " m"), size = 2)
 
 
@@ -712,10 +711,10 @@ ggsave(plot = LME.plot_region, filename = "LME.plot_region.pdf")
 ```
 How many of each type
 Multimodal                   Mid Dominant            Shallow Dominant 
-       44 (69%)                8 (13%)                12 (20%) 
+       44 (69%)                6 (9%)                14 (22%) 
 ```{r how many of each type}
 table(LME_bathy_statistics$type)
 44/64 #multimodal
-8/64 #mid-dominant
-12/64 #shallow-dominant
+6/64 #mid-dominant
+14/64 #shallow-dominant
 ```
