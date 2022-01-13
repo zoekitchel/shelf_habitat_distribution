@@ -372,6 +372,7 @@ plot +
   geom_vline(xintercept = mean, color = "red")
 ```
 --------
+
 Now we have the methods down, so let's make a loop!!
 
 ```{r loop for caculations and classifications}
@@ -389,7 +390,6 @@ LME_bathy_statistics[, V1 := NULL]
 
 
 lme_maps <- vector("list", length = nrow(LME_spdf))
-lme_densityplots <- vector("list", length = nrow(LME_spdf))
 lme_areaplots <- vector("list", length = nrow(LME_spdf))
 
 for (i in 1:nrow(LME_bathy_statistics)) {
@@ -563,14 +563,12 @@ for (i in 1:nrow(LME_bathy_statistics)) {
 
 }
 
-saveRDS(LME_bathy_statistics, file = "LME_bathy_statistics.rds")
-saveRDS(lme_densityplots, file = "lme_densityplots.rds")
-saveRDS(lme_areaplots, file = "lme_areaplots.rds")
-saveRDS(lme_maps, file = "lme_maps.rds")
+saveRDS(LME_bathy_statistics, here::here("output","LME_bathy_statistics.rds"))
+saveRDS(lme_areaplots, here::here("output","compiled_plots","lme_areaplots.rds"))
+saveRDS(lme_maps, here::here("output","compiled_plots","lme_maps.rds"))
 
 #plots to pdf
 ggsave("arranged_maps.pdf", marrangeGrob(lme_maps, ncol=2, nrow = 2))
-#ggsave("arranged_densityplots.pdf", marrangeGrob(grobs = lme_densityplots, ncol=2, nrow = 3))
 ggsave("arranged_areaplots.pdf", marrangeGrob(grobs = lme_areaplots, ncol=2, nrow = 3))
 ```
 Associate LME with region
@@ -598,7 +596,7 @@ arctic <- c(64) #excluding
 
 #LME_bathy_statistics[,region := ifelse(lme_number %in% west_pac, "west_pac",ifelse(lme_number %in% east_pac, #"east_pac", ifelse(lme_number %in% west_atl, "west_atl", ifelse(lme_number %in% west_ind, "west_ind", #ifelse(lme_number %in% east_atl, "east_atl", ifelse(lme_number %in% east_ind, "east_ind", ifelse(lme_number #%in% east_west_pac, "east_west_pac", ifelse(lme_number %in% east_pac_west_atl, "east_pac_west_atl", #"none"))))))))]
 
-LME_bathy_statistics[,region := ifelse(lme_number %in% pacific, "pacific", ifelse(lme_number %in% atlantic, "atlantic", ifelse(lme_number %in% indian, "indian", ifelse(lme_number %in% antarctica, "antarctica", "arctic"))))]
+LME_bathy_statistics[,region := ifelse(lme_number %in% pacific, "Pacific", ifelse(lme_number %in% atlantic, "Atlantic", ifelse(lme_number %in% indian, "Indian", ifelse(lme_number %in% antarctica, "Antarctica", "Arctic"))))]
 
 ```
 
@@ -643,10 +641,10 @@ LME_bathy_statistics[,type := ifelse(uniform == T, "Uniform",
                                                   ifelse(mid_dominant == T, "Mid Dominant", "none")))))][,lme_name2 := lme_name]
 
 write.csv(LME_bathy_statistics, "LME_bathy_statistics.csv")
-saveRDS(LME_bathy_statistics, file = "LME_bathy_statistics.rds")
+saveRDS(LME_bathy_statistics, here::here("output","LME_bathy_statistics_full.rds"))
 
 #if already loaded
-#LME_bathy_statistics <- readRDS(file = "LME_bathy_statistics.RData") 
+#LME_bathy_statistics <- readRDS(here::here("output","LME_bathy_statistics_full.rds")) 
 ```
 
 Now that we have classified distributions, let's make final plots
@@ -663,17 +661,22 @@ max_y <- ggp$layout$panel_scales_y[[1]]$range$range[[2]]  #y range
 #full plot
   lme_areaplots_classified[[i]] <- lme_areaplots[[i]] +
     geom_vline(xintercept = LME_bathy_statistics[i,mean_depth], color = "red") +
-    annotate("text", x=Inf, y = max_y-max_y/20, hjust=1, label = paste0("LME ", LME_bathy_statistics[i,lme_number], ":\n ", LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
-        annotate("text", x=Inf, y = max_y-3*max_y/20, hjust=1, label = paste0("Classification: ", LME_bathy_statistics[i,type]), size = 2) +
-    annotate("text", x=Inf, y = max_y-4*max_y/20, hjust=1, label = paste0("Dip Test: ", signif(LME_bathy_statistics[i,dip_test],2), " P-value = ", signif(LME_bathy_statistics[i,dip_p_value], 2)), size = 2) +
-    annotate("text", x=Inf, y = max_y-5*max_y/20, hjust=1, label = paste0("Skew: ", round(LME_bathy_statistics[i,skew],2)), size = 2) +
-#    annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2)), size = 2) +
-    annotate("text", x=Inf, y = max_y-6*max_y/20, hjust=1, label = paste0("Mean: ",round(LME_bathy_statistics[i,mean_depth],2), " m"), size = 2)
+    annotate("text", x=Inf, y = max_y+2*max_y/20, hjust=1, label = paste0("LME ", LME_bathy_statistics[i,lme_number], ":\n ", LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
+    annotate("text", x =  Inf, y = max_y, hjust = 1, label = paste0(LME_bathy_statistics[i,region]," Ocean"), size = 2) +
+        annotate("text", x=Inf, y = max_y-max_y/20, hjust=1, label = paste0("Classification: ", LME_bathy_statistics[i,type]), size = 2) +
+    annotate("text", x=Inf, y = max_y-2*max_y/20, hjust=1, label = paste0("Dip Test: ", signif(LME_bathy_statistics[i,dip_test],2), " P-value = ", signif(LME_bathy_statistics[i,dip_p_value], 2)), size = 2) +
+    annotate("text", x=Inf, y = max_y-3*max_y/20, hjust=1, label = paste0("Skew: ", round(LME_bathy_statistics[i,skew],2)), size = 2) +
+    annotate("text", x=Inf, y = max_y-4*max_y/20, hjust=1, label = paste0("Mean: ",round(LME_bathy_statistics[i,mean_depth],2), " m"), size = 2) +
+    theme(axis.title = element_text(size = 8), axis.text = element_text(size = 6),
+            legend.title = element_text(size = 8),
+            legend.text = element_text(size = 6)) +
+    guides(shape = guide_legend(override.aes = list(size = 4)))
 
 
 }
 
-ggsave("arranged_areaplots_classified.pdf", marrangeGrob(grobs = lme_areaplots_classified, ncol=2, nrow = 3))
+saveRDS(lme_areaplots_classified, here::here("output","compiled_plots","arranged_areaplots_classified.rds"))
+ggsave(filename = "arranged_areaplots_classified.pdf", path = here::here("Figures","compiled_plots"), plot =  marrangeGrob(grobs = lme_areaplots_classified, ncol=2, nrow = 3))
 ```
 
 

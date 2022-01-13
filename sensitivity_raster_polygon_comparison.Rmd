@@ -31,11 +31,13 @@ etopo_shelf_df <- readRDS("raw_data/etopo_shelf_df.rds")
 #bring in bathymetry data frame for shelf regions
 
 #LMEs
-LME_spdf <- readOGR("raw_data/LME66/LMEs66.shp") #spatial points data frame with all 66 LMEs
+LME_spdf <- readOGR("raw_data/LME66/LMEs66.shp") #spatial points data frame with 
+#all 66 LMEs
 
 
 #convert to equal area projection
-  #The Lambert azimuthal equal-area projection is a particular mapping from a sphere to a disk. It accurately represents area in all regions of the sphere, but it does not accurately represent angles.
+  #The Lambert azimuthal equal-area projection is a particular mapping from a 
+#sphere to a disk. It accurately represents area in all regions of the sphere, but it does not accurately represent angles.
 equalareaprojection <- crs(" +proj=laea ")
 ```
 
@@ -83,7 +85,8 @@ raster_extent <- crop(etopo_shelf_raster, extent(east_atl_spdf_nobuf_agg))
 #which areas of raster fall within borders?
 east_atl_spdf_nobuf_agg_mask <- mask(raster_extent, east_atl_spdf_nobuf_agg)
 
-#reclassify so that raster only has values of 1, because the only purpose of pulling in bathymetry in this analysis is to limit to <2000m
+#reclassify so that raster only has values of 1, because the only purpose of 
+#pulling in bathymetry in this analysis is to limit to <2000m
 
 east_atl_spdf_nobuf_mask_1s <- reclassify(east_atl_spdf_nobuf_agg_mask, c(-Inf, Inf, 1))
 ```

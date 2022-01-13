@@ -12,10 +12,11 @@ library(ggplot2)
 library(data.table)
 library(cowplot)
 library(here)
+library(scales)
 
-lme_areaplots <- readRDS("lme_areaplots.rds")
-lme_maps <- readRDS("lme_maps.rds")
-lme_spp_count_area_sum_plots <- readRDS("lme_spp_count_area_sum_plots.rds")
+lme_areaplots <- readRDS(here::here("output","compiled_plots","lme_areaplots.rds"))
+lme_maps <- readRDS(here::here("output","compiled_plots","lme_maps.rds"))
+lme_spp_count_area_sum_plots <- readRDS(here::here("output","compiled_plots","lme_spp_count_area_sum_plots.rds"))
 
 #dummy legend for richness plot
 dummy_legend_depth_richness_plot <- readRDS(here::here("Figures","Figure1","dummy_legend_richness_plot.rds"))
@@ -46,7 +47,6 @@ max_y <- ggp$layout$panel_scales_y[[1]]$range$range[[2]]  #y range
     geom_vline(xintercept = LME_bathy_statistics[i,mean_depth], color = "red", alpha = 0.3) +
     annotate("text", x=Inf, y = max_y-4*max_y/20, hjust=1, label = paste0("Dip Test: ", signif(LME_bathy_statistics[i,"dip_test"],2), " P-value = ", signif(LME_bathy_statistics[i,"dip_p_value"], 2)), size = 2) +
     annotate("text", x=Inf, y = max_y-5*max_y/20, hjust=1, label = paste0("Skew: ", round(LME_bathy_statistics[i,"skew"],2)), size = 2) +
-#    annotate("text", x=Inf, y = max_area-4*(max_area/20), hjust=1, label = paste0("Kurtosis: ",round(kurtosis,2)), size = 2) +
     annotate("text", x=Inf, y = max_y-6*max_y/20, hjust=1, label = paste0("Mean: ",round(LME_bathy_statistics[i,"mean_depth"],2), " m"), size = 2)
 
 }
@@ -67,7 +67,8 @@ figure1_map_hyp <- plot_grid(lme_maps[[4]] + ylab(paste0("Latitude ","\u00B0","N
           lme_areaplots_figure1[[4]] + theme(legend.position = "none"),
           lme_areaplots_figure1[[21]] +  theme(legend.position = "none", axis.title.y = element_blank()),
           lme_areaplots_figure1[[29]] +  theme(legend.position = "none", axis.title.y = element_blank()),
-          ncol = 3, nrow = 2)
+          ncol = 3, nrow = 2,
+          align = c("hv"), axis = c("lr"))
 
 figure1_map_hyp.legend <- plot_grid(figure1_map_hyp, get_legend(lme_maps[[4]]), ncol = 2, nrow = 1, rel_widths = c(10,1))
 ```
