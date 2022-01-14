@@ -13,10 +13,11 @@ library(rgdal)
 library(sp)
 library(rgeos)
 library(viridis)
+library(here)
 
 
-LME_bathy_statistics <- readRDS("LME_bathy_statistics.RData")
-LME_spdf <- readOGR("LME66/LMEs66.shp")
+LME_bathy_statistics <- readRDS(here::here("output", "LME_bathy_statistics.rds"))
+LME_spdf <- readOGR(here::here("raw_data","LME66","LMEs66.shp"))
 LME_spdf_working <- LME_spdf[LME_spdf$LME_NUMBER != 61 & LME_spdf$LME_NUMBER != 64,]
 
 # give the PORJ.4 string for Eckert IV projection ( changed to different projection, "+proj=eck4 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs" for eckert)
@@ -92,13 +93,15 @@ Make map
 
 How many of each for %s?
 ```{r percents}
+table(LME_bathy_statistics$type)
 table(LME_bathy_statistics$type)/nrow(LME_bathy_statistics)
+
 #mid dominant
-8/64
+6/64
 #multimodal
 44/64
 #shallow dominant
-12/64
+14/64
 ```
 
 ```{r global map}
@@ -108,7 +111,7 @@ LME_spdf_working_proj.dt[,type:=factor(type, levels = c("Shallow Dominant", "Mul
 
 (global_LME_classification_map <- ggplot() + 
   geom_polygon(data = LME_spdf_working_proj.dt, aes(x = long, y = lat, group = group, fill = as.factor(type)), color = "darkslategrey", size = 0.03, alpha = 0.7) +
-  scale_fill_manual(values = c("#4A9B7D","#3D4F88", "#FAA23D"), labels = c("Shallow Dominant: 19%", "Multimodal: 69%", "Mid Dominant: 12%")) +
+  scale_fill_manual(values = c("#4A9B7D","#3D4F88", "#FAA23D"), labels = c("Shallow Dominant: 22%", "Multimodal: 69%", "Mid Dominant: 9%")) +
        # add projected countries
     geom_polygon(data = Country.DT, 
                  aes(x = long, y = lat, group = group), 
@@ -122,8 +125,9 @@ LME_spdf_working_proj.dt[,type:=factor(type, levels = c("Shallow Dominant", "Mul
   theme_classic() +
    theme(legend.position = "top", legend.title = element_blank()))
 
-ggsave(global_LME_classification_map, filename = "map_global_type.jpg")
-ggsave(global_LME_classification_map, filename = "map_global_type.eps")
+ggsave(global_LME_classification_map, path = here::here("Figures","Figure2"), filename = "map_global_type.jpg")
+ggsave(global_LME_classification_map, path = here::here("Figures","Figure2"), filename = "map_global_type.pdf")
+
 ```
 
 

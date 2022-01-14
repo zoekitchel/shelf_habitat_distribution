@@ -44,10 +44,16 @@ max_y <- ggp$layout$panel_scales_y[[1]]$range$range[[2]]  #y range
   
 #full plot
   lme_areaplots_figure1[[i]] <- lme_areaplots[[i]] +
-    geom_vline(xintercept = LME_bathy_statistics[i,mean_depth], color = "red", alpha = 0.3) +
-    annotate("text", x=Inf, y = max_y-4*max_y/20, hjust=1, label = paste0("Dip Test: ", signif(LME_bathy_statistics[i,"dip_test"],2), " P-value = ", signif(LME_bathy_statistics[i,"dip_p_value"], 2)), size = 2) +
-    annotate("text", x=Inf, y = max_y-5*max_y/20, hjust=1, label = paste0("Skew: ", round(LME_bathy_statistics[i,"skew"],2)), size = 2) +
-    annotate("text", x=Inf, y = max_y-6*max_y/20, hjust=1, label = paste0("Mean: ",round(LME_bathy_statistics[i,"mean_depth"],2), " m"), size = 2)
+geom_vline(xintercept = LME_bathy_statistics[i,mean_depth], color = "red") +
+    annotate("text", x =  Inf, y = max_y+max_y/20, hjust = 1, label = paste0("\n",LME_bathy_statistics[i,region]," Ocean"), size = 3) +
+        annotate("text", x=Inf, y = max_y-max_y/20, hjust=1, label = paste0("Classification: ", LME_bathy_statistics[i,type]), size = 3) +
+    annotate("text", x=Inf, y = max_y-2*max_y/20, hjust=1, label = paste0("Dip Test: ", signif(LME_bathy_statistics[i,dip_test],2), " P-value = ", signif(LME_bathy_statistics[i,dip_p_value], 2)), size = 3) +
+    annotate("text", x=Inf, y = max_y-3*max_y/20, hjust=1, label = paste0("Skew: ", round(LME_bathy_statistics[i,skew],2)), size = 3) +
+    annotate("text", x=Inf, y = max_y-4*max_y/20, hjust=1, label = paste0("Mean: ",round(LME_bathy_statistics[i,mean_depth],2), " m"), size = 3) +
+    theme(axis.title = element_text(size = 11), axis.text = element_text(size = 9),
+            legend.title = element_text(size = 11),
+            legend.text = element_text(size = 9)) +
+    guides(shape = guide_legend(override.aes = list(size = 7)))
 
 }
 
@@ -98,13 +104,15 @@ figure1_map_hyp_richness <- plot_grid(lme_maps[[4]] + ylab(paste0("Latitude ","\
           lme_spp_count_area_sum_plots[[29]] +  theme(legend.position = "none", axis.title.y = element_blank()),
           ncol = 3, nrow = 3, 
           labels = c("Shallow Dominant","Multimodal","Mid Dominant","","","","","",""), 
-          hjust = -0.5, label_size = 14, label_fontface = "bold")
+          hjust = -0.5, label_size = 14, label_fontface = "bold", 
+          align = "hv")
 
 legends <- plot_grid(get_legend(lme_maps[[4]]), 
                      get_legend(dummy_legend_depth_richness_plot + theme(legend.title = element_blank(), legend.text = element_text(size = 11))), nrow  = 2, ncol = 1)
 
 figure1_map_hyp_rich.legend <- plot_grid(figure1_map_hyp_richness, legends, ncol = 2, nrow = 1, rel_widths = c(7,1))
 
-ggsave(figure1_map_hyp_rich.legend, height = 10, width = 10, unit = "in", path = here::here("Figures","Figure1"), filename = "figure1_map_hyp_rich.legend.jpg")
+ggsave(figure1_map_hyp_rich.legend, height = 10, width = 11, unit = "in", path = here::here("Figures","Figure1"), filename = "figure1_map_hyp_rich.legend.jpg")
+ggsave(figure1_map_hyp_rich.legend, height = 10, width = 11, unit = "in", path = here::here("Figures","Figure1"), filename = "figure1_map_hyp_rich.legend.pdf")
 ```
 
