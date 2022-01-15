@@ -22,12 +22,12 @@ library(SpaDES)
 library(rnaturalearth)
 library(rnaturalearthdata)
 
-load("west_pac_shelf_areas_2degrees.Rdata")
-load("west_atl_shelf_areas_2degrees.Rdata")
-load("west_ind_shelf_areas_2degrees.Rdata")
-load("east_pac_shelf_areas_2degrees.Rdata")
-load("east_atl_shelf_areas_2degrees.Rdata")
-load("east_ind_shelf_areas_2degrees.Rdata")
+load(here::here("output","2_degree_latitude","west_pac_shelf_areas_2degrees.Rdata"))
+load(here::here("output","2_degree_latitude","west_atl_shelf_areas_2degrees.Rdata"))
+load(here::here("output","2_degree_latitude","west_ind_shelf_areas_2degrees.Rdata"))
+load(here::here("output","2_degree_latitude","east_pac_shelf_areas_2degrees.Rdata"))
+load(here::here("output","2_degree_latitude","east_atl_shelf_areas_2degrees.Rdata"))
+east_ind_shelf_areas <- readRDS(here::here("output","2_degree_latitude","east_ind_shelf_areas_2degrees.rds"))
 
 ```
 
@@ -150,7 +150,7 @@ shelf_areas[,spp_change_levin_by_reg_hemis := sum(change_spp_predicted_levin, na
 shelf_spp_change_hemis_reg_stats[,change_direction := factor(ifelse(spp_change_levin_by_reg_hemis > 0, "Gain", "Loss"))] 
 
 #save data table
-save(shelf_areas, file = here::here("table_outputs","shelf_areas.RData"))
+saveRDS(shelf_areas, file = here::here("output","2_degree_latitude","shelf_areas.rds"))
   
 ```
 Figure for spp richness per latitude

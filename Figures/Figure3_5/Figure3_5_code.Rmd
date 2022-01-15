@@ -19,11 +19,11 @@ load(here::here("output","2_degree_latitude","east_pac_shelf_areas_2degrees.Rdat
 load(here::here("output","2_degree_latitude","east_atl_shelf_areas_2degrees.Rdata"))
 load(here::here("output","2_degree_latitude","east_ind_shelf_areas_2degrees.Rdata"))
 
-load(here::here("output", "2_degree_latitude","latitude_area_plots.RData"))
+load(here::here("output", "2_degree_latitude","latitude_area_plots.RData")) #CHECK FOR INDIAN
 
 load(here::here("Figures","Figure3_5", "region_maps.RData")) #maps
 load(here::here("Figures","Figure3_5", "latitude_2degree_maps.RData")) #latitude area plots
-load(here::here("table_outputs","shelf_areas.RData")) #spp richness stats
+shelf_areas <- readRDS(file = here::here("output","2_degree_latitude","shelf_areas.rds")) #spp richness stats
 ```
 
 
@@ -230,7 +230,6 @@ east_ind_map <- ggplot_build(region_maps[[6]])
   geom_vline(xintercept = 0) +
   coord_flip() +   
   scale_x_continuous(breaks = c(-60,-40,-20,0,20)) +
-  xlim(min(east_ind_map$data[[2]]$y), max(east_ind_map$data[[2]]$y)) +
   theme_classic())
 
 ```
@@ -245,10 +244,7 @@ east_ind_map <- ggplot_build(region_maps[[6]])
  labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
 #  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
 #  scale_y_continuous(expand = c(0, 0)) +
-  geom_vline(xintercept = 0) +
-  xlim(x=c(min(shelf_areas[region == "West Indian"]$latitude_start),max(shelf_areas[region == "West Indian"]$latitude_start))) +
-                                                 scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)) +
-   xlim(min(west_ind_map$data[[2]]$y), max(west_ind_map$data[[2]]$y)) +
+  geom_vline(xintercept = 0) + scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)) +
   coord_flip() +
   theme_classic())
 
@@ -290,7 +286,7 @@ figure_5_indian_full <- egg::ggarrange(region_maps[[4]] +
  
  region_maps[[6]] + theme(legend.position = "none",
                           plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-                                                scale_y_continuous(breaks = c(-40,-20,0,20)) +  coord_equal(ylim = c(-42, 21), xlim = c(74,152)),
+                                                scale_y_continuous(breaks = c(-40,-20,0,20)) +  coord_equal(ylim = c(-43, 22), xlim = c(74,152)),
           area_latitude_east_ind + 
                theme(axis.text.y = element_blank(),
            #          axis.ticks.y = element_blank(),
@@ -304,8 +300,7 @@ figure_5_indian_full <- egg::ggarrange(region_maps[[4]] +
                 axis.title.y = element_blank(),
                 plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
                 legend.position = "none") +
-                                                 scale_x_continuous(breaks = c(-60,-40,-20,0,20)) +
-   expand_limits(x = c(-44,22)),
+                                                 scale_x_continuous(breaks = c(-60,-40,-20,0,20)) + xlim(c(-44,22)),
  nrow = 2, top = T, bottom = T, left = T, right = T)
 
 
