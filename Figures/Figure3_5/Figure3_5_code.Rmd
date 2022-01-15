@@ -10,15 +10,16 @@ library(data.table)
 library(ggplot2)
 library(cowplot)
 library(egg)
+library(mapproj)
 
-load("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/west_pac_shelf_areas_2degrees.Rdata")
-load("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/west_atl_shelf_areas_2degrees.Rdata")
-load("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/west_ind_shelf_areas_2degrees.Rdata")
-load("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/east_pac_shelf_areas_2degrees.Rdata")
-load("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/east_atl_shelf_areas_2degrees.Rdata")
-load("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/east_ind_shelf_areas_2degrees.Rdata")
+load(here::here("output","2_degree_latitude","west_pac_shelf_areas_2degrees.Rdata"))
+load(here::here("output","2_degree_latitude","west_atl_shelf_areas_2degrees.Rdata"))
+load(here::here("output","2_degree_latitude","west_ind_shelf_areas_2degrees.Rdata"))
+load(here::here("output","2_degree_latitude","east_pac_shelf_areas_2degrees.Rdata"))
+load(here::here("output","2_degree_latitude","east_atl_shelf_areas_2degrees.Rdata"))
+load(here::here("output","2_degree_latitude","east_ind_shelf_areas_2degrees.Rdata"))
 
-load("~/Documents/grad school/Rutgers/Repositories/shelf_habitat_distribution/latitude_area_plots.RData")
+load(here::here("output", "2_degree_latitude","latitude_area_plots.RData"))
 
 load(here::here("Figures","Figure3_5", "region_maps.RData")) #maps
 load(here::here("Figures","Figure3_5", "latitude_2degree_maps.RData")) #latitude area plots
@@ -65,7 +66,7 @@ figure_4_atlantic_full <- egg::ggarrange(region_maps[[3]] +
                                                 theme(legend.position = "top",
                                                       axis.title.x = element_blank(),
                                                       plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
- ylim(y=c(min(west_atl_shelf_areas$latitude_start),max(west_atl_shelf_areas$latitude_start))) +
+ coord_equal(ylim = c(-55,85), xlim = c(-180,0)) +
                                                 scale_y_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
           area_latitude_west_atl + 
                theme(axis.text.y = element_blank(),
@@ -93,7 +94,7 @@ figure_4_atlantic_full <- egg::ggarrange(region_maps[[3]] +
                                                 scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
  region_maps[[5]] + theme(legend.position = "none",
                                                                           plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-                                                scale_y_continuous(breaks = c(-40,-20,0,20,40,60,80)),
+                                                scale_y_continuous(breaks = c(-40,-20,0,20,40,60,80)) +  coord_equal(ylim = c(-35,81), xlim = c(-20,180)),
           area_latitude_east_atl + 
                theme(axis.text.y = element_blank(),
            #          axis.ticks.y = element_blank(),
@@ -154,13 +155,13 @@ scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)) +
 
 #pacific merge
 ```{r pacific merge}
-figure_3_pacific_full <- egg::ggarrange(region_maps[[1]] + 
+figure_3_pacific_full <- egg::ggarrange(region_maps[[1]] + ylim(c(min(west_pac_shelf_areas$latitude_end),max(west_pac_shelf_areas$latitude_end))) +
                                                 theme(legend.position = "top",
                                                       legend.title = element_blank(),
                                                       axis.title.x = element_blank(),
                                                       plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
- ylim(y=c(min(west_pac_shelf_areas$latitude_start),max(west_pac_shelf_areas$latitude_start))) +
-                                                scale_y_continuous(breaks = c(-40,-20,0,20,40,60,80)),
+                                          scale_y_continuous(breaks = c(-40,-20,0,20,40,60,80)) +
+coord_equal(ylim = c(-43, 78), xlim = c(0,210)),
           area_latitude_west_pac + 
                theme(axis.text.y = element_blank(),
                     # axis.ticks.y = element_blank(),
@@ -185,9 +186,8 @@ figure_3_pacific_full <- egg::ggarrange(region_maps[[1]] +
       guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
    xlim(x=c(min(west_pac_shelf_areas$latitude_start),max(west_pac_shelf_areas$latitude_start))) +
                                                 scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
- region_maps[[2]] + theme(legend.position = "none",
-                                                                          plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-                                                scale_y_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
+ region_maps[[2]] + theme(legend.position = "none", plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+                                                scale_y_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)) + coord_equal(ylim = c(-54, 77), xlim = c(160,300)),
           area_latitude_east_pac + 
                theme(axis.text.y = element_blank(),
            #          axis.ticks.y = element_blank(),
@@ -261,7 +261,7 @@ figure_5_indian_full <- egg::ggarrange(region_maps[[4]] +
                                                 theme(legend.position = "top",
                                                       axis.title.x = element_blank(),
                                                       plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"))+
-   ylim(min(west_ind_map$data[[2]]$y), max(west_ind_map$data[[2]]$y)) +
+   coord_equal(ylim = c(-38,32), xlim = c(10,83)) +
                                                 scale_y_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)),
           area_latitude_west_ind + 
                theme(axis.text.y = element_blank(),
@@ -290,26 +290,23 @@ figure_5_indian_full <- egg::ggarrange(region_maps[[4]] +
  
  region_maps[[6]] + theme(legend.position = "none",
                           plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-                                                scale_y_continuous(breaks = c(-60,-40,-20,0,20)) +
-   ylim(min(east_ind_map$data[[2]]$y), max(east_ind_map$data[[2]]$y)),
+                                                scale_y_continuous(breaks = c(-40,-20,0,20)) +  coord_equal(ylim = c(-42, 21), xlim = c(74,152)),
           area_latitude_east_ind + 
-   xlim(min(east_ind_map$data[[1]]$y), max(east_ind_map$data[[1]]$y)) +
                theme(axis.text.y = element_blank(),
            #          axis.ticks.y = element_blank(),
                      axis.title.y = element_blank(),
                      legend.position = "none",
                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-                                                scale_x_continuous(breaks = c(-60,-40,-20,0,20)) +
-   xlim(min(east_ind_map$data[[2]]$y), max(east_ind_map$data[[2]]$y)),
+                                                scale_x_continuous(breaks = c(-40,-20,0,20)) + xlim(c(-44,22)),
           east_indian_spprichness +
-   xlim(min(east_ind_map$data[[1]]$y), max(east_ind_map$data[[1]]$y)) +
             theme(axis.text.y = element_blank(),
             #    axis.ticks.y = element_blank(),
                 axis.title.y = element_blank(),
                 plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
                 legend.position = "none") +
-                                                 scale_x_continuous(breaks = c(-60,-40,-20,0,20)),
- nrow = 2, top = T, bottom = T, widths = c(1,0.7,0.7,1.7,1,1))
+                                                 scale_x_continuous(breaks = c(-60,-40,-20,0,20)) +
+   expand_limits(x = c(-44,22)),
+ nrow = 2, top = T, bottom = T, left = T, right = T)
 
 
 figure_5_indian_full
