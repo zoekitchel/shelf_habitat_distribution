@@ -1,0 +1,95 @@
+---
+title: "Merge LME Type and Change in Spp Richness"
+output: html_notebook
+---
+
+Make a plot showing spp loss by LME type
+
+```{r setup}
+library(data.table)
+library(ggplot2)
+
+LME_area_spp_change_stats <- readRDS("LME_area_spp_change_stats.RData")
+
+LME_bathy_statistics <- readRDS("LME_bathy_statistics.RData")
+
+```
+
+Merge by LME number and name
+```{r}
+LME_stats_spp <- LME_bathy_statistics[LME_area_spp_change_stats, on = .(lme_number, lme_name)]
+```
+
+Box plot
+```{r}
+ggplot(LME_stats_spp) +
+  geom_boxplot(aes(x = type, y = total_spp_change)) +
+  theme_classic()
+
+mod <- lm(total_spp_change~type, data = LME_stats_spp)
+
+summary(mod)
+
+anova <- aov(mod)
+
+summary(anova)
+
+#tukey
+TUKEY <- TukeyHSD(aov(mod))
+plot(TUKEY)
+
+```
+Coding LME #s by region and hemisphere
+```{r LME by region and hemisphere}
+lme_ocean_key <- read.csv("raw_data","LME_reg_ocean_key.csv")
+
+LME_stats_spp <- LME_stats_spp[lme_ocean_key, on = "lme_number"]
+
+LME_stats_spp <- na.omit(LME_stats_spp, cols = "lme_name")
+```
+
+
+Column plot coded by region and by type
+
+```{r column plot}
+LME_richness_change <- ggplot(LME_stats_spp) +
+  geom_col(aes(x = reorder(lme_number, total_spp_change), y = total_spp_change, fill = type)) +
+  xlab("LME") +
+  ylab("Predicted Species Richness\nChange With 15 m Depth Shift") +
+  labs(fill = "Classification") +
+  theme_classic() +
+  scale_fill_manual(values = c("#4A9B7D","#3D4F88", "#FAA23D")) +
+  theme(axis.text.x = element_text(angle = 90, size = 4, hjust = 1, vjust = 0.5), legend.title = element_blank())
+
+ggsave(filename = "spp_loss_by_LME.jpg", height = 3, width = 5)
+  
+  
+
+
+```
+
+Combine with coastline figure
+
+```{r}
+library(cowplot)
+
+load("ordered_loss_gain_bycoastline.RData")
+
+plot_grid(LME_richness_change+theme(legend.position = "top", axis.title.y = element_text(size = 8)), ordered_loss_gain_bycoastline+theme(legend.position = "top", axis.title.y = element_text(size = 8), axis.text.x = element_text(size = 7)), nrow = 2, ncol = 1,
+          rel_heights = c(1,1.2), labels = c("a.","b."))
+
+ggsave(filename = "spp_change_lat_depth.jpg", height = 6, width = 7)
+
+```
+Summary values for regions
+```{r}
+#change in spp for coastlines
+(145.16+8.40+6.27+5.86+-15.83+45.17+-14.50+-190.55+48.16+0.-82.25+115.61+114.61) #sum
+
+(145.16 +8.40 +6.27 +5.86 +-15.83 +45.17 +-14.50 +-190.55 +48.16 +0.-82.25 +115.61 +114.61)/12 #mean
+
+#change in spp for LMEs
+sum(LME_stats_spp$total_spp_change)
+mean(LME_stats_spp$total_spp_change)
+```
+

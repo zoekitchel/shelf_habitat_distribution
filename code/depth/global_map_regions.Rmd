@@ -1,0 +1,133 @@
+---
+title: "Global Map Region Hypsometric Curve Type"
+output: html_notebook
+---
+
+Here, I plan to make a global map showing how each LME was grouped. This is largely inspired by figure 2 in Elsen and Tingley 2015.
+
+```{r setup}
+library(data.table)
+library(ggplot2)
+library(ggspatial) #basemap
+library(rgdal)
+library(sp)
+library(rgeos)
+library(viridis)
+library(here)
+
+
+LME_bathy_statistics <- readRDS(here::here("output", "LME_bathy_statistics.rds"))
+LME_spdf <- readOGR(here::here("raw_data","LME66","LMEs66.shp"))
+LME_spdf_working <- LME_spdf[LME_spdf$LME_NUMBER != 61 & LME_spdf$LME_NUMBER != 64,]
+
+# give the PORJ.4 string for Eckert IV projection ( changed to different projection, "+proj=eck4 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs" for eckert)
+PROJ <- "+proj=eck4 +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs" 
+
+
+#LME_spdf_working_proj <- spTransform(LME_spdf_working, PROJ)
+LME_spdf_working_proj <- gBuffer(LME_spdf_working, byid=T, width = 0)
+
+```
+
+Basemap of world
+
+```{r basemap of world}
+library(rnaturalearth)
+library(rnaturalearthdata)
+
+  world <- ne_countries(scale = "medium", returnclass = "sf")
+
+# ~~~~~~~~~~~ Download shapefile from www.naturalearthdata.com ~~~~~~~~~~~ #
+# Download countries data
+#download.file(url = "http://www.naturalearthdata.com/http//www.naturalearthdata.com/download/110m/cultural/ne_110m_admin_0_countries.zip", 
+  #            destfile = "ne_110m_admin_0_countries.zip")
+# unzip the shapefile in the directory mentioned with "exdir" argument
+#unzip(zipfile="ne_110m_admin_0_countries.zip", exdir = "ne_110m_admin_0_countries")
+# delete the zip file
+#file.remove("ne_110m_admin_0_countries.zip")
+# read the shapefile with readOGR from rgdal package
+NE_countries <- readOGR(dsn = here::here("raw_data","ne_110m_admin_0_countries"), layer = "ne_110m_admin_0_countries")
+class(NE_countries) # is a SpatialPolygonsDataFrame object
+
+Country.DT <- data.table(map_data(as(NE_countries, "SpatialPolygonsDataFrame")))
+
+
+# project coordinates 
+Country.DT[, c("X","Y") := data.table(project(cbind(long, lat), proj=PROJ))]
+```
+
+Convert LME's into plottable objects in ggplot
+```{r plottable objects}
+
+# turn SpatialPolygonsDataframe into a data frame
+# (note that the rgeos library is required to use fortify)
+
+LME_spdf_working_proj@data$id <- rownames(LME_spdf_working_proj@data)
+
+LME_spdf_working_proj.df <- fortify(LME_spdf_working_proj)#this only has the coordinates
+
+LME_spdf_working_proj.df <- merge(LME_spdf_working_proj@data, LME_spdf_working_proj.df,  by="id") # add the attributes back 
+
+#centroid of each polygon
+
+#extract a point on surface of each polygon
+label_points <- gPointOnSurface(LME_spdf_working_proj, byid = T, id = LME_spdf_working_proj$LME_NUMBER)
+
+
+#make into data frame
+label_points.df <- as.data.frame(label_points)
+label_points.df$LME_NUMBER <- rownames(label_points.df)
+
+```
+Extract columns from bathy stats data table
+```{r type columns from data table}
+LME_bathy_statistics_reduced <- LME_bathy_statistics[,.(lme_number, type)][, LME_NUMBER := lme_number][,lme_number := NULL]
+
+LME_spdf_working_proj.dt <- data.table(LME_spdf_working_proj.df)
+
+LME_spdf_working_proj.dt <- LME_spdf_working_proj.dt[LME_bathy_statistics_reduced, on = c("LME_NUMBER")]
+
+```
+
+Make map
+
+How many of each for %s?
+```{r percents}
+table(LME_bathy_statistics$type)
+table(LME_bathy_statistics$type)/nrow(LME_bathy_statistics)
+
+#mid dominant
+6/64
+#multimodal
+44/64
+#shallow dominant
+14/64
+```
+
+```{r global map}
+
+#type labels
+LME_spdf_working_proj.dt[,type:=factor(type, levels = c("Shallow Dominant", "Multimodal", "Mid Dominant"))]
+
+(global_LME_classification_map <- ggplot() + 
+  geom_polygon(data = LME_spdf_working_proj.dt, aes(x = long, y = lat, group = group, fill = as.factor(type)), color = "darkslategrey", size = 0.03, alpha = 0.7) +
+  scale_fill_manual(values = c("#4A9B7D","#3D4F88", "#FAA23D"), labels = c("Shallow Dominant: 22%", "Multimodal: 69%", "Mid Dominant: 9%")) +
+       # add projected countries
+    geom_polygon(data = Country.DT, 
+                 aes(x = long, y = lat, group = group), 
+                 colour = "gray70", 
+                 fill = "gray90", 
+                 size = 0.05) +
+  geom_text(data = label_points.df, aes(label = as.numeric(LME_NUMBER), x = x, y = y), size = 1.4, fontface = "bold") +
+    # ensures that one unit on the x-axis is the same length as one unit on the y-axis
+    coord_equal() +
+  labs( x = expression("Longitude ("*~degree*E*")"), y = expression("Latitude ("*~degree*N*")")) +
+  theme_classic() +
+   theme(legend.position = "top", legend.title = element_blank()))
+
+ggsave(global_LME_classification_map, path = here::here("Figures","Figure2"), filename = "map_global_type.jpg")
+ggsave(global_LME_classification_map, path = here::here("Figures","Figure2"), filename = "map_global_type.pdf")
+
+```
+
+

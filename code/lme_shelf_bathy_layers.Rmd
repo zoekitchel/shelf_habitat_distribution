@@ -1,0 +1,70 @@
+---
+title: "LME Shelf Bathy Layers"
+output: html_notebook
+---
+
+```{r setup}
+library(data.table)
+library(rgdal)
+library(raster)
+library(rgeos)
+library(sp)
+library(here)
+```
+
+
+Download LME Shapefiles from [here](http://lme.edc.uri.edu/index.php/digital-data/113-lme-polygon-boundaries) on October 23, 2020. 
+
+Pulling in LMEs
+```{r LMEs}
+
+LME_spdf <- readOGR(here::here("raw_data","LME66","LMEs66.shp"))
+
+
+```
+Continental Shelves
+
+Shelf shapefiles downloaded from [Blue Habitat](bluehabitats.org) May 20th 2020 by Becca Selden.  
+
+```{r continental shelves}
+continentalshelf_spdf <- readOGR(here::here("raw_data","Shelf_BlueHabitats","Shelf.shp"))
+
+plot(continentalshelf_spdf)
+```
+
+
+Download TOPO1 bedrock grid centered netcdf from [here](https://www.ngdc.noaa.gov/mgg/global/).
+
+```{r opening bathymetry file (very big!)}
+
+r <- raster(here::here("raw_data","ETOPO1_Bed_g_geotiff.tif"))
+
+plot(r)
+
+r_shelf <- mask(r, continentalshelf_spdf)
+
+head(continentalshelf_spdf)
+
+```
+
+Clip raster to LMEs (so we only have bathymetry within LMEs)
+
+```{r clip raster to LMEs}
+cr <- crop(r, extent(LME_spdf), snap="out")  
+
+fr <- rasterize(LME_spdf, cr)
+
+lr <- mask(x=cr, mask=fr)
+```
+
+
+************
+Above written and sent to Zoë Kitchel by Rebecca Selden
+
+```{r pull in beccas file}
+etopo_shelf_df <- readRDS(here::here("raw_data","etopo_shelf_df.rds"))
+
+head(etopo_shelf_df)
+
+plot(etopo_shelf_df)
+```

@@ -1,0 +1,80 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Here, I am developing a script to post onto stack exchange to get a better sense of how to calculate area correctly. 
+
+```{r setup}
+library(rgeos)
+library(raster)
+library(sp)
+library(rgdal) #readOGR
+```
+
+Pull in greenland shapefile
+```{r play shapefile}
+
+outer <- Polygon(rbind(c(-15.5376528679349, 79.4881322107174), c(-7.48352810724904, 79.908837268938), c(-6.66906605279766, 78.6475974600555), c(-15.4471570841069, 78.7892258712421), c(-15.5376528679349, 79.4881322107174)))
+
+inner <- Polygon(rbind(c(-13.6190362010361, 79.3320228496385), c(-13.7164252183978,79.039680481742), c(-9.04175238503622, 79.039680481742), c(-9.23653041975962, 79.3859727584367), c(-13.6190362010361, 79.3320228496385)), hole = T)
+
+# create lists of polygon objects from polygon objects and unique ID A
+# `Polygons` is like a single observation.
+h1 <- Polygons(list(outer, inner), "donut1")
+
+# create spatial polygons object from lists A SpatialPolygons is like a
+# shapefile or layer.
+onedonut <- SpatialPolygons(list(h1))
+
+
+```
+
+Equal area projection
+```{r eaprojection}
+projection(onedonut) <- CRS("+proj=eqearth")
+```
+
+
+Convert to raster
+```{r to raster}
+r <- raster(ncol=100, nrow=100)
+extent(r) <- extent(onedonut)
+onedonut.raster <- rasterize(onedonut, r)
+```
+
+Calculate area using raster::area on non-projected raster
+```{r area non projected raster}
+   #raster area calculation
+      #get sizes of all cells in raster [km2]
+    cell_size_raster<-area(onedonut.raster, na.rm=TRUE, weights=FALSE)
+    #delete NAs from vector of all raster cells
+    ##NAs lie outside of the rastered region, can thus be omitted
+    cell_size_raster<-cell_size_raster[!is.na(onedonut.raster)]
+    #compute area [km2] of all cells in geo_raster
+    segment_area_raster <-length(cell_size_raster)*median(cell_size_raster)/1e6
+```
+
+Calculating area using raster::area on projected shapefile
+```{r area projected sp}
+    cell_size_sp<-area(onedonut, na.rm=TRUE, weights=FALSE)
+
+    #compute area [km2] of all polygons in shape file
+    segment_area_equalarea <-length(cell_size_sp)*median(cell_size_sp)/1e6
+```
+
+Calculate area using rgeos::gArea on projected shapefile
+
+```{r area projected sp rgeos}
+rgeos_shapefile_area <- gArea(onedonut) / 1e6
+  
+  
+```
+
+Are these values close?
+```{r}
+segment_area_raster
+segment_area_equalarea
+rgeos_shapefile_area
+```
+
