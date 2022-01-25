@@ -18,8 +18,6 @@ lme_areaplots <- readRDS(here::here("output","compiled_plots","lme_areaplots.rds
 lme_maps <- readRDS(here::here("output","compiled_plots","lme_maps.rds"))
 lme_spp_count_area_sum_plots <- readRDS(here::here("output","compiled_plots","lme_spp_count_area_sum_plots.rds"))
 
-#dummy legend for richness plot
-dummy_legend_depth_richness_plot <- readRDS(here::here("Figures","Figure1","dummy_legend_richness_plot.rds"))
 ```
 
 ```{r plot maps in row}
@@ -84,7 +82,7 @@ Richness
 plot_grid(lme_spp_count_area_sum_plots[[4]] + theme(legend.position = "none"),
           lme_spp_count_area_sum_plots[[21]] +  theme(legend.position = "none", axis.title.y = element_blank()),
           lme_spp_count_area_sum_plots[[29]] +  theme(legend.position = "none", axis.title.y = element_blank()),
-          get_legend(dummy_legend_depth_richness_plot + theme(legend.title = element_text(size = 10), legend.text = element_text(size = 10))),
+          get_legend(lme_spp_count_area_sum_plots[[29]] + theme(legend.title = element_text(size = 10), legend.text = element_text(size = 10))),
           ncol = 4, nrow = 1, rel_widths = c(1,1,1,1)) 
 
 
@@ -93,9 +91,9 @@ plot_grid(lme_spp_count_area_sum_plots[[4]] + theme(legend.position = "none"),
 
 All nine plots together
 ```{r}
-figure1_map_hyp_richness <- plot_grid(lme_maps[[4]] + ylab(paste0("Latitude ","\u00B0","N")) + xlab(paste0("Longitude ","\u00B0","E")) + theme(legend.position = "none", plot.margin = margin(1,0,0,0,unit = "cm")),
-          lme_maps[[21]] +  ylab(paste0("Latitude ","\u00B0","N")) + xlab(paste0("Longitude ","\u00B0","E")) + theme(legend.position = "none", axis.title.y = element_blank(), plot.margin = margin(1,0,0,0,unit = "cm")),
-          lme_maps[[29]] +  ylab(paste0("Latitude ","\u00B0","N")) + xlab(paste0("Longitude ","\u00B0","E")) + theme(legend.position = "none", axis.title.y = element_blank(), plot.margin = margin(1,0,0,0,unit = "cm")),
+figure1_map_hyp_richness <- plot_grid(lme_maps[[4]] + ylab(paste0("Latitude ","\u00B0","N")) + xlab(paste0("Longitude ","\u00B0","E")) + theme(legend.position = "none", plot.margin = ggplot2::margin(1,0,0,0,unit = "cm")),
+          lme_maps[[21]] +  ylab(paste0("Latitude ","\u00B0","N")) + xlab(paste0("Longitude ","\u00B0","E")) + theme(legend.position = "none", axis.title.y = element_blank(), plot.margin = ggplot2::margin(1,0,0,0,unit = "cm")),
+          lme_maps[[29]] +  ylab(paste0("Latitude ","\u00B0","N")) + xlab(paste0("Longitude ","\u00B0","E")) + theme(legend.position = "none", axis.title.y = element_blank(), plot.margin = ggplot2::margin(1,0,0,0,unit = "cm")),
           lme_areaplots_figure1[[4]] + theme(legend.position = "none"),
           lme_areaplots_figure1[[21]] +  theme(legend.position = "none", axis.title.y = element_blank()),
           lme_areaplots_figure1[[29]] +  theme(legend.position = "none", axis.title.y = element_blank()),
@@ -108,7 +106,7 @@ figure1_map_hyp_richness <- plot_grid(lme_maps[[4]] + ylab(paste0("Latitude ","\
           align = "hv")
 
 legends <- plot_grid(get_legend(lme_maps[[4]]), 
-                     get_legend(dummy_legend_depth_richness_plot + theme(legend.title = element_blank(), legend.text = element_text(size = 11))), nrow  = 2, ncol = 1)
+                     get_legend(lme_spp_count_area_sum_plots[[4]] + theme(legend.title = element_blank(), legend.text = element_text(size = 11))), nrow  = 2, ncol = 1)
 
 figure1_map_hyp_rich.legend <- plot_grid(figure1_map_hyp_richness, legends, ncol = 2, nrow = 1, rel_widths = c(7,1))
 

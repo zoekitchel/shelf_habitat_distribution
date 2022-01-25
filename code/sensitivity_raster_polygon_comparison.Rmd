@@ -1,5 +1,5 @@
 ---
-title: "Sensitivity Raster versus Projected Shapefile"
+title: "Supplementary Information:\nSensitivity Raster versus Projected Shapefile"
 author: Zoë Kitchel
 date: "`r format(Sys.time(), '%B, %Y')`"
 output: pdf_document
@@ -27,12 +27,15 @@ library(rnaturalearth)
 library(rnaturalearthdata)
 library(equate)
 library(here)
+library(formatR) #to wrap text for markdown
 
-etopo_shelf_df <- readRDS("raw_data/etopo_shelf_df.rds")
+knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE) #wraps text
+
+etopo_shelf_df <- readRDS(file = here::here("raw_data","etopo_shelf_df.rds"))
 #bring in bathymetry data frame for shelf regions
 
 #LMEs
-LME_spdf <- readOGR("raw_data/LME66/LMEs66.shp") #spatial points data frame with 
+LME_spdf <- readOGR(here::here("raw_data","LME66","LMEs66.shp")) #spatial points data frame with 
 #all 66 LMEs
 
 
@@ -279,6 +282,8 @@ ggplot(data = east_atl_shelf_areas) +
   geom_vline(xintercept = 0) +
   theme_classic()
 
+ggsave(filename = "east_atl_shelf_areas_comparison.pdf", path = here::here("Figures","Supplement"))
+
 cor(east_atl_shelf_areas[,3:5], use = "complete.obs")
 ```
 
@@ -286,7 +291,14 @@ What's the maximum difference between polygon generated area and raster generate
 ```{r maximum difference, results = F}
 east_atl_shelf_areas[, difference := abs(area_equalareaproj-area_rasterarea)]
 
-east_atl_shelf_areas[,hist(difference, breaks = 50, xlab = "Difference in km^2")]
+summary(east_atl_shelf_areas$difference)
+
+ggplot(data = east_atl_shelf_areas, aes(x = difference)) +
+  geom_histogram() +
+  labs(x = "Difference in km^2") +
+  theme_classic()
+
+ggsave(filename = "east_atl_shelf_areas_histogram.pdf", path = here::here("Figures","Supplement"))
 ```
 
 ###LME Depth Profiles
@@ -353,11 +365,12 @@ freq_table_raster[,cell_size := NULL] #remove cell size column
 freq_table_raster[,depth := -depth] #make depth positive
 
 #plot this frequency table
-raster_areabycell_plot <- ggplot(data = freq_table_raster, aes(x = depth, y = sum_area, fill = depth)) +
+raster_areabycell_plot <- ggplot(
+  data = freq_table_raster, aes(x = depth,y = sum_area,fill = depth)) +
     geom_col(width = 5) +
-#    geom_smooth(method = "gam", se = F, color = "black", size = 1) +
     theme_classic() +
-    labs(x = "Depth (m)", y = expression(paste("Area (", km^{2},")")), fill = "Depth (m)") +
+    labs(x = "Depth (m)", y = expression(paste("Area (", km^{2},")")),
+         fill = "Depth (m)") +
     scale_y_continuous(expand = c(0, 0)) +
     scale_x_continuous(expand = c(0,0)) +
     scale_fill_gradientn(colors = rev(viridis(5)), limits = c(0, 2000)) +
@@ -383,7 +396,9 @@ LME_high_arctic.EA@data$area_km <- LME_high_arctic.EA@data$area_m/1e6 #convert t
 
 freq_table_polygon <- as.data.table(LME_high_arctic.EA@data)
 
-polygon_plot <- ggplot(data = freq_table_polygon, aes(x = depth, y = area_km, fill = depth)) +
+polygon_plot <- ggplot(
+  data = freq_table_polygon,
+  aes(x = depth, y = area_km, fill = depth)) +
     geom_col(width = 5) +
 #    geom_smooth(method = "gam", se = F, color = "black", size = 1) +
     theme_classic() +
@@ -422,7 +437,8 @@ LME_high_arctic_data_vector <- vector()
 #populate vector
 for (i in 1:nrow(freq_table_raster)){
 add <- rep(freq_table_raster[i,depth], freq_table_raster[i,area_rounddown])
-LME_high_arctic_data_vector <- append(LME_high_arctic_data_vector, add, after = length(LME_high_arctic_data_vector))
+LME_high_arctic_data_vector <- append(LME_high_arctic_data_vector, add,
+                                      after = length(LME_high_arctic_data_vector))
 
 }
 
@@ -474,7 +490,8 @@ Convert to actual frequency table using equate package, and calculate all statis
 freq_table_polygon.ft <- as.freqtab(freq_table_polygon[,c(2,4)])
 
 dip.test_polygon <- dip.test(LME_high_arctic_data_vector_polygon, simulate.p.value = TRUE, B = 2000)
-saveRDS(dip.test_polygon, file = here::here("output","raster_shapefile_comparison","higharctic_dip.test_polygon.rds"))
+saveRDS(dip.test_polygon, file = here::here("output","raster_shapefile_comparison",
+                                            "higharctic_dip.test_polygon.rds"))
   p.value_dip.test_polygon <- dip.test_polygon$p.value
   skew_dip.test_polygon <- skew.freqtab(freq_table_polygon.ft)
   mean_polygon <- mean(freq_table_polygon.ft)
@@ -482,7 +499,7 @@ saveRDS(dip.test_polygon, file = here::here("output","raster_shapefile_compariso
   median_depth_polygon <- median(freq_table_polygon.ft)
   
   
-saveRDS(dip.test_polygon, file = here::here("output","raster_shapefile_comparison","/dip.test_polygon.rds"))
+saveRDS(dip.test_polygon, file = here::here("output","raster_shapefile_comparison","dip.test_polygon.rds"))
 
 ```
 
@@ -497,8 +514,8 @@ Deep Dominant: skew value < -1
 ```{r final plot comparison}
 
 #plot for raster
-raster_areabycell_plot +
-annotate("text", x = 600, y = 1650, label = "LME 66: Canadian High Arctic: Raster") +
+raster <- raster_areabycell_plot +
+annotate("text", x = 600, y = 1650, label = "LME 66: Canadian High Arctic: Unprojected Raster") +
   annotate("text", x = 700, y = 1550, label = paste0("Dip Test: ", signif(dip.test_unbiased_raster$statistic,2), " P-value = ", signif(p.value_dip.test_unbiased_raster, 2))) +
   annotate("text", x = 700, y = 1450, label = paste0("Skew: ", round(skew_dip.test_unbiased_raster,2))) +
   annotate("text", x = 700, y = 1350, label = paste0("Mean: ",round(mean_unbiased_raster,2), " m")) +
@@ -506,7 +523,7 @@ annotate("text", x = 600, y = 1650, label = "LME 66: Canadian High Arctic: Raste
   geom_vline(xintercept = mean_unbiased_raster, color = "red")
 
 #projected polygon
-polygon_plot +
+polygon <- polygon_plot +
 annotate("text", x = 600, y = 1650, label = "LME 66: Canadian High Arctic: Projected Polygon") +
   annotate("text", x = 700, y = 1550, label = paste0("Dip Test: ", signif(dip.test_polygon$statistic,2), " P-value = ", signif(p.value_dip.test_polygon, 2))) +
   annotate("text", x = 700, y = 1450, label = paste0("Skew: ", round(skew_dip.test_polygon,2))) +
@@ -514,6 +531,11 @@ annotate("text", x = 600, y = 1650, label = "LME 66: Canadian High Arctic: Proje
   annotate("text", x = 700, y = 1250, label = "Classification = Mid-Dominant") +
   geom_vline(xintercept = mean_polygon, color = "red")
 
+comparison <- plot_grid(raster + theme(legend.position = "none"), polygon + theme(legend.position = "none"), rows = 1, cols = 2)
+
+comparison_w_legend <- plot_grid(comparison, get_legend(raster), cols = 2, rows = 1, rel_widths = c(8,1))
+
+ggsave(comparison_w_legend, filename = "depth_histogram_comparison.pdf", path = here::here("Figures","Supplement"), width = 12, height = 4, units = "in")
 
 ```
 

@@ -1719,6 +1719,7 @@ percent_change_hemis <- ggplot(data = significant_changes.long, aes(x="", y = pe
 
 ggsave(percent_change_hemis, path = here::here("Figures","Figure6"), filename = "figure6_habitatloss_gain_2fold_byhemisphere.jpg", height = 2, width = 6, unit = "in")
 ggsave(percent_change_hemis, path = here::here("Figures","Figure6"), filename = "figure6_habitatloss_gain_2fold_byhemisphere.eps", height = 2, width = 6, unit = "in")
+ggsave(percent_change_hemis, path = here::here("Figures","Figure6"), filename = "figure6_habitatloss_gain_2fold_byhemisphere.pdf", height = 2, width = 6, unit = "in")
 
 
 #by region (hemisphere's compressed)

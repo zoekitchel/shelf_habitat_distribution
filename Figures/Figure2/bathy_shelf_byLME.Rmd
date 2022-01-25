@@ -14,7 +14,7 @@ library(diptest)
 library(moments)
 library(viridis) #colors
 library(data.table)
-library(hydroTSM) #hypsometric curves
+#library(hydroTSM) #hypsometric curves
 library(gridExtra)
 library(ggfortify)
 library(rgeos)
@@ -22,11 +22,11 @@ library(ggridges) #allows for gradient in density plot
 library(psych) #summary statistics
 library(gridExtra)
 
-etopo_shelf_df <- readRDS("raw_data/etopo_shelf_df.rds")
+etopo_shelf_df <- readRDS(here::here("raw_data/etopo_shelf_df.rds"))
 #bring in bathy for shelf regions
 
 #LMEs
-LME_spdf <- readOGR("raw_data/LME66/LMEs66.shp")
+LME_spdf <- readOGR(here::here("raw_data/LME66/LMEs66.shp"))
 
 #keep Antarctica and the arctic
 LME_poles <- LME_spdf[LME_spdf$LME_NUMBER == 61 | LME_spdf$LME_NUMBER == 64,]
@@ -644,7 +644,8 @@ write.csv(LME_bathy_statistics, "LME_bathy_statistics.csv")
 saveRDS(LME_bathy_statistics, here::here("output","LME_bathy_statistics_full.rds"))
 
 #if already loaded
-#LME_bathy_statistics <- readRDS(here::here("output","LME_bathy_statistics_full.rds")) 
+  #LME_bathy_statistics <- readRDS(here::here("output","LME_bathy_statistics_full.rds")) 
+  #lme_areaplots <- readRDS(here::here("output","compiled_plots","lme_areaplots.rds"))
 ```
 
 Now that we have classified distributions, let's make final plots
@@ -661,7 +662,8 @@ max_y <- ggp$layout$panel_scales_y[[1]]$range$range[[2]]  #y range
 #full plot
   lme_areaplots_classified[[i]] <- lme_areaplots[[i]] +
     geom_vline(xintercept = LME_bathy_statistics[i,mean_depth], color = "red") +
-    annotate("text", x=Inf, y = max_y+2*max_y/20, hjust=1, label = paste0("LME ", LME_bathy_statistics[i,lme_number], ":\n ", LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
+    annotate("text", x=Inf, y = max_y+3*max_y/20, hjust=1, label = paste0("\nLME ", LME_bathy_statistics[i,lme_number]), fontface = "bold", size = 2) +
+    annotate("text", x = Inf, y = max_y+1*max_y/20, hjust = 1, label = paste0(LME_bathy_statistics[i,lme_name]), fontface = "bold", size = 2) +
     annotate("text", x =  Inf, y = max_y, hjust = 1, label = paste0(LME_bathy_statistics[i,region]," Ocean"), size = 2) +
         annotate("text", x=Inf, y = max_y-max_y/20, hjust=1, label = paste0("Classification: ", LME_bathy_statistics[i,type]), size = 2) +
     annotate("text", x=Inf, y = max_y-2*max_y/20, hjust=1, label = paste0("Dip Test: ", signif(LME_bathy_statistics[i,dip_test],2), " P-value = ", signif(LME_bathy_statistics[i,dip_p_value], 2)), size = 2) +
