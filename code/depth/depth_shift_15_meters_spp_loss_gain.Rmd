@@ -24,12 +24,13 @@ library(rgeos)
 library(ggridges) #allows for gradient in density plot
 library(psych) #summary statistics
 library(plyr) #round_any
+library(here)
 
-etopo_shelf_df <- readRDS("raw_data/etopo_shelf_df.rds")
+etopo_shelf_df <- readRDS(here::here("raw_data", "etopo_shelf_df.rds"))
 #bring in bathy for shelf regions
 
 #LMEs
-LME_spdf <- readOGR("raw_data/LME66/LMEs66.shp")
+LME_spdf <- readOGR(here::here("raw_data","LME66","LMEs66.shp"))
 
 
 #get rid of Antarctica and the arctic
@@ -210,10 +211,11 @@ saveRDS(LME_area_spp_change_stats, file = "LME_area_spp_change_stats.rds")
 saveRDS(LME_bathy_bydepth_complete_15mbins, here::here("table_outputs","LME_bathy_bydepth_complete_15mbins.rds"))
 #LME_area_spp_change_stats <- readRDS("LME_area_spp_change_stats.rds")
 #LME_bathy_bydepth_complete_15mbins <- readRDS(here::here("table_outputs","LME_bathy_bydepth_complete_15mbins.rds"))
-saveRDS(lme_spp_count_area_sum_plots, file = "lme_spp_count_area_sum_plots.rds")
-
+saveRDS(lme_spp_count_area_sum_plots, file = here::here("output","compiled plots","lme_spp_count_area_sum_plots.rds"))
+#to pull in
+lme_spp_count_area_sum_plots <- readRDS(file = here::here("output","compiled plots","lme_spp_count_area_sum_plots.rds"))
 #plots to pdf
-ggsave("arranged_LME_sppchange.pdf", marrangeGrob(lme_spp_count_area_sum_plots, ncol=2, nrow = 2))
+ggsave(path = here::here("Figures","compiled_plots"), filename = "arranged_LME_sppchange.pdf", marrangeGrob(lme_spp_count_area_sum_plots, ncol=2, nrow = 3), width = 8.5, height = 11, unit = "in")
 
 ```
 

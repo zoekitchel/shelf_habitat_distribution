@@ -568,8 +568,8 @@ saveRDS(lme_areaplots, here::here("output","compiled_plots","lme_areaplots.rds")
 saveRDS(lme_maps, here::here("output","compiled_plots","lme_maps.rds"))
 
 #plots to pdf
-ggsave("arranged_maps.pdf", marrangeGrob(lme_maps, ncol=2, nrow = 2))
-ggsave("arranged_areaplots.pdf", marrangeGrob(grobs = lme_areaplots, ncol=2, nrow = 3))
+ggsave("arranged_maps.pdf", path = here::here("Figures","compiled_plots"), marrangeGrob(lme_maps, ncol=2, nrow = 3), width = 8.5, height = 11, unit = "in")
+ggsave("arranged_areaplots.pdf", path = here::here("Figures","compiled_plots"), marrangeGrob(grobs = lme_areaplots, ncol=2, nrow = 3), width = 8.5, height = 11, unit = "in")
 ```
 Associate LME with region
 
@@ -678,7 +678,8 @@ max_y <- ggp$layout$panel_scales_y[[1]]$range$range[[2]]  #y range
 }
 
 saveRDS(lme_areaplots_classified, here::here("output","compiled_plots","arranged_areaplots_classified.rds"))
-ggsave(filename = "arranged_areaplots_classified.pdf", path = here::here("Figures","compiled_plots"), plot =  marrangeGrob(grobs = lme_areaplots_classified, ncol=2, nrow = 3))
+
+ggsave(filename = "arranged_areaplots_classified.pdf", path = here::here("Figures","compiled_plots"), plot =  marrangeGrob(grobs = lme_areaplots_classified, ncol=2, nrow = 3), width = 8.5, height = 11, unit = "in")
 ```
 
 
