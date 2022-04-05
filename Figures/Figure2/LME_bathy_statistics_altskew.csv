@@ -1,0 +1,65 @@
+,lme_name,lme_number,lme_area,ks_test_pvalue,dip_test,dip_p_value,skew,mean_depth,max_depth,median_depth,center_latitude,region,skew_descriptor,hourglass,deep_dominant,shallow_dominant,mid_dominant,uniform,AltSkewClassification,lme_name2,RegClassification,Match?
+30,Agulhas Current,30,291259.1215,0,0.019555776,0,5.74333341,76.3768961,1783,59,-22.65111385,Indian,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Agulhas Current,Multimodal,TRUE
+32,Arabian Sea,32,649527.3826,0,0.008095625,0,4.32728077,61.10372586,1766,50,16.26403942,Indian,high_skew,FALSE,FALSE,TRUE,FALSE,FALSE,Shallow Dominant,Arabian Sea,Shallow Dominant,TRUE
+23,Baltic Sea,23,370055.7266,0,0.007759624,0,1.119004878,55.332209,410,46,58.96931499,Atlantic,high_skew,FALSE,FALSE,TRUE,FALSE,FALSE,Shallow Dominant,Baltic Sea,Shallow Dominant,TRUE
+20,Barents Sea,20,1756866.863,0,0.010730857,0,0.120577089,196.2063201,955,198,76.28767759,Atlantic,symmetric,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Barents Sea,Multimodal,TRUE
+34,Bay of Bengal,34,608190.6421,0,0.011949876,0,3.282440766,55.33174064,800,43,10.85792554,Indian,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Bay of Bengal,Multimodal,TRUE
+55,Beaufort Sea,55,574330.9033,0,0.0144553,0,0.736903091,168.2351901,797,112,72.54560731,Pacific,mod_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Beaufort Sea,Multimodal,TRUE
+61,Black Sea,62,140184.5112,0,0.028983366,0,2.477478955,46.01546581,455,33,43.51120748,Atlantic,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Black Sea,Multimodal,TRUE
+3,California Current,3,107840.0503,0,0.00551394,0,1.539595863,96.28927858,690,85,33.25190697,Pacific,high_skew,FALSE,FALSE,TRUE,FALSE,FALSE,Shallow Dominant,California Current,Shallow Dominant,TRUE
+64,Canadian High Arctic - North Greenland,66,469751.1886,0,0.005357335,0,0.485741518,268.8924628,958,253,80.69860747,Atlantic,symmetric,FALSE,FALSE,FALSE,TRUE,FALSE,Mid Dominant,Canadian High Arctic - North Greenland,Mid Dominant,TRUE
+27,Canary Current,27,184567.1053,0,0.022370911,0,2.249772352,80.98024396,915,51,24.6478459,Atlantic,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Canary Current,Multimodal,TRUE
+12,Caribbean Sea,12,451896.7595,0,0.057656577,0,2.548682857,51.49270512,1135,12,16.34745651,Atlantic,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Caribbean Sea,Multimodal,TRUE
+24,Celtic-Biscay Shelf,24,551855.9298,0,0.006579237,0,2.697341691,109.0715922,852,98,51.43180746,Atlantic,high_skew,FALSE,FALSE,TRUE,FALSE,FALSE,Shallow Dominant,Celtic-Biscay Shelf,Shallow Dominant,TRUE
+1,East Bering Sea,1,576575.9266,0,0.013167053,0,1.525360075,81.64584058,666,65,56.88070468,Pacific,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,East Bering Sea,Multimodal,TRUE
+16,East Brazil Shelf,16,163403.2112,0,0.014791515,0,5.117448092,60.16918417,1923,28,-10.14735624,Atlantic,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,East Brazil Shelf,Multimodal,TRUE
+41,East Central Australian Shelf,41,61619.21255,0,0.018097105,0,1.302575361,71.165076,365,58,-29.11724546,Pacific,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,East Central Australian Shelf,Multimodal,TRUE
+47,East China Sea,47,564953.0645,0,0.022393143,0,0.988631428,88.75184322,522,67,29.55633526,Pacific,mod_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,East China Sea,Multimodal,TRUE
+56,East Siberian Sea,56,600141.9249,0,0.031995246,0,2.349789342,66.46340046,480,38,74.37275627,Pacific,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,East Siberian Sea,Multimodal,TRUE
+60,Faroe Plateau,60,36157.14176,0,0.026552753,0,0.328683329,176.367772,543,188,61.48852849,Atlantic,symmetric,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Faroe Plateau,Multimodal,TRUE
+19,Greenland Sea,19,476996.497,0,0.013557756,0,0.525511934,257.505936,1353,259,73.74178876,Atlantic,mod_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Greenland Sea,Multimodal,TRUE
+28,Guinea Current,28,268115.5162,0,0.022266846,0,4.335755385,53.90563002,1027,41,3.40906303,Atlantic,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Guinea Current,Multimodal,TRUE
+2,Gulf of Alaska,2,382895.174,0,0.025438339,0,0.802997506,127.8994505,637,113,54.07110345,Pacific,mod_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Gulf of Alaska,Multimodal,TRUE
+4,Gulf of California,4,67641.95642,0,0.008546786,0,1.571893736,80.8026308,483,70,26.12712119,Pacific,high_skew,FALSE,FALSE,TRUE,FALSE,FALSE,Shallow Dominant,Gulf of California,Shallow Dominant,TRUE
+5,Gulf of Mexico,5,557029.1271,0,0.009860412,0,1.921904208,55.351416,657,40,24.97637041,Atlantic,high_skew,FALSE,FALSE,TRUE,FALSE,FALSE,Shallow Dominant,Gulf of Mexico,Shallow Dominant,TRUE
+35,Gulf of Thailand,35,379096.935,0,0.057369502,0,-0.350084006,36.47773957,70,44,8.71225786,Pacific,symmetric,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Gulf of Thailand,Multimodal,TRUE
+62,Hudson Bay Complex,63,1195276.562,0,0.022406753,0,1.979239034,115.961022,959,101,61.21620242,Atlantic,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Hudson Bay Complex,Multimodal,TRUE
+13,Humboldt Current,13,271605.6279,0,0.006596408,0,1.516998862,105.9503957,917,90,-31.96456582,Pacific,high_skew,FALSE,FALSE,TRUE,FALSE,FALSE,Shallow Dominant,Humboldt Current,Shallow Dominant,TRUE
+25,Iberian Coastal,25,52738.06284,0,0.008655156,0,2.987390611,93.27307982,1008,81,41.079155,Atlantic,high_skew,FALSE,FALSE,TRUE,FALSE,FALSE,Shallow Dominant,Iberian Coastal,Shallow Dominant,TRUE
+38,Indonesian Sea,38,745461.2357,0,0.010698267,0,3.643857387,53.28262007,1412,39,-4.37073783,Indian,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Indonesian Sea,Multimodal,TRUE
+10,Insular Pacific-Hawaiian,10,13820.18855,0,0.007525682,0,1.872916123,130.5771857,835,98,23.84330553,Pacific,high_skew,FALSE,FALSE,TRUE,FALSE,FALSE,Shallow Dominant,Insular Pacific-Hawaiian,Shallow Dominant,TRUE
+58,Kara Sea,58,920807.6964,0,0.013892029,0,1.662962265,134.3200605,831,78,76.93758755,Atlantic,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Kara Sea,Multimodal,TRUE
+49,Kuroshio Current,49,95663.29693,0,0.005310468,0,1.172722965,92.09635342,634,77,30.95066038,Pacific,high_skew,FALSE,FALSE,TRUE,FALSE,FALSE,Shallow Dominant,Kuroshio Current,Shallow Dominant,TRUE
+9,Labrador - Newfoundland,9,778724.5044,0,0.010433128,0,0.731472935,183.043279,793,166,50.13898077,Atlantic,mod_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Labrador - Newfoundland,Multimodal,TRUE
+57,Laptev Sea,57,790702.5649,0,0.030628898,0,3.300534804,47.89083558,628,27,76.26650195,Pacific,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Laptev Sea,Multimodal,TRUE
+26,Mediterranean Sea,26,493665.1065,0,0.010027317,0,1.233136235,88.27748545,730,74,37.0543189,Atlantic,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Mediterranean Sea,Multimodal,TRUE
+39,North Australian Shelf,39,704841.6016,0,0.019104231,0,1.019101784,46.21586178,204,37,-12.60621699,Pacific,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,North Australian Shelf,Multimodal,TRUE
+17,North Brazil Shelf,17,448095.6973,0,0.019254202,0,3.553150592,46.7414556,951,38,4.82610305,Atlantic,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,North Brazil Shelf,Multimodal,TRUE
+22,North Sea,22,637801.3521,0,0.011206379,0,2.216365214,91.68312315,686,64,57.37568133,Atlantic,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,North Sea,Multimodal,TRUE
+40,Northeast Australian Shelf,40,270334.9214,0,0.016218096,0,4.744126317,35.20623621,913,21,-17.15460797,Pacific,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Northeast Australian Shelf,Multimodal,TRUE
+7,Northeast U.S. Continental Shelf,7,291357.0395,0,0.008592079,0,1.005116948,88.2341446,486,66,40.96301038,Atlantic,high_skew,FALSE,FALSE,TRUE,FALSE,FALSE,Shallow Dominant,Northeast U.S. Continental Shelf,Shallow Dominant,TRUE
+54,Northern Bering - Chukchi Seas,54,1072733.607,0,0.018184764,0,3.330418757,72.5617017,857,50,71.1453764,Pacific,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Northern Bering - Chukchi Seas,Multimodal,TRUE
+45,Northwest Australian Shelf,45,345904.3634,0,0.017343625,0,1.212904297,78.59959,469,75,-16.73905298,Indian,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Northwest Australian Shelf,Multimodal,TRUE
+21,Norwegian Sea,21,152017.6101,0,0.025797974,0,-0.405080153,255.2764446,532,266,68.45895065,Atlantic,symmetric,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Norwegian Sea,Multimodal,TRUE
+51,Oyashio Current,51,44073.98363,0,0.007691177,0,1.697279195,105.8710255,587,82,45.19737537,Pacific,high_skew,FALSE,FALSE,TRUE,FALSE,FALSE,Shallow Dominant,Oyashio Current,Shallow Dominant,TRUE
+11,Pacific Central-American Coastal,11,199699.9108,0,0.006554946,0,2.350490998,84.43954708,1083,66,11.52432941,Pacific,high_skew,FALSE,FALSE,TRUE,FALSE,FALSE,Shallow Dominant,Pacific Central-American Coastal,Shallow Dominant,TRUE
+14,Patagonian Shelf,14,1015984.622,0,0.018339715,0,0.922841321,95.77814566,608,95,-46.27090928,Atlantic,mod_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Patagonian Shelf,Multimodal,TRUE
+33,Red Sea,33,160234.82,0,0.010690425,0,2.727401439,57.46281576,704,36,20.56524357,Indian,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Red Sea,Multimodal,TRUE
+8,Scotian Shelf,8,261767.485,0,0.026055477,0,1.434132263,138.6981196,892,99,45.5385689,Atlantic,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Scotian Shelf,Multimodal,TRUE
+50,Sea of Japan,50,218993.4003,0,0.008773828,0,1.38782979,117.4547608,806,100,41.26265571,Pacific,high_skew,FALSE,FALSE,TRUE,FALSE,FALSE,Shallow Dominant,Sea of Japan,Shallow Dominant,TRUE
+52,Sea of Okhotsk,52,697985.4196,0,0.018704829,0,1.422648244,120.2822718,1055,114,53.77056969,Pacific,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Sea of Okhotsk,Multimodal,TRUE
+31,Somali Coastal Current,31,48196.35452,0,0.012269025,0,2.085297842,64.25497451,563,53,-1.40836449,Indian,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Somali Coastal Current,Multimodal,TRUE
+15,South Brazil Shelf,15,279681.4708,0,0.0121667,0,0.936675361,86.42965714,560,78,-27.51312669,Atlantic,mod_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,South Brazil Shelf,Multimodal,TRUE
+36,South China Sea,36,1466745.161,0,0.014423402,0,3.748381015,61.83844774,1981,52,11.87594849,Pacific,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,South China Sea,Multimodal,TRUE
+43,South West Australian Shelf,43,290415.3157,0,0.010201323,0,1.070293234,59.659906,528,55,-35.16948789,Indian,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,South West Australian Shelf,Multimodal,TRUE
+42,Southeast Australian Shelf,42,206483.8643,0,0.012987111,0,1.52424118,64.60734318,488,62,-40.97642805,Pacific,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Southeast Australian Shelf,Multimodal,TRUE
+6,Southeast U.S. Continental Shelf,6,119059.4798,0,0.01509706,0,2.806179606,34.4005876,451,27,30.44502845,Atlantic,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Southeast U.S. Continental Shelf,Multimodal,TRUE
+37,Sulu-Celebes Sea,37,202980.2551,0,0.03388094,0,1.698020739,74.66601566,685,33,6.32273058,Pacific,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Sulu-Celebes Sea,Multimodal,TRUE
+53,West Bering Sea,53,108133.5249,0,0.010911684,0,4.286550822,88.33373733,1730,67,57.17113448,Pacific,high_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,West Bering Sea,Multimodal,TRUE
+44,West Central Australian Shelf,44,104687.82,0,0.023136331,0,0.970238696,74.77225754,398,67,-27.70193956,Indian,mod_skew,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,West Central Australian Shelf,Multimodal,TRUE
+48,Yellow Sea,48,423050.1346,0,0.072017186,0,0.145456602,37.05081705,103,35,36.45538274,Pacific,symmetric,TRUE,FALSE,FALSE,FALSE,FALSE,Multimodal,Yellow Sea,Multimodal,TRUE
+63,Aleutian Islands,65,36787.52423,0,0.006420539,0,0.86393614,149.0654519,872,121,51.93742587,Pacific,mod_skew,FALSE,FALSE,TRUE,TRUE,FALSE,Shallow Dominant,Aleutian Islands,Mid Dominant,FALSE
+29,Benguela Current,29,293667.2049,0,0.0029203,0,0.514697673,181.36658,554,168,-21.25126978,Atlantic,mod_skew,FALSE,FALSE,TRUE,TRUE,FALSE,Shallow Dominant,Benguela Current,Mid Dominant,FALSE
+18,Canadian Eastern Arctic - West Greenland,18,718323.0932,0,0.008428881,0,0.817617387,242.9409605,1126,204,70.36738516,Atlantic,mod_skew,FALSE,FALSE,TRUE,TRUE,FALSE,Shallow Dominant,Canadian Eastern Arctic - West Greenland,Mid Dominant,FALSE
+59,Iceland Shelf and Sea,59,171400.2085,0,0.006801501,0,0.582997889,181.2028964,662,169,66.57046427,Atlantic,mod_skew,FALSE,FALSE,TRUE,TRUE,FALSE,Shallow Dominant,Iceland Shelf and Sea,Mid Dominant,FALSE
+46,New Zealand Shelf,46,216070.9602,0,0.009704646,0,0.991260868,101.5021545,490,99,-40.49191403,Pacific,mod_skew,FALSE,FALSE,TRUE,TRUE,FALSE,Shallow Dominant,New Zealand Shelf,Mid Dominant,FALSE

@@ -296,6 +296,7 @@ How to classify different LMES? Dip (Modality) & Skew
  and the remainder to diamond, representing those with approximately normal distributions. 
  
  We chose skew cutoffs of 0.5 and −0.5 to capture right- and left-skewed distributions, respectively, and to bound distributions approximating symmetry." from Elsen and Tingley, but I will go with 1 to -1
+        *I am returning to this choice, and am going to compare 1,-1 skew tto 0.5,-0.5 skew
  
 Modality: In mathematics, unimodality means possessing a unique mode. More generally, unimodality means there is only a single highest value, somehow defined, of some mathematical object. (Wikipedia)
 
@@ -596,6 +597,9 @@ arctic <- c(64) #excluding
 
 #LME_bathy_statistics[,region := ifelse(lme_number %in% west_pac, "west_pac",ifelse(lme_number %in% east_pac, #"east_pac", ifelse(lme_number %in% west_atl, "west_atl", ifelse(lme_number %in% west_ind, "west_ind", #ifelse(lme_number %in% east_atl, "east_atl", ifelse(lme_number %in% east_ind, "east_ind", ifelse(lme_number #%in% east_west_pac, "east_west_pac", ifelse(lme_number %in% east_pac_west_atl, "east_pac_west_atl", #"none"))))))))]
 
+#if you need to pull it in
+LME_bathy_statistics <- readRDS(here::here("output","LME_bathy_statistics.rds"))
+
 LME_bathy_statistics[,region := ifelse(lme_number %in% pacific, "Pacific", ifelse(lme_number %in% atlantic, "Atlantic", ifelse(lme_number %in% indian, "Indian", ifelse(lme_number %in% antarctica, "Antarctica", "Arctic"))))]
 
 ```
@@ -640,7 +644,7 @@ LME_bathy_statistics[,type := ifelse(uniform == T, "Uniform",
                                            ifelse(shallow_dominant == T, "Shallow Dominant",
                                                   ifelse(mid_dominant == T, "Mid Dominant", "none")))))][,lme_name2 := lme_name]
 
-write.csv(LME_bathy_statistics, "LME_bathy_statistics.csv")
+write.csv(LME_bathy_statistics,here::here("output", "LME_bathy_statistics.csv"))
 saveRDS(LME_bathy_statistics, here::here("output","LME_bathy_statistics_full.rds"))
 
 #if already loaded
@@ -681,6 +685,81 @@ saveRDS(lme_areaplots_classified, here::here("output","compiled_plots","arranged
 
 ggsave(filename = "arranged_areaplots_classified.pdf", path = here::here("Figures","compiled_plots"), plot =  marrangeGrob(grobs = lme_areaplots_classified, ncol=2, nrow = 3), width = 8.5, height = 11, unit = "in")
 ```
+
+#Testing alternative skew value per reviewer request
+
+```{r expanded data frame alt skew}
+LME_bathy_statistics_altskew <- LME_bathy_statistics
+
+LME_bathy_statistics_altskew[, skew_descriptor := ifelse(abs(skew) > 1, "high_skew", ifelse(abs(skew) < 0.5, "symmetric", "mod_skew"))]
+
+LME_bathy_statistics_altskew[, hourglass := ifelse(dip_test > 0.01, ifelse(dip_p_value < 0.05, T, F), F)]
+
+LME_bathy_statistics_altskew[, deep_dominant := ifelse(dip_test <= 0.01, 
+                                               ifelse(skew <= -0.5, T, F), F)]
+
+LME_bathy_statistics_altskew[, shallow_dominant := ifelse(dip_test <= 0.01, 
+                                                  ifelse(skew >= 0.5, T, F), F)]
+
+LME_bathy_statistics_altskew[, mid_dominant := ifelse(dip_test <= 0.01,
+                                          ifelse(abs(skew) <1, T, F), F)]
+
+#negative kurtosis (no tails)
+LME_bathy_statistics_altskew[, uniform := ifelse(ks_test_pvalue >0.05,T,F)]
+
+```
+
+
+```{r labeling check alt skew}
+LME_bathy_statistics_altskew[,type := ifelse(uniform == T, "Uniform",
+                                     ifelse(hourglass == T, "Multimodal",
+                                        ifelse(deep_dominant == T, "Deep Dominant",
+                                           ifelse(shallow_dominant == T, "Shallow Dominant",
+                                                  ifelse(mid_dominant == T, "Mid Dominant", "none")))))][,lme_name2 := lme_name]
+
+write.csv(LME_bathy_statistics_altskew, here::here("output","LME_bathy_statistics_altskew.csv"))
+saveRDS(LME_bathy_statistics_altskew, here::here("output","LME_bathy_statistics_full_altskew.rds"))
+
+#if already loaded
+  #LME_bathy_statistics_altskew <- readRDS(here::here("output","LME_bathy_statistics_full_skew.rds")) 
+```
+
+
+```{r plots with classification and statistics alt skew}
+
+lme_areaplots_classified_altskew <- vector("list", length = nrow(LME_bathy_statistics_altskew))
+
+for (i in 1:nrow(LME_bathy_statistics_altskew)) {
+  
+  #get max y value to set label location
+  ggp <- ggplot_build(lme_areaplots[[i]])
+max_y <- ggp$layout$panel_scales_y[[1]]$range$range[[2]]  #y range
+  
+#full plot
+  lme_areaplots_classified_altskew[[i]] <- lme_areaplots[[i]] +
+    geom_vline(xintercept = LME_bathy_statistics_altskew[i,mean_depth], color = "red") +
+    annotate("text", x=Inf, y = max_y+3*max_y/20, hjust=1, label = paste0("\nLME ", LME_bathy_statistics_altskew[i,lme_number]), fontface = "bold", size = 2) +
+    annotate("text", x = Inf, y = max_y+1*max_y/20, hjust = 1, label = paste0(LME_bathy_statistics_altskew[i,lme_name]), fontface = "bold", size = 2) +
+    annotate("text", x =  Inf, y = max_y, hjust = 1, label = paste0(LME_bathy_statistics_altskew[i,region]," Ocean"), size = 2) +
+        annotate("text", x=Inf, y = max_y-max_y/20, hjust=1, label = paste0("Classification: ", LME_bathy_statistics_altskew[i,type]), size = 2) +
+    annotate("text", x=Inf, y = max_y-2*max_y/20, hjust=1, label = paste0("Dip Test: ", signif(LME_bathy_statistics_altskew[i,dip_test],2), " P-value = ", signif(LME_bathy_statistics_altskew[i,dip_p_value], 2)), size = 2) +
+    annotate("text", x=Inf, y = max_y-3*max_y/20, hjust=1, label = paste0("Skew: ", round(LME_bathy_statistics_altskew[i,skew],2)), size = 2) +
+    annotate("text", x=Inf, y = max_y-4*max_y/20, hjust=1, label = paste0("Mean: ",round(LME_bathy_statistics_altskew[i,mean_depth],2), " m"), size = 2) +
+    theme(axis.title = element_text(size = 8), axis.text = element_text(size = 6),
+            legend.title = element_text(size = 8),
+            legend.text = element_text(size = 6)) +
+    guides(shape = guide_legend(override.aes = list(size = 4)))
+
+
+}
+
+saveRDS(lme_areaplots_classified_altskew, here::here("output","compiled_plots","arranged_areaplots_classified_altskew.rds"))
+
+ggsave(filename = "arranged_areaplots_classified_altskew.pdf", path = here::here("Figures","compiled_plots"), plot =  marrangeGrob(grobs = lme_areaplots_classified_altskew, ncol=2, nrow = 3), width = 8.5, height = 11, unit = "in")
+```
+
+
+############
 
 
 PCA

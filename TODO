@@ -3,3 +3,6 @@ To  do:
 - fix text to emphasize habitat less and continental shelf more
 - multiple species area curves
       - 0.175-0.62, with an average of 0.38 (Levin 2009 Supplement)
+- how are classifications different with adjusted skew values?
+    -When classifying depth distributions, I was a little surprised to see skew cutoffs of -1 and 1 used to distinguish Deep Dominant and Shallow-Dominant curves. While I recognize these are quite conservative values representing highly skewed distributions, it might be more reasonable to use lower cutoffs of -0.5 and 0.5, which still represent moderately skewed distributions and provide more suitable boundaries to delineate Mid-Dominant curves (skewness values of -0.5 to 0.5 are typically used to approximate symmetric distributions).
+    -when I use a 0.5- -0.5 cutoff, changes classification of 5 from mid-dominant to shallow dominant
