@@ -147,7 +147,7 @@ ggsave(figure_4_atlantic_full, path = here::here("Figures", "Figure3_5"), filena
 ```
 
 #Atlantic merge three levels
-```{r atlantic merge}
+```{r atlantic merge  three levels}
 figure_4_atlantic_full_threelevels <- egg::ggarrange(region_maps[[3]] + 
                                                 theme(legend.position = "top",
                                                       axis.title.x = element_blank(),
