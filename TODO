@@ -1,8 +1,5 @@
 To  do:
-- digital elevation model comparison
+- digital elevation model comparison (GEBCO and ETOPO1)
 - fix text to emphasize habitat less and continental shelf more
 - multiple species area curves
-- arctic	fish	9.92	0.175	0.9	(Frank & Shackell 2001)
-- tropic	coral reef fish 	4.319	0.62	0.823	(Nanami & Nishihira 2003)
-- S =16.18*A^0.226
-- 0.175-0.62, with an average of 0.38 (Levin 2009 Supplement)
+      - 0.175-0.62, with an average of 0.38 (Levin 2009 Supplement)

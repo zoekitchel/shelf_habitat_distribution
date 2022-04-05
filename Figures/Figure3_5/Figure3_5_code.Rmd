@@ -12,17 +12,19 @@ library(cowplot)
 library(egg)
 library(mapproj)
 
-load(here::here("output","2_degree_latitude","west_pac_shelf_areas_2degrees.Rdata"))
-load(here::here("output","2_degree_latitude","west_atl_shelf_areas_2degrees.Rdata"))
-load(here::here("output","2_degree_latitude","west_ind_shelf_areas_2degrees.Rdata"))
-load(here::here("output","2_degree_latitude","east_pac_shelf_areas_2degrees.Rdata"))
-load(here::here("output","2_degree_latitude","east_atl_shelf_areas_2degrees.Rdata"))
-load(here::here("output","2_degree_latitude","east_ind_shelf_areas_2degrees.Rdata"))
+west_pac_shelf_areas <- readRDS(here::here("output","2_degree_latitude","west_pac_shelf_areas_2degrees.rds"))
+west_atl_shelf_areas <- readRDS(here::here("output","2_degree_latitude","west_atl_shelf_areas_2degrees.rds"))
+west_ind_shelf_areas <- readRDS(here::here("output","2_degree_latitude","west_ind_shelf_areas_2degrees.rds"))
+east_pac_shelf_areas <- readRDS(here::here("output","2_degree_latitude","east_pac_shelf_areas_2degrees.rds"))
+east_atl_shelf_areas <- readRDS(here::here("output","2_degree_latitude","east_atl_shelf_areas_2degrees.rds"))
+east_ind_shelf_areas <- readRDS(here::here("output","2_degree_latitude","east_ind_shelf_areas_2degrees.rds"))
 
-load(here::here("output", "2_degree_latitude","latitude_area_plots.RData")) #CHECK FOR INDIAN
+load(here::here("Figures", "Figure3_5","latitude_area_plots.RData")) #CHECK FOR INDIAN
 
 load(here::here("Figures","Figure3_5", "region_maps.RData")) #maps
+
 load(here::here("Figures","Figure3_5", "latitude_2degree_maps.RData")) #latitude area plots
+
 shelf_areas <- readRDS(file = here::here("output","2_degree_latitude","shelf_areas.rds")) #spp richness stats
 ```
 
@@ -34,6 +36,19 @@ shelf_areas <- readRDS(file = here::here("output","2_degree_latitude","shelf_are
     scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
     labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
  labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  coord_flip() +
+  theme_classic())
+
+#with 3 levels and error bars
+(east_atlantic_spprichness_errorbars <- ggplot(data = shelf_areas[region == "East Atlantic"], aes(x=latitude_start, y=log_abs_change_spp_predicted_38*spp_change_pos_neg_38)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+  geom_errorbar(aes(ymin=log_abs_change_spp_predicted_175*spp_change_pos_neg_175, ymax=log_abs_change_spp_predicted_62*spp_change_pos_neg_62), size = 0.2, alpha = 0.6)  +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('log'~Delta~'Species Richness')) +
 #  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
 #  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
@@ -57,6 +72,19 @@ shelf_areas <- readRDS(file = here::here("output","2_degree_latitude","shelf_are
   theme_classic())
 
 direction_spp_richness_change_legend <- get_legend(west_atlantic_spprichness)
+
+#with 3 levels and error bars
+(west_atlantic_spprichness_errorbars <- ggplot(data = shelf_areas[region == "West Atlantic"], aes(x=latitude_start, y=log_abs_change_spp_predicted_38*spp_change_pos_neg_38)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+  geom_errorbar(aes(ymin=log_abs_change_spp_predicted_175*spp_change_pos_neg_175, ymax=log_abs_change_spp_predicted_62*spp_change_pos_neg_62), size = 0.2, alpha = 0.6)  +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('log'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  coord_flip() +
+  theme_classic())
 
 ```
 
@@ -118,6 +146,64 @@ ggsave(figure_4_atlantic_full, path = here::here("Figures", "Figure3_5"), filena
 ggsave(figure_4_atlantic_full, path = here::here("Figures", "Figure3_5"), filename = "Figure4_atlantic_latitude_area_spprichness.jpg", height = 6, width = 10, unit = "in")
 ```
 
+#Atlantic merge three levels
+```{r atlantic merge}
+figure_4_atlantic_full_threelevels <- egg::ggarrange(region_maps[[3]] + 
+                                                theme(legend.position = "top",
+                                                      axis.title.x = element_blank(),
+                                                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+ coord_equal(ylim = c(-55,85), xlim = c(-180,0)) +
+                                                scale_y_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
+          area_latitude_west_atl + 
+               theme(axis.text.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     axis.title.x = element_blank(),
+                     legend.position = "top",
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+      guides(color = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
+            xlim(x=c(min(west_atl_shelf_areas$latitude_start),max(west_atl_shelf_areas$latitude_start))) +
+                                                scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
+          west_atlantic_spprichness_errorbars +
+                           theme(axis.text.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     axis.title.x = element_blank(),
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "top") +
+      guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
+   xlim(x=c(min(west_atl_shelf_areas$latitude_start),max(west_atl_shelf_areas$latitude_start))) +
+                                                scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
+ region_maps[[5]] + theme(legend.position = "none",
+                                                                          plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+                                                scale_y_continuous(breaks = c(-40,-20,0,20,40,60,80)) +  coord_equal(ylim = c(-35,81), xlim = c(-20,180)),
+          area_latitude_east_atl + 
+               theme(axis.text.y = element_blank(),
+           #          axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     legend.position = "none",
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+                                                scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)),
+          east_atlantic_spprichness_errorbars +
+            theme(axis.text.y = element_blank(),
+            #    axis.ticks.y = element_blank(),
+                axis.title.y = element_blank(),
+                plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "none") +
+                                                 scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)),
+ nrow = 2, top = T, bottom = T, widths = c(1,0.7,0.7,1.7,1,1))
+
+
+figure_4_atlantic_full_threelevels
+
+ggsave(figure_4_atlantic_full_threelevels, path = here::here("Figures", "Figure3_5"), filename = "Figure4_atlantic_latitude_area_spprichness_threelevels.pdf", height = 6, width = 10, unit = "in")
+ggsave(figure_4_atlantic_full_threelevels, path = here::here("Figures", "Figure3_5"), filename = "Figure4_atlantic_latitude_area_spprichness_threelevels.jpg", height = 6, width = 10, unit = "in")
+```
+
 #East pacific
 ```{r east pacific plots}
 (east_pacific_spprichness <- ggplot(data = shelf_areas[region == "East Pacific"], aes(x=latitude_start, y=change_spp_predicted_levin)) +
@@ -130,6 +216,19 @@ ggsave(figure_4_atlantic_full, path = here::here("Figures", "Figure3_5"), filena
   geom_vline(xintercept = 0) +
   xlim(x=c(min(shelf_areas[region == "East Pacific"]$latitude_start),max(shelf_areas[region == "East Pacific"]$latitude_start))) +
 scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)) +
+  coord_flip() +
+  theme_classic())
+
+#with 3 levels and error bars
+(east_pacific_spprichness_errorbars <- ggplot(data = shelf_areas[region == "East Pacific"], aes(x=latitude_start, y=log_abs_change_spp_predicted_38*spp_change_pos_neg_38)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+  geom_errorbar(aes(ymin=log_abs_change_spp_predicted_175*spp_change_pos_neg_175, ymax=log_abs_change_spp_predicted_62*spp_change_pos_neg_62), size = 0.2, alpha = 0.6)  +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('log'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
   coord_flip() +
   theme_classic())
 
@@ -148,6 +247,19 @@ scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)) +
   geom_vline(xintercept = 0) +
   xlim(x=c(min(shelf_areas[region == "West Pacific"]$latitude_start),max(shelf_areas[region == "West Pacific"]$latitude_start))) +
                                                  scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)) +
+  coord_flip() +
+  theme_classic())
+
+#with 3 levels and error bars
+(west_pacific_spprichness_errorbars <- ggplot(data = shelf_areas[region == "West Pacific"], aes(x=latitude_start, y=log_abs_change_spp_predicted_38*spp_change_pos_neg_38)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+  geom_errorbar(aes(ymin=log_abs_change_spp_predicted_175*spp_change_pos_neg_175, ymax=log_abs_change_spp_predicted_62*spp_change_pos_neg_62), size = 0.2, alpha = 0.6)  +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('log'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
   coord_flip() +
   theme_classic())
 
@@ -214,6 +326,69 @@ ggsave(figure_3_pacific_full, path = here::here("Figures", "Figure3_5"), filenam
 
 
 ```
+#Pacific merge 3 levels
+
+```{r pacific merge three levels}
+figure_3_pacific_full_threelevels <- egg::ggarrange(region_maps[[1]] + ylim(c(min(west_pac_shelf_areas$latitude_end),max(west_pac_shelf_areas$latitude_end))) +
+                                                theme(legend.position = "top",
+                                                      legend.title = element_blank(),
+                                                      axis.title.x = element_blank(),
+                                                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+                                          scale_y_continuous(breaks = c(-40,-20,0,20,40,60,80)) +
+coord_equal(ylim = c(-43, 78), xlim = c(0,210)),
+          area_latitude_west_pac + 
+               theme(axis.text.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     axis.title.x = element_blank(),
+                     legend.position = "top",
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+      guides(color = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
+            xlim(x=c(min(west_pac_shelf_areas$latitude_start),max(west_pac_shelf_areas$latitude_start))) +
+                                                scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)),
+          east_pacific_spprichness_errorbars +
+                           theme(axis.text.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     axis.title.x = element_blank(),
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "top") +
+      guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
+   xlim(x=c(min(west_pac_shelf_areas$latitude_start),max(west_pac_shelf_areas$latitude_start))) +
+                                                scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
+ region_maps[[2]] + theme(legend.position = "none", plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+                                                scale_y_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)) + coord_equal(ylim = c(-54, 77), xlim = c(160,300)),
+          area_latitude_east_pac + 
+               theme(axis.text.y = element_blank(),
+           #          axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     legend.position = "none",
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+                                                scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
+          east_pacific_spprichness_errorbars +
+            theme(axis.text.y = element_blank(),
+            #    axis.ticks.y = element_blank(),
+                axis.title.y = element_blank(),
+                plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "none") +
+                                                 scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
+ nrow = 2, top = T, bottom = T, widths = c(1,0.7,0.7,1.7,1,1))
+
+
+figure_3_pacific_full_threelevels
+
+ggsave(figure_3_pacific_full_threelevels, path = here::here("Figures", "Figure3_5"), filename = "Figure3_pacific_latitude_area_spprichness_threelevels.pdf", height = 6, width = 10, unit = "in")
+ggsave(figure_3_pacific_full_threelevels, path = here::here("Figures", "Figure3_5"), filename = "Figure3_pacific_latitude_area_spprichness_threelevels.jpg", height = 6, width = 10, unit = "in")
+
+
+
+
+```
+
 #Indian
 
 #East indian
@@ -232,6 +407,19 @@ east_ind_map <- ggplot_build(region_maps[[6]])
   scale_x_continuous(breaks = c(-60,-40,-20,0,20)) +
   theme_classic())
 
+#with 3 levels and error bars
+(east_indian_spprichness_errorbars <- ggplot(data = shelf_areas[region == "East Indian"], aes(x=latitude_start, y=log_abs_change_spp_predicted_38*spp_change_pos_neg_38)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+  geom_errorbar(aes(ymin=log_abs_change_spp_predicted_175*spp_change_pos_neg_175, ymax=log_abs_change_spp_predicted_62*spp_change_pos_neg_62), size = 0.2, alpha = 0.6)  +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('log'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  coord_flip() +
+  theme_classic())
+
 ```
 
 #West indian
@@ -245,6 +433,19 @@ east_ind_map <- ggplot_build(region_maps[[6]])
 #  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
 #  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) + scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)) +
+  coord_flip() +
+  theme_classic())
+
+#with 3 levels and error bars
+(west_indian_spprichness_errorbars <- ggplot(data = shelf_areas[region == "West Indian"], aes(x=latitude_start, y=log_abs_change_spp_predicted_38*spp_change_pos_neg_38)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+  geom_errorbar(aes(ymin=log_abs_change_spp_predicted_175*spp_change_pos_neg_175, ymax=log_abs_change_spp_predicted_62*spp_change_pos_neg_62), size = 0.2, alpha = 0.6)  +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('log'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
   coord_flip() +
   theme_classic())
 
@@ -311,7 +512,66 @@ ggsave(figure_5_indian_full, path = here::here("Figures", "Figure3_5"), filename
 
 ```
 
+#indian merge for three levels
+```{r indian merge three levels}
 
+figure_5_indian_full_threelevels <- egg::ggarrange(region_maps[[4]] + 
+                                                theme(legend.position = "top",
+                                                      axis.title.x = element_blank(),
+                                                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"))+
+   coord_equal(ylim = c(-38,32), xlim = c(10,83)) +
+                                                scale_y_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)),
+          area_latitude_west_ind + 
+               theme(axis.text.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     axis.title.x = element_blank(),
+                     legend.position = "top",
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+      guides(color = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
+            xlim(min(west_ind_map$data[[1]]$y), max(west_ind_map$data[[1]]$y)) +
+                                                scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30))  +
+   xlim(min(west_ind_map$data[[2]]$y), max(west_ind_map$data[[2]]$y)),
+          west_indian_spprichness_errorbars +
+                           theme(axis.text.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     axis.title.x = element_blank(),
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "top") +
+      guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
+                                                scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)),
+ 
+ region_maps[[6]] + theme(legend.position = "none",
+                          plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+                                                scale_y_continuous(breaks = c(-40,-20,0,20)) +  coord_equal(ylim = c(-43, 22), xlim = c(74,152)),
+          area_latitude_east_ind + 
+               theme(axis.text.y = element_blank(),
+           #          axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     legend.position = "none",
+                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
+                                                scale_x_continuous(breaks = c(-40,-20,0,20)) + xlim(c(-44,22)),
+          west_indian_spprichness_errorbars +
+            theme(axis.text.y = element_blank(),
+            #    axis.ticks.y = element_blank(),
+                axis.title.y = element_blank(),
+                plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "none") +
+                                                 scale_x_continuous(breaks = c(-60,-40,-20,0,20)) + xlim(c(-44,22)),
+ nrow = 2, top = T, bottom = T, left = T, right = T)
+
+
+figure_5_indian_full_threelevels
+
+ggsave(figure_5_indian_full_threelevels, path = here::here("Figures", "Figure3_5"), filename = "Figure5_indian_latitude_area_spprichness_threelevels.pdf", height = 6, width = 10, unit = "in")
+ggsave(figure_5_indian_full_threelevels, path = here::here("Figures", "Figure3_5"), filename = "Figure5_indian_latitude_area_spprichness_threelevels.jpg", height = 6, width = 10, unit = "in")
+
+```
 
 
 

@@ -22,11 +22,11 @@ library(SpaDES)
 library(rnaturalearth)
 library(rnaturalearthdata)
 
-load(here::here("output","2_degree_latitude","west_pac_shelf_areas_2degrees.Rdata"))
-load(here::here("output","2_degree_latitude","west_atl_shelf_areas_2degrees.Rdata"))
-load(here::here("output","2_degree_latitude","west_ind_shelf_areas_2degrees.Rdata"))
-load(here::here("output","2_degree_latitude","east_pac_shelf_areas_2degrees.Rdata"))
-load(here::here("output","2_degree_latitude","east_atl_shelf_areas_2degrees.Rdata"))
+west_pac_shelf_areas <- readRDS(here::here("output","2_degree_latitude","west_pac_shelf_areas_2degrees.rds"))
+west_atl_shelf_areas <- readRDS(here::here("output","2_degree_latitude","west_atl_shelf_areas_2degrees.rds"))
+west_ind_shelf_areas <- readRDS(here::here("output","2_degree_latitude","west_ind_shelf_areas_2degrees.rds"))
+east_pac_shelf_areas <- readRDS(here::here("output","2_degree_latitude","east_pac_shelf_areas_2degrees.rds"))
+east_atl_shelf_areas <- readRDS(here::here("output","2_degree_latitude","east_atl_shelf_areas_2degrees.rds"))
 east_ind_shelf_areas <- readRDS(here::here("output","2_degree_latitude","east_ind_shelf_areas_2degrees.rds"))
 
 ```
@@ -113,7 +113,8 @@ shelf_area_change_hemis_reg_stats[,change_direction := factor(ifelse(sum_change_
 shelf_areas[, original_spp_predicted_meixler :=
               exp(6.854 + (0.185 * log(area_rasterarea)) -  (1.084 * log(abs(0.5*(latitude_start+latitude_end)))))]
 
-shelf_areas[, original_spp_predicted_levin := 16.18*area_rasterarea^0.226]
+#Per review, here I'm adding in other options for z
+shelf_areas[, original_spp_predicted_levin := 16.18*area_rasterarea^0.226][, original_spp_predicted_175 := area_rasterarea^0.175][, original_spp_predicted_38 := area_rasterarea^0.38][, original_spp_predicted_62 := area_rasterarea^0.62]
 
 #be sure to order table so that shift is used accurately (I did this above also, this is just a check)
 #include absolute value of latitude end
@@ -123,7 +124,7 @@ setkey(shelf_areas, region, hemisphere, latitude_end_abs)
 shelf_areas[, change_spp_predicted_meixler :=  original_spp_predicted_meixler -  data.table::shift(original_spp_predicted_meixler, n = 1, type = "lag"), .(region, hemisphere)] #change in species from previous bin to this bin?
 #note that it's important to include grouping for region so that calculations are correct, and there's always a gain at the lowest latitude
 
-shelf_areas[, change_spp_predicted_levin :=  original_spp_predicted_levin -  data.table::shift(original_spp_predicted_levin, n = 1, type = "lag"), .(region, hemisphere)] #change in species from previous bin to this bin?
+shelf_areas[, change_spp_predicted_levin :=  original_spp_predicted_levin -  data.table::shift(original_spp_predicted_levin, n = 1, type = "lag"), .(region, hemisphere)][, change_spp_predicted_175 :=  original_spp_predicted_175 -  data.table::shift(original_spp_predicted_175, n = 1, type = "lag"), .(region, hemisphere)][, change_spp_predicted_38 :=  original_spp_predicted_38 -  data.table::shift(original_spp_predicted_38, n = 1, type = "lag"), .(region, hemisphere)][, change_spp_predicted_62 :=  original_spp_predicted_62 -  data.table::shift(original_spp_predicted_62, n = 1, type = "lag"), .(region, hemisphere)] #change in species from previous bin to this bin
 
 #percent change
 shelf_areas[, percent_change_richness := (original_spp_predicted_levin-data.table::shift(original_spp_predicted_levin, type = "lag"))/data.table::shift(original_spp_predicted_levin, type = "lag"), .(region,hemisphere)]
@@ -135,6 +136,22 @@ shelf_areas_highlight <- shelf_areas[spp_per_change_significant == "Gain" | spp_
 #color code by direction of spp gain or loss
 shelf_areas[, spp_change_pos_neg_meixler := ifelse(change_spp_predicted_meixler > 0, "Positive","Negative")]
 shelf_areas[, spp_change_pos_neg_levin := ifelse(change_spp_predicted_levin > 0, "Positive","Negative")]
+#continuous values for multiplication
+shelf_areas[, spp_change_pos_neg_175 := ifelse(change_spp_predicted_175 > 0, 1,-1)]
+shelf_areas[, spp_change_pos_neg_38 := ifelse(change_spp_predicted_38 > 0, 1,-1)]
+shelf_areas[, spp_change_pos_neg_62 := ifelse(change_spp_predicted_62 > 0, 1,-1)]
+
+#discrete values for color
+shelf_areas[, spp_change_pos_neg_175_discrete := ifelse(change_spp_predicted_175 > 0, "Gain","Loss")]
+shelf_areas[, spp_change_pos_neg_38_discrete := ifelse(change_spp_predicted_38 > 0, "Gain","Loss")]
+shelf_areas[, spp_change_pos_neg_62_discrete := ifelse(change_spp_predicted_62 > 0, "Gain","Loss")]
+
+
+#log abs for plotting (possible to see all three values on one plot), add one so no neg values
+
+shelf_areas[, log_abs_change_spp_predicted_175 := log(abs(change_spp_predicted_175) + 1)]
+shelf_areas[, log_abs_change_spp_predicted_38 := log(abs(change_spp_predicted_38) + 1)]
+shelf_areas[, log_abs_change_spp_predicted_62 := log(abs(change_spp_predicted_62) + 1)]
 
 #full stats for spp change
 shelf_areas[,spp_change_levin_by_reg := sum(change_spp_predicted_levin, na.rm = T), region]
@@ -153,6 +170,7 @@ shelf_spp_change_hemis_reg_stats[,change_direction := factor(ifelse(spp_change_l
 saveRDS(shelf_areas, file = here::here("output","2_degree_latitude","shelf_areas.rds"))
   
 ```
+
 Figure for spp richness per latitude
 ```{r spp richness per latitude}
 (spp_change_latitude  <- ggplot(data = shelf_areas, aes(x=latitude_mid, y=original_spp_predicted_levin)) +
@@ -164,6 +182,7 @@ Figure for spp richness per latitude
   theme_classic() +
    facet_wrap(~region, scales = "free"))
 ```
+
 Mark 50% loss or 200% gain of species (this isn't useful)
 ```{r gain loss of substantial # of species}
 (spp_change_latitude  <- ggplot() +
@@ -251,6 +270,7 @@ save(ordered_loss_gain_bycoastline, file = "ordered_loss_gain_bycoastline.RData"
 ```
 
 
+######scratch
 
 Species Area Curves
 
