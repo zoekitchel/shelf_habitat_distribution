@@ -1,11 +1,15 @@
 ---
-title: "Supplementary Information:\nSensitivity Raster versus Projected Shapefile"
+title: "Supplementary Information:\nSensitivity ETOPO1 versus ETOPO2"
 author: Zoë Kitchel
 date: "`r format(Sys.time(), '%B, %Y')`"
 output: pdf_document
 ---
 
-##Here, we compare using a raster to using a projected shapefile to check for differences in area calculations.
+##Here, we compare using ETOPO2 (2-minute, 1 minute of latitude = 1.853 km at the equator, vertical precision is 1m)
+        ##How to deal with: "What about shallow (<200m) water?The satellite altimetry works best in deep    water and can distinguish many undersea features that are not otherwise surveyed directly. In shallow     water, the gravitational effects that can be measured from the satellite are too small to be reliable.    In US waters and some other areas, local high-resolution survey data have been used where available." https://www.ngdc.noaa.gov/mgg/global/etopo2.html#:~:text=It%20covers%20all%20of%20the,one%20kilometer%20at%20the%20equator.
+        
+##Versus using ETOPO1 (1-minute, 1 minute of latitude = ~1km at the equator, bedrock version, vertical accuracy of ETOPO1 (~10 meters at best)) https://www.ngdc.noaa.gov/mgg/global/
+
 
 ```{r setup, results = 'hide', message = FALSE}
 library(raster)
@@ -28,10 +32,12 @@ library(rnaturalearthdata)
 library(equate)
 library(here)
 library(formatR) #to wrap text for markdown
+library(cowplot)
 
 knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE) #wraps text
 
-etopo_shelf_df <- readRDS(file = here::here("raw_data","etopo_shelf_df.rds"))
+etopo_shelf_df <- readRDS(file = here::here("raw_data","etopo_shelf_df.rds")) #ETOPO2
+etopo1_shelf_df <- readRDS(file = here::here("raw_data","ETOPO1","etopo1_shelf_df.rds")) #ETOPO1
 #bring in bathymetry data frame for shelf regions
 
 #LMEs
@@ -48,12 +54,13 @@ equalareaprojection <- crs(" +proj=laea ")
 Convert data frame to raster for bathymetry layer.
 ```{r bathy to raster, results = 'hide', message=FALSE}
 
-etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = crs(LME_spdf))
+etopo2_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = crs(LME_spdf)) #etopo2
+etopo1_shelf_raster <- rasterFromXYZ(etopo1_shelf_df, crs = crs(LME_spdf)) #etopo1
 
 ```
 
 
-We will test regions that are likely to give us issues because they include high latitudes. 
+We will test two regions.
 
 - For degree shifts, I will use East Atlantic Ocean
 - For LME depth profiles, I will use High Arctic Canada/Greenland (LME 66)
@@ -81,52 +88,73 @@ east_atl_spdf_nobuf_agg <- gUnaryUnion(east_atl_spdf_nobuf)
 
 Extract bathymetry data from polygon only to make sure we're limiting to shelf regions shallower than 2000 meters
 
-```{r polygon to raster, results = 'hide', message=FALSE}
+```{r polygon to raster for ETOPO2, results = 'hide', message=FALSE}
 
 #crop bathymetry layer to LME subset (continental shelf habitat in LMEs)
-raster_extent <- crop(etopo_shelf_raster, extent(east_atl_spdf_nobuf_agg))
+raster_extent_etopo2 <- crop(etopo2_shelf_raster, extent(east_atl_spdf_nobuf_agg))
 
 #which areas of raster fall within borders?
-east_atl_spdf_nobuf_agg_mask <- mask(raster_extent, east_atl_spdf_nobuf_agg)
+east_atl_spdf_nobuf_agg_mask_etopo2 <- mask(raster_extent_etopo2, east_atl_spdf_nobuf_agg)
+
+#reclassify so that raster only has values of 1, because the only purpose of 
+#pulling in bathymetry in this analysis is to limit to shelf areas < 2000m
+
+east_atl_spdf_nobuf_mask_etopo2_1s <- reclassify(east_atl_spdf_nobuf_agg_mask_etopo2, c(-Inf, Inf, 1))
+```
+
+```{r polygon to raster for ETOPO1, results = 'hide', message=FALSE}
+
+#crop bathymetry layer to LME subset (continental shelf habitat in LMEs)
+raster_extent_etopo1 <- crop(etopo1_shelf_raster, extent(east_atl_spdf_nobuf_agg))
+
+#which areas of raster fall within borders?
+east_atl_spdf_nobuf_agg_mask_etopo1 <- mask(raster_extent_etopo1, east_atl_spdf_nobuf_agg)
 
 #reclassify so that raster only has values of 1, because the only purpose of 
 #pulling in bathymetry in this analysis is to limit to <2000m
 
-east_atl_spdf_nobuf_mask_1s <- reclassify(east_atl_spdf_nobuf_agg_mask, c(-Inf, Inf, 1))
+east_atl_spdf_nobuf_mask_etopo1_1s <- reclassify(east_atl_spdf_nobuf_agg_mask_etopo1, c(-Inf, Inf, 1))
 ```
-
-###How to calculate area?
-####Three options
-
-- raster::area()
-Raster objects: Compute the approximate surface area of cells in an unprojected (longitude/latitude) Raster object. It is an approximation because area is computed as the height (latitudinal span) of a cell (which is constant among all cells) times the width (longitudinal span) in the (latitudinal) middle of a cell. The width is smaller at the poleward side than at the equator-ward side of a cell. This variation is greatest near the poles and the values are thus not very precise for very high latitudes. If x is a Raster* object: RasterLayer or RasterBrick. Cell values represent the size of the cell in km2, or the relative size if weights=TRUE
-
-- raster::area() 
-SpatialPolygons: Compute the area of the spatial features. Works for both planar and angular (lon/lat) coordinate reference systems. If x is a SpatialPolygons* object: area of each spatial object in squared meters if the CRS is longitude/latitude, or in squared map units (typically meter)
-
-- rgeos::gArea
-Returns the area of the geometry in the units of the current projection. By definition non-[MULTI]POLYGON geometries have an area of 0. The area of a POLYGON is the area of its shell less the area of any holes. Note that this value may be different from the area slot of the Polygons class as this value does not subtract the area of any holes in the geometry.
 
 #####Now, we will split each coastline raster into latitudinal bins of 1 degree 
 
 Eastern Atlantic
 
-*name of raster = east_atl_spdf_nobuf_mask_1s*
+*names of raster = east_atl_spdf_nobuf_mask_1s & east_atl_spdf_nobuf_mask_etopo1_1s*
 
-```{r split raster for eastern atlantic, results = 'hide', message=FALSE}
+ETOPO2
+```{r split raster for eastern atlantic etopo2, results = 'hide', message=FALSE}
 
 #split into northern hemisphere and southern hemisphere
-north_extent <- c(xmin(east_atl_spdf_nobuf_mask_1s), xmax(east_atl_spdf_nobuf_mask_1s), 0, ymax(east_atl_spdf_nobuf_mask_1s))
-south_extent <- c(xmin(east_atl_spdf_nobuf_mask_1s), xmax(east_atl_spdf_nobuf_mask_1s), ymin(east_atl_spdf_nobuf_mask_1s), 0)
+north_extent_etopo2 <- c(xmin(east_atl_spdf_nobuf_mask_etopo2_1s), xmax(east_atl_spdf_nobuf_mask_etopo2_1s), 0, ymax(east_atl_spdf_nobuf_mask_etopo2_1s))
+south_extent_etopo2 <- c(xmin(east_atl_spdf_nobuf_mask_etopo2_1s), xmax(east_atl_spdf_nobuf_mask_etopo2_1s), ymin(east_atl_spdf_nobuf_mask_etopo2_1s), 0)
 
 #crop east_atl raster above and below 0
-east_atl_spdf_shift_agg_north <- crop(east_atl_spdf_nobuf_mask_1s, extent(north_extent))
+east_atl_spdf_shift_agg_north_etopo2 <- crop(east_atl_spdf_nobuf_mask_etopo2_1s, extent(north_extent_etopo2))
 
-east_atl_spdf_shift_agg_south <- crop(east_atl_spdf_nobuf_mask_1s, extent(south_extent))
+east_atl_spdf_shift_agg_south_etopo2 <- crop(east_atl_spdf_nobuf_mask_etopo2_1s, extent(south_extent_etopo2))
 
 #all 1 degree  latitude sections for east atlantic
-east_atl_north_latitudes <- seq(0, ymax(east_atl_spdf_nobuf_mask_1s), by = 1)
-east_atl_south_latitudes <- seq(0, ymin(east_atl_spdf_nobuf_mask_1s), by = -1)
+east_atl_north_latitudes_etopo2 <- seq(0, ymax(east_atl_spdf_nobuf_mask_etopo2_1s), by = 1)
+east_atl_south_latitudes_etopo2 <- seq(0, ymin(east_atl_spdf_nobuf_mask_etopo2_1s), by = -1)
+
+```
+
+ETOPO1
+```{r split raster for eastern atlantic etopo1, results = 'hide', message=FALSE}
+
+#split into northern hemisphere and southern hemisphere
+north_extent_etopo1 <- c(xmin(east_atl_spdf_nobuf_mask_etopo1_1s), xmax(east_atl_spdf_nobuf_mask_etopo1_1s), 0, ymax(east_atl_spdf_nobuf_mask_etopo1_1s))
+south_extent_etopo1 <- c(xmin(east_atl_spdf_nobuf_mask_etopo1_1s), xmax(east_atl_spdf_nobuf_mask_etopo1_1s), ymin(east_atl_spdf_nobuf_mask_etopo1_1s), 0)
+
+#crop east_atl raster above and below 0
+east_atl_spdf_shift_agg_north_etopo1 <- crop(east_atl_spdf_nobuf_mask_etopo1_1s, extent(north_extent_etopo1))
+
+east_atl_spdf_shift_agg_south_etopo1 <- crop(east_atl_spdf_nobuf_mask_etopo1_1s, extent(south_extent_etopo1))
+
+#all 1 degree  latitude sections for east atlantic
+east_atl_north_latitudes_etopo1 <- seq(0, ymax(east_atl_spdf_nobuf_mask_etopo1_1s), by = 1)
+east_atl_south_latitudes_etopo1 <- seq(0, ymin(east_atl_spdf_nobuf_mask_etopo1_1s), by = -1)
 
 ```
 
@@ -135,161 +163,180 @@ Now, use loop to populate data table with area values
 ```{r populate data table with area values, results = 'hide', message=FALSE}
 
 #setup data table to populate in loop, subtracting because there is one fewer bin than latitude #s
-east_atl_shelf_areas <- as.data.table(matrix(nrow = (length(east_atl_north_latitudes)-1+length(east_atl_south_latitudes)-1)))
+east_atl_shelf_areas <- as.data.table(matrix(nrow = (length(east_atl_north_latitudes_etopo2)-1+length(east_atl_south_latitudes_etopo2)-1))) #same for etopo1 and etopo2
                                       
-east_atl_shelf_areas[, latitude_start := as.numeric(V1)][, latitude_end := as.numeric(V1)][, area_rasterarea := as.numeric(V1)][, area_equalareaproj := as.numeric(V1)][, area_rgeos_gArea := as.numeric(V1)][, V1 := NULL]
+east_atl_shelf_areas[, latitude_start := as.numeric(V1)][, latitude_end := as.numeric(V1)][, area_rasterarea_etopo2 := as.numeric(V1)][, area_rasterarea_etopo1 := as.numeric(V1)][, V1:= NULL] #I added additional column for etopo1
 
 #loop for north
-for (i in 1:(length(east_atl_north_latitudes)-1)) {
+for (i in 1:(length(east_atl_north_latitudes_etopo2)-1)) {
   #setting up extent for slicing by min and max longitudes, and i to i+1 latitudes
-  north_extent <- c(xmin(east_atl_spdf_nobuf_mask_1s), xmax(east_atl_spdf_nobuf_mask_1s), east_atl_north_latitudes[i], east_atl_north_latitudes[i+1])
+  north_extent_etopo2 <- c(xmin(east_atl_spdf_nobuf_mask_etopo2_1s), xmax(east_atl_spdf_nobuf_mask_etopo2_1s), east_atl_north_latitudes_etopo2[i], east_atl_north_latitudes_etopo2[i+1])
+  
+  #slightly different because of different resolutions
+    north_extent_etopo1 <- c(xmin(east_atl_spdf_nobuf_mask_etopo1_1s),  xmax(east_atl_spdf_nobuf_mask_etopo1_1s), east_atl_north_latitudes_etopo1[i], east_atl_north_latitudes_etopo1[i+1])
   
   #crop raster segement based on bin extent
-  segment_north <- crop(east_atl_spdf_nobuf_mask_1s, extent(north_extent))
+  segment_north_etopo2 <- crop(east_atl_spdf_nobuf_mask_etopo2_1s, extent(north_extent_etopo2))
+  
+  segment_north_etopo1 <- crop(east_atl_spdf_nobuf_mask_etopo1_1s, extent(north_extent_etopo1))
   
   
-  #populate data table with latitudinal bin
-  east_atl_shelf_areas[i, "latitude_start"] <- east_atl_north_latitudes[i]
-  east_atl_shelf_areas[i, "latitude_end"] <- east_atl_north_latitudes[i+1]
+  #populate data table with latitudinal bin (same for both, no need to do twice)
+  east_atl_shelf_areas[i, "latitude_start"] <- east_atl_north_latitudes_etopo2[i]
+  east_atl_shelf_areas[i, "latitude_end"] <- east_atl_north_latitudes_etopo2[i+1]
   
-  if(all(is.na(values(segment_north)))) { #if there's no shelf area within a bin, all area = 0
+  #first for etopo2
+  if(all(is.na(values(segment_north_etopo2)))) { #if there's no shelf area within a bin, all area = 0
     
-  east_atl_shelf_areas[i, "area_equalareaproj"] <- 0
-  east_atl_shelf_areas[i, "area_rasterarea"] <- 0
-  east_atl_shelf_areas[i, "area_rgeos_gArea"] <- 0
+  east_atl_shelf_areas[i, "area_rasterarea_etopo2"] <- 0
 
   
-  print(i)
+    print(paste0("Etopo2: ",i))
     
   } else { #if there is shelf area within the bin, calculate area of slice
   
     #raster area calculation
       #get sizes of all cells in raster [km2]
-    cell_size_raster<-area(segment_north, na.rm=TRUE, weights=FALSE)
+    cell_size_raster<-area(segment_north_etopo2, na.rm=TRUE, weights=FALSE)
     
     #delete NAs from vector of all raster cells
-    cell_size_raster<-cell_size_raster[!is.na(segment_north)]
+    cell_size_raster<-cell_size_raster[!is.na(segment_north_etopo2)]
     
     #sum all values of cell sizes
     segment_area_raster <- sum(cell_size_raster)
     
   #populate data table with raster area
-  east_atl_shelf_areas[i, "area_rasterarea"] <- segment_area_raster
+  east_atl_shelf_areas[i, "area_rasterarea_etopo2"] <- segment_area_raster
   
-  #convert to spatial polygons to check area calculations
-    
-  #convert segment from raster to polygon, each cell from the raster is an independent polygon, (dissolve means all cells with a value of 1 are a single polygon if connected)
-  segment_north.sp <- rasterToPolygons(segment_north, dissolve = T)
-  
-  # NB: If x is a SpatialPolygons* object: area of each spatial object in squared meters if the CRS is longitude/latitude, or in squared map units (typically meter)
-  
-    #project to equal earth area projection
-  segment_north.sp.EA <- spTransform(segment_north.sp, CRSobj = equalareaprojection)
-
-  #calculate area of the entire spatial object in m^2
-    polygon_size.sp <- area(segment_north.sp.EA)
-
-    #convert from m^2 to km^2
-    segment_area_equalarea <- polygon_size.sp/1e6
-
-    #populate data table with polygon area using raster calculation
-  east_atl_shelf_areas[i, "area_equalareaproj"] <- segment_area_equalarea
-  
-  #and then also use rgeos::gArea
-  
-  area_rgeos_gArea <- gArea(segment_north.sp.EA)/1e6
-  
-  #populate data table with polygon area using regeos calculation
-  east_atl_shelf_areas[i, "area_rgeos_gArea"] <-   area_rgeos_gArea
-  
-  print(i)
+    print(paste0("Etopo2: ",i))
   } 
-}
-
-#loop for south
-for (i in 1:(length(east_atl_south_latitudes)-1)) {
-  south_extent <- c(xmin(east_atl_spdf_nobuf_mask_1s), xmax(east_atl_spdf_nobuf_mask_1s), east_atl_south_latitudes[i+1], east_atl_south_latitudes[i]) #order= xmin, xmax, ymin, ymax)
   
-  #raster segment
-  segment_south <- crop(east_atl_spdf_nobuf_mask_1s, extent(south_extent))
-  
-  #add latitude bin info to data table
-    east_atl_shelf_areas[i+(length(east_atl_north_latitudes)-1), "latitude_start"] <- east_atl_south_latitudes[i]
-  east_atl_shelf_areas[i+(length(east_atl_north_latitudes)-1), "latitude_end"] <- east_atl_south_latitudes[i+1]
-  
-  
-  if(all(is.na(values(segment_south)))) { #if there's no shelf area within a bin, meaning there's no shelf area at that latitude
-
-  east_atl_shelf_areas[i+(length(east_atl_north_latitudes)-1), "area_equalareaproj"] <- 0
-  east_atl_shelf_areas[i+(length(east_atl_north_latitudes)-1), "area_rasterarea"] <- 0
-    east_atl_shelf_areas[i+(length(east_atl_north_latitudes)-1), "area_rgeos_gArea"] <- 0
-  
-  print(i)
+  #then etopo1
+    #first for etopo2
+  if(all(is.na(values(segment_north_etopo1)))) { #if there's no shelf area within a bin, all area = 0
     
-  } else {
+  east_atl_shelf_areas[i, "area_rasterarea_etopo1"] <- 0
+
+  
+  print(paste0("Etopo1: ",i))
+    
+  } else { #if there is shelf area within the bin, calculate area of slice
   
     #raster area calculation
       #get sizes of all cells in raster [km2]
-    cell_size_raster<-area(segment_south, na.rm=TRUE, weights=FALSE)
+    cell_size_raster<-area(segment_north_etopo1, na.rm=TRUE, weights=FALSE)
     
     #delete NAs from vector of all raster cells
-    cell_size_raster<-cell_size_raster[!is.na(segment_south)]
+    cell_size_raster<-cell_size_raster[!is.na(segment_north_etopo1)]
     
-    #compute area of all cells in geo_raster
-
+    #sum all values of cell sizes
     segment_area_raster <- sum(cell_size_raster)
     
   #populate data table with raster area
-  east_atl_shelf_areas[i+(length(east_atl_north_latitudes)-1), "area_rasterarea"] <- segment_area_raster
-    
+  east_atl_shelf_areas[i, "area_rasterarea_etopo1"] <- segment_area_raster
   
-  #convert to spatial polygons to check area calculations
-    
-  #convert segment from raster to polygon, each cell from the raster is an independent polygon, (dissolve means all cells with a value of 1 are a single polygon if connected)
-  segment_south.sp <- rasterToPolygons(segment_south, dissolve = T)
+ 
+  print(paste0("Etopo1: ",i))
   
-    #project to equal earth area projection
-  segment_south.sp.EA <- spTransform(segment_south.sp, CRSobj = equalareaprojection)
-
-  #calculate area of the spatial object in m^2
-    polygon_size.sp <- area(segment_south.sp.EA)
-
-    #convert from m^2 to km^2
-    segment_area_equalarea <- polygon_size.sp/1e6
-
-    #populate data table with area of polygon from raster::area function
-  east_atl_shelf_areas[i+(length(east_atl_north_latitudes)-1), "area_equalareaproj"] <- segment_area_equalarea
-  
-  #and then plain and simple also using rgeos::gArea
-  
-  area_rgeos_gArea <- gArea(segment_south.sp.EA)/1e6
-  
-  #populate data table from rgeos area calculation for projected polygon
-  east_atl_shelf_areas[i+(length(east_atl_north_latitudes)-1), "area_rgeos_gArea"] <-   area_rgeos_gArea
-  
-  print(i)
-  } 
+  }
 }
 
-#compare raster:area calculation, to equal area still using raster::area function, to rgeos::gArea function for polygons
+#loop for south
+for (i in 1:(length(east_atl_south_latitudes_etopo2)-1)) {
+  #setting up extent for slicing by min and max longitudes, and i to i+1 latitudes
+  south_extent_etopo2 <- c(xmin(east_atl_spdf_nobuf_mask_etopo2_1s), xmax(east_atl_spdf_nobuf_mask_etopo2_1s),east_atl_south_latitudes_etopo2[i+1], east_atl_south_latitudes_etopo2[i])
+  
+  #slightly different because of different resolutions
+    south_extent_etopo1 <- c(xmin(east_atl_spdf_nobuf_mask_etopo1_1s),  xmax(east_atl_spdf_nobuf_mask_etopo1_1s), east_atl_south_latitudes_etopo1[i+1], east_atl_south_latitudes_etopo1[i])
+  
+  #crop raster segment based on bin extent
+  segment_south_etopo2 <- crop(east_atl_spdf_nobuf_mask_etopo2_1s, extent(south_extent_etopo2))
+  
+  segment_south_etopo1 <- crop(east_atl_spdf_nobuf_mask_etopo1_1s, extent(south_extent_etopo1))
+  
+  
+  #populate data table with latitudinal bin (same for both, no need to do twice)
+  east_atl_shelf_areas[i+(length(east_atl_north_latitudes_etopo2)-1), "latitude_start"] <- east_atl_south_latitudes_etopo2[i]
+  east_atl_shelf_areas[i+(length(east_atl_north_latitudes_etopo2)-1), "latitude_end"] <- east_atl_south_latitudes_etopo2[i+1]
+  
+  
+  #first for etopo2
+  if(all(is.na(values(segment_south_etopo2)))) { #if there's no shelf area within a bin, all area = 0
+    
+  east_atl_shelf_areas[i+(length(east_atl_north_latitudes_etopo2)-1), "area_rasterarea_etopo2"] <- 0
 
-ggplot(data = east_atl_shelf_areas) +
-  geom_point(aes(x = latitude_start, y = area_rgeos_gArea), color = "purple", size = 0.5) +
-  geom_point(aes(x = latitude_start, y = area_rasterarea), color = "darkgreen", size = 0.5) +
-  geom_point(aes(x = latitude_start, y = area_equalareaproj), color = "red", size = 0.5) +
+  
+    print(paste0("Etopo2: ",i))
+    
+  } else { #if there is shelf area within the bin, calculate area of slice
+  
+    #raster area calculation
+      #get sizes of all cells in raster [km2]
+    cell_size_raster<-area(segment_south_etopo2, na.rm=TRUE, weights=FALSE)
+    
+    #delete NAs from vector of all raster cells
+    cell_size_raster<-cell_size_raster[!is.na(segment_south_etopo2)]
+    
+    #sum all values of cell sizes
+    segment_area_raster <- sum(cell_size_raster)
+    
+  #populate data table with raster area
+  east_atl_shelf_areas[i+(length(east_atl_north_latitudes_etopo2)-1), "area_rasterarea_etopo2"] <- segment_area_raster
+  
+    print(paste0("Etopo2: ",i))
+  } 
+  
+  #then etopo1
+
+  if(all(is.na(values(segment_south_etopo1)))) { #if there's no shelf area within a bin, all area = 0
+    
+  east_atl_shelf_areas[i+(length(east_atl_north_latitudes_etopo2)-1), "area_rasterarea_etopo1"] <- 0
+
+  
+  print(paste0("Etopo1: ",i))
+    
+  } else { #if there is shelf area within the bin, calculate area of slice
+  
+    #raster area calculation
+      #get sizes of all cells in raster [km2]
+    cell_size_raster<-area(segment_south_etopo1, na.rm=TRUE, weights=FALSE)
+    
+    #delete NAs from vector of all raster cells
+    cell_size_raster<-cell_size_raster[!is.na(segment_south_etopo1)]
+    
+    #sum all values of cell sizes
+    segment_area_raster <- sum(cell_size_raster)
+    
+  #populate data table with raster area
+  east_atl_shelf_areas[i+(length(east_atl_north_latitudes_etopo2)-1), "area_rasterarea_etopo1"] <- segment_area_raster
+  
+ 
+  print(paste0("Etopo1: ",i))
+  
+  }
+}
+
+#compare etopo1 versus etopo2
+#first, gather for best plotting
+east_atl_shelf_areas_long <- melt(east_atl_shelf_areas, id.vars = c("latitude_start", "latitude_end"),
+                measure.vars = c("area_rasterarea_etopo2", "area_rasterarea_etopo1"), variable.name = "DEM", value.name = "area")
+
+
+ggplot(data = east_atl_shelf_areas_long) +
+  geom_point(aes(x = latitude_start, y = area, color = DEM)) +
   labs(x = "Latitude", y = "Area km^2") +
   coord_flip() +
   geom_vline(xintercept = 0) +
   theme_classic()
 
-ggsave(filename = "east_atl_shelf_areas_comparison.pdf", path = here::here("Figures","Supplement"))
+ggsave(filename = "east_atl_shelf_areas_comparison_etopo1_etopo2.pdf", path = here::here("Figures","Supplement"))
 
-cor(east_atl_shelf_areas[,3:5], use = "complete.obs")
+cor(east_atl_shelf_areas[,3:4], use = "complete.obs")
 ```
 
 What's the maximum difference between polygon generated area and raster generated area?
 ```{r maximum difference, results = F}
-east_atl_shelf_areas[, difference := abs(area_equalareaproj-area_rasterarea)]
+east_atl_shelf_areas[, difference := abs(area_rasterarea_etopo2-area_rasterarea_etopo1)]
 
 summary(east_atl_shelf_areas$difference)
 
@@ -298,7 +345,7 @@ ggplot(data = east_atl_shelf_areas, aes(x = difference)) +
   labs(x = "Difference in km^2") +
   theme_classic()
 
-ggsave(filename = "east_atl_shelf_areas_histogram.pdf", path = here::here("Figures","Supplement"))
+ggsave(filename = "east_atl_shelf_areas_histogram_etopo1_etopo2.pdf", path = here::here("Figures","Supplement"))
 ```
 
 ###LME Depth Profiles
@@ -308,65 +355,113 @@ For LME depth profiles, I will use High Arctic Canada/Greenland (LME = 66)
 ```{r testing Canadian High Arctic North Greenland prepping shapefile and rasters, results = 'hide', message=FALSE}
  LME_high_arctic <- LME_spdf[LME_spdf@data$LME_NUMBER == 66,]
   
-  #clip raster to LME
-  LME_high_arctic_extent <- crop(etopo_shelf_raster, extent(LME_high_arctic))
+  #clip etopo 2 raster to LME
+  LME_high_arctic_extent_etopo2 <- crop(etopo2_shelf_raster, extent(LME_high_arctic))
+  
+  #clip etopo1 raster to LME
+  LME_high_arctic_extent_etopo1 <- crop(etopo1_shelf_raster, extent(LME_high_arctic))
+  
+  #compare visually
+  
+  plot(LME_high_arctic_extent_etopo1, main = "ETOPO1")
+  plot(LME_high_arctic_extent_etopo2, main = "ETOPO2")
+  
+```
+
+```{r raster within borders}
   
   #which areas of raster fall within borders?
-  LME_high_arctic_mask <- mask(LME_high_arctic_extent, LME_high_arctic)
+  LME_high_arctic_mask_etopo2 <- mask(LME_high_arctic_extent_etopo2, LME_high_arctic) #etopo2
+  LME_high_arctic_mask_etopo1 <- mask(LME_high_arctic_extent_etopo1, LME_high_arctic) #etopo1
   
-  LME_high_arctic_mask_1s <- reclassify(LME_high_arctic_mask, c(-Inf, Inf, 1)) #this raster is only 1s
+  LME_high_arctic_mask_etopo2_1s <- reclassify(LME_high_arctic_mask_etopo2, c(-Inf, Inf, 1)) #this raster is only 1s for etopo2
+  
+    LME_high_arctic_mask_etopo1_1s <- reclassify(LME_high_arctic_mask_etopo1, c(-Inf, Inf, 1)) #this raster is only 1s for etopo1
   
 plot(LME_high_arctic)
-plot(LME_high_arctic_mask)
-plot(LME_high_arctic_mask_1s)
+
+#etopo2
+plot(LME_high_arctic_mask_etopo2, main = "ETOPO2")
+plot(LME_high_arctic_mask_etopo2_1s, main = "ETOPO2")
+
+#etopo1
+plot(LME_high_arctic_mask_etopo1, main = "ETOPO1")
+plot(LME_high_arctic_mask_etopo1_1s, main = "ETOPO1")
 ```
 
 #####Next, I need to construct hypsometric plots (how does area available vary by depth). 
 
 Apply `raster::area` directly to list of raster values
 
-```{r calculating raster size Canadian High Arctic North Greenland, results = 'hide', message=FALSE}  
-#list of values within raster
-  high_arctic_bathy_depth_list <- getValues(LME_high_arctic_mask)
-  high_arctic_bathy_depth_list <- high_arctic_bathy_depth_list[!is.na(high_arctic_bathy_depth_list)] #get rid of NA's
+```{r calculating cell sizes in Canadian High Arctic North Greenland, results = 'hide', message=FALSE}  
 
+
+#ETOPO2
  #get sizes of all cells in raster [km2] (vector of size of all cells)
-    cell_size_high_arctic <-area(LME_high_arctic_mask, na.rm=TRUE, weights=FALSE)
+    cell_size_high_arctic_etopo2 <-area(LME_high_arctic_mask_etopo2, na.rm=TRUE, weights=FALSE)
     
         #delete NAs from vector of all raster cells
-        cell_size_high_arctic<-cell_size_high_arctic[!is.na(cell_size_high_arctic)]
+        cell_size_high_arctic_etopo2<-cell_size_high_arctic_etopo2[!is.na(cell_size_high_arctic_etopo2)]
         
-    #compute total area [km2] of all cells in geo_raster
-   high_arctic_raster_area<-sum(cell_size_high_arctic)
-   
-   #467587.9 km^2
+        #ETOPO1
+ #get sizes of all cells in raster [km2] (vector of size of all cells)
+    cell_size_high_arctic_etopo1 <-area(LME_high_arctic_mask_etopo1, na.rm=TRUE, weights=FALSE)
+    
+        #delete NAs from vector of all raster cells
+        cell_size_high_arctic_etopo1<-cell_size_high_arctic_etopo1[!is.na(cell_size_high_arctic_etopo1)]
   
 ```
 
 Assign specific sizes to each grid cell
 ```{r table with cell size versus cell value}
+
+#ETOPO2
 #cell_size_high_arctic # cell sizes
 #high_arctic_bathy_depth_list # cell values
 
-cell_size_cell_value <- data.table(cell_size = cell_size_high_arctic, depth = high_arctic_bathy_depth_list )
+#bathy depth list
 
-cor(cell_size_cell_value$depth, cell_size_cell_value$cell_size) #Not super correlated
-plot(-cell_size_cell_value$depth, cell_size_cell_value$cell_size, pch = ".") #more likely to have smaller cells deeper which could lead us to conclude that we have less habitat at depth than we thought, let's check
+#list of values within raster
+  high_arctic_bathy_depth_list_etopo2 <- getValues(LME_high_arctic_mask_etopo2)
+  high_arctic_bathy_depth_list_etopo2 <- high_arctic_bathy_depth_list_etopo2[!is.na(high_arctic_bathy_depth_list_etopo2)] #get rid of NA's
+
+cell_size_cell_value_etopo2 <- data.table(cell_size = cell_size_high_arctic_etopo2, depth = high_arctic_bathy_depth_list_etopo2)
+
+cor(cell_size_cell_value_etopo2$depth, cell_size_cell_value_etopo2$cell_size) #Not super correlated (0.09480613)
+plot(-cell_size_cell_value_etopo2$depth, cell_size_cell_value_etopo2$cell_size, pch = ".", main = "ETOPO2") 
+
+##ETOPO1
+#cell_size_high_arctic # cell sizes
+#high_arctic_bathy_depth_list # cell values
+
+#bathy depth list
+
+#list of values within raster
+  high_arctic_bathy_depth_list_etopo1 <- getValues(LME_high_arctic_mask_etopo1)
+  high_arctic_bathy_depth_list_etopo1 <- high_arctic_bathy_depth_list_etopo1[!is.na(high_arctic_bathy_depth_list_etopo1)] #get rid of NA's
+
+cell_size_cell_value_etopo1 <- data.table(cell_size = cell_size_high_arctic_etopo1, depth = high_arctic_bathy_depth_list_etopo1)
+
+cor(cell_size_cell_value_etopo1$depth, cell_size_cell_value_etopo1$cell_size) #Not super correlated (0.09480613)
+plot(-cell_size_cell_value_etopo1$depth, cell_size_cell_value_etopo1$cell_size, pch = ".", main = "ETOPO1") 
+
+#difference in resolution between etopo1 and 2 is clear by looking at cell size
 ```
 
 Sum area across cells with same depth
 ```{r sum area across cells with same depth, results = 'hide', message=FALSE}
-cell_size_cell_value[,sum_area := sum(cell_size), by = depth]
+#######ETOPO2
+cell_size_cell_value_etopo2[,sum_area := sum(cell_size), by = depth]
 
 #reduce to frequency table
-freq_table_raster <- unique(cell_size_cell_value, by = c("depth", "sum_area"))
+freq_table_raster_etopo2 <- unique(cell_size_cell_value_etopo2, by = c("depth", "sum_area"))
 
-freq_table_raster[,cell_size := NULL] #remove cell size column
-freq_table_raster[,depth := -depth] #make depth positive
+freq_table_raster_etopo2[,cell_size := NULL] #remove cell size column
+freq_table_raster_etopo2[,depth := -depth] #make depth positive
 
 #plot this frequency table
-raster_areabycell_plot <- ggplot(
-  data = freq_table_raster, aes(x = depth,y = sum_area,fill = depth)) +
+raster_areabycell_plot_etopo2 <- ggplot(
+  data = freq_table_raster_etopo2, aes(x = depth,y = sum_area,fill = depth)) +
     geom_col(width = 5) +
     theme_classic() +
     labs(x = "Depth (m)", y = expression(paste("Area (", km^{2},")")),
@@ -375,50 +470,44 @@ raster_areabycell_plot <- ggplot(
     scale_x_continuous(expand = c(0,0)) +
     scale_fill_gradientn(colors = rev(viridis(5)), limits = c(0, 2000)) +
     guides(position = "bottom", fill = guide_colorbar(reverse = T))
-```
 
-Alternatively, we convert to polygon for equal area projection and then produce frequency table
+########ETOPO1
 
-```{r area for Polygon instead Canadian High Arctic North Greenland, results = 'hide', message=FALSE}
+cell_size_cell_value_etopo1[,sum_area := sum(cell_size), by = depth]
 
-  #raster back to polygon
-  LME_high_arctic.sp <- rasterToPolygons(LME_high_arctic_mask, dissolve = T) #dissolve means all same values are one polygon feature
-  
-  #transform to equal area projection
-  LME_high_arctic.EA <- spTransform(LME_high_arctic.sp, equalareaprojection)
-  
-#list of values within polygon
-LME_high_arctic.EA@data$depth <- -(LME_high_arctic.EA@data$z) #creating depth column in m
+#reduce to frequency table
+freq_table_raster_etopo1 <- unique(cell_size_cell_value_etopo1, by = c("depth", "sum_area"))
 
-LME_high_arctic.EA@data$area_m <- area(LME_high_arctic.EA, dissolve = T) #calculating area in m^2 of each depth within polygon
+freq_table_raster_etopo1[,cell_size := NULL] #remove cell size column
+freq_table_raster_etopo1[,depth := -depth] #make depth positive
 
-LME_high_arctic.EA@data$area_km <- LME_high_arctic.EA@data$area_m/1e6 #convert to km^2 (same units as raster)
-
-freq_table_polygon <- as.data.table(LME_high_arctic.EA@data)
-
-polygon_plot <- ggplot(
-  data = freq_table_polygon,
-  aes(x = depth, y = area_km, fill = depth)) +
+#plot this frequency table
+raster_areabycell_plot_etopo1 <- ggplot(
+  data = freq_table_raster_etopo1, aes(x = depth,y = sum_area,fill = depth)) +
     geom_col(width = 5) +
-#    geom_smooth(method = "gam", se = F, color = "black", size = 1) +
     theme_classic() +
-    labs(x = "Depth (m)", y = expression(paste("Area (", km^{2},")")), fill = "Depth (m)") +
+    labs(x = "Depth (m)", y = expression(paste("Area (", km^{2},")")),
+         fill = "Depth (m)") +
     scale_y_continuous(expand = c(0, 0)) +
     scale_x_continuous(expand = c(0,0)) +
     scale_fill_gradientn(colors = rev(viridis(5)), limits = c(0, 2000)) +
     guides(position = "bottom", fill = guide_colorbar(reverse = T))
 
+raster_areabycell_plot_etopo2
+raster_areabycell_plot_etopo1
+
 ```
+
+
 
 Let's compare the two graphs visually
 ```{r graphic comparison}
-raster_areabycell_plot
-polygon_plot
+plot_grid(raster_areabycell_plot_etopo2 + theme(legend.position = "none"), raster_areabycell_plot_etopo1 + theme(legend.position = "none"), labels = c("ETOPO2","ETOPO1"), ncol = 2, label_x = 0.5)
 
-#identical shape, slightly different values
+#similar shape, higher values for ETOPO1
 ```
 
-Visually, the shape does not change
+Visually, the shape does not change a ton
 
 But, what about the statistics, and final classification?
 
@@ -427,79 +516,76 @@ For raster taking into consideration bias correction. The output is a frequency 
 For skew etc., we can use the equate package in r to apply calculations directly to frequency table.
 
 ```{r generate vector of values for modality calculation with diptest package, results = 'hide', message=FALSE}
-freq_table_raster[,prop_area :=  sum_area/sum(sum_area)] #calculate proportional area
 
-freq_table_raster[,area_rounddown := round(prop_area * 10000000, 0)]
+####ETOPO2
+freq_table_raster_etopo2[,prop_area :=  sum_area/sum(sum_area)] #calculate proportional area
+
+freq_table_raster_etopo2[,area_rounddown := round(prop_area * 10000000, 0)]
 
 #empty vector
-LME_high_arctic_data_vector <- vector()
+LME_high_arctic_data_vector_etopo2 <- vector()
 
 #populate vector
-for (i in 1:nrow(freq_table_raster)){
-add <- rep(freq_table_raster[i,depth], freq_table_raster[i,area_rounddown])
-LME_high_arctic_data_vector <- append(LME_high_arctic_data_vector, add,
-                                      after = length(LME_high_arctic_data_vector))
+for (i in 1:nrow(freq_table_raster_etopo2)){
+add <- rep(freq_table_raster_etopo2[i,depth], freq_table_raster_etopo2[i,area_rounddown])
+LME_high_arctic_data_vector_etopo2 <- append(LME_high_arctic_data_vector_etopo2, add,
+                                      after = length(LME_high_arctic_data_vector_etopo2))
+
+}
+
+
+####ETOPO1
+freq_table_raster_etopo1[,prop_area :=  sum_area/sum(sum_area)] #calculate proportional area
+
+freq_table_raster_etopo1[,area_rounddown := round(prop_area * 10000000, 0)]
+
+#empty vector
+LME_high_arctic_data_vector_etopo1 <- vector()
+
+#populate vector
+for (i in 1:nrow(freq_table_raster_etopo1)){
+add <- rep(freq_table_raster_etopo1[i,depth], freq_table_raster_etopo1[i,area_rounddown])
+LME_high_arctic_data_vector_etopo1 <- append(LME_high_arctic_data_vector_etopo1, add,
+                                      after = length(LME_high_arctic_data_vector_etopo1))
 
 }
 
 #plotting
-hist(LME_high_arctic_data_vector, 100)
+hist(LME_high_arctic_data_vector_etopo2, 1000, main = "ETOPO2")
+hist(LME_high_arctic_data_vector_etopo1, 1000, main = "ETOPO1")
 ```
+Note that especially most shallow areas are under represented by ETOPO2
 
-Perform calculations on raster.
+Perform calculations on etopo1 and etopo2 raster. This takes time
 
-```{r calculations on unbiased raster depth frequency table, results = 'hide', message=FALSE}
-freq_table_unbiased_raster.ft <- as.freqtab(freq_table_raster[,1:2])
+```{r calculations on etopo2 versus etopo1 raster depth frequency table, results = 'hide', message=FALSE}
+#ETOPO2
+freq_table_etopo2_raster.ft <- as.freqtab(freq_table_raster_etopo2[,1:2])
 
-dip.test_unbiased_raster <- dip.test(LME_high_arctic_data_vector, simulate.p.value = TRUE, B = 2000)
+dip.test_etopo2_raster <- dip.test(LME_high_arctic_data_vector_etopo2, simulate.p.value = TRUE, B = 2000)
 #this takes a while, probably more than 30 minutes
-  p.value_dip.test_unbiased_raster <- dip.test_unbiased_raster$p.value
-  skew_dip.test_unbiased_raster <- skew.freqtab(freq_table_unbiased_raster.ft)
-  mean_unbiased_raster <- mean(freq_table_unbiased_raster.ft)
-  max_depth_unbiased_raster <- max(freq_table_unbiased_raster.ft)
-  median_depth_unbiased_raster <- median(freq_table_unbiased_raster.ft)
+  p.value_dip.test_etopo2_raster <- dip.test_etopo2_raster$p.value
+  skew_dip.test_etopo2_raster <- skew.freqtab(freq_table_etopo2_raster.ft)
+  mean_etopo2_raster <- mean(freq_table_etopo2_raster.ft)
+  max_depth_etopo2_raster <- max(freq_table_etopo2_raster.ft)
+  median_depth_etopo2_raster <- median(freq_table_etopo2_raster.ft)
   
   
-saveRDS(dip.test_unbiased_raster, file = here::here("output","raster_shapefile_comparison","dip.test_unbiased_raster.rds"))
+saveRDS(dip.test_etopo2_raster, file = here::here("output","etopo2_etopo1_comparison","dip.test_etopo2_raster.rds"))
 
-```
+#ETOPO1
+freq_table_etopo1_raster.ft <- as.freqtab(freq_table_raster_etopo1[,1:2])
 
-Finally, repeat the preceding procedure but for projected polygon and associated depth frequency table. 
-
-```{r generate vector of values for diptest package from projected polygon}
-
-freq_table_polygon[,prop_area :=  area_m/sum(area_m)]
-
-freq_table_polygon[,area_rounddown := round(prop_area * 10000000, 0)]
-
-#empty vector
-LME_high_arctic_data_vector_polygon <- vector()
-
-#populate vector
-for (i in 1:nrow(freq_table_polygon)){
-add <- rep(freq_table_polygon[i,depth], freq_table_polygon[i,area_rounddown])
-LME_high_arctic_data_vector_polygon <- append(LME_high_arctic_data_vector_polygon, add, after = length(LME_high_arctic_data_vector_polygon))
-
-}
-```
-
-Convert to actual frequency table using equate package, and calculate all statistics to describe hypsometric curve. 
-
-```{r convert to polygon frequency table and calculate statistics.}
-
-freq_table_polygon.ft <- as.freqtab(freq_table_polygon[,c(2,4)])
-
-dip.test_polygon <- dip.test(LME_high_arctic_data_vector_polygon, simulate.p.value = TRUE, B = 2000)
-saveRDS(dip.test_polygon, file = here::here("output","raster_shapefile_comparison",
-                                            "higharctic_dip.test_polygon.rds"))
-  p.value_dip.test_polygon <- dip.test_polygon$p.value
-  skew_dip.test_polygon <- skew.freqtab(freq_table_polygon.ft)
-  mean_polygon <- mean(freq_table_polygon.ft)
-  max_depth_polygon <- max(freq_table_polygon.ft)
-  median_depth_polygon <- median(freq_table_polygon.ft)
+dip.test_etopo1_raster <- dip.test(LME_high_arctic_data_vector_etopo1, simulate.p.value = TRUE, B = 2000)
+#this takes a while, probably more than 30 minutes
+  p.value_dip.test_etopo1_raster <- dip.test_etopo1_raster$p.value
+  skew_dip.test_etopo1_raster <- skew.freqtab(freq_table_etopo1_raster.ft)
+  mean_etopo1_raster <- mean(freq_table_etopo1_raster.ft)
+  max_depth_etopo1_raster <- max(freq_table_etopo1_raster.ft)
+  median_depth_etopo1_raster <- median(freq_table_etopo1_raster.ft)
   
   
-saveRDS(dip.test_polygon, file = here::here("output","raster_shapefile_comparison","dip.test_polygon.rds"))
+saveRDS(dip.test_etopo1_raster, file = here::here("output","etopo2_etopo1_comparison","dip.test_etopo1_raster.rds"))
 
 ```
 
@@ -513,30 +599,30 @@ Deep Dominant: skew value < -1
 
 ```{r final plot comparison}
 
-#plot for raster
-raster <- raster_areabycell_plot +
-annotate("text", x = 600, y = 1650, label = "LME 66: Canadian High Arctic: Unprojected Raster") +
-  annotate("text", x = 700, y = 1550, label = paste0("Dip Test: ", signif(dip.test_unbiased_raster$statistic,2), " P-value = ", signif(p.value_dip.test_unbiased_raster, 2))) +
-  annotate("text", x = 700, y = 1450, label = paste0("Skew: ", round(skew_dip.test_unbiased_raster,2))) +
-  annotate("text", x = 700, y = 1350, label = paste0("Mean: ",round(mean_unbiased_raster,2), " m")) +
-  annotate("text", x = 700, y = 1250, label = "Classification = Mid-Dominant") +
-  geom_vline(xintercept = mean_unbiased_raster, color = "red")
+#plot for etopo2 raster
+raster_etopo2 <- raster_areabycell_plot +
+annotate("text", x = 600, y = 1650, label = "LME 66: Canadian High Arctic: ETOPO2 Raster") +
+  annotate("text", x = 700, y = 1550, label = paste0("Dip Test: ", signif(dip.test_etopo2_raster$statistic,2), " P-value = ", signif(p.value_dip.test_etopo2_raster, 2))) +
+  annotate("text", x = 700, y = 1450, label = paste0("Skew: ", round(skew_dip.test_etopo2_raster,2))) +
+  annotate("text", x = 700, y = 1350, label = paste0("Mean: ",round(mean_etopo2_raster,2), " m")) +
+  annotate("text", x = 700, y = 1250, label = "Classification = Mid-Dominant") + #check
+  geom_vline(xintercept = mean_etopo2_raster, color = "red")
 
-#projected polygon
-polygon <- polygon_plot +
-annotate("text", x = 600, y = 1650, label = "LME 66: Canadian High Arctic: Projected Polygon") +
-  annotate("text", x = 700, y = 1550, label = paste0("Dip Test: ", signif(dip.test_polygon$statistic,2), " P-value = ", signif(p.value_dip.test_polygon, 2))) +
-  annotate("text", x = 700, y = 1450, label = paste0("Skew: ", round(skew_dip.test_polygon,2))) +
-  annotate("text", x = 700, y = 1350, label = paste0("Mean: ",round(mean_polygon,2), " m")) +
-  annotate("text", x = 700, y = 1250, label = "Classification = Mid-Dominant") +
-  geom_vline(xintercept = mean_polygon, color = "red")
+#plot for etopo1 raster
+raster_etopo1 <- raster_areabycell_plot +
+annotate("text", x = 600, y = 1650, label = "LME 66: Canadian High Arctic: etopo1 Raster") +
+  annotate("text", x = 700, y = 1550, label = paste0("Dip Test: ", signif(dip.test_etopo1_raster$statistic,2), " P-value = ", signif(p.value_dip.test_etopo1_raster, 2))) +
+  annotate("text", x = 700, y = 1450, label = paste0("Skew: ", round(skew_dip.test_etopo1_raster,2))) +
+  annotate("text", x = 700, y = 1350, label = paste0("Mean: ",round(mean_etopo1_raster,2), " m")) +
+  annotate("text", x = 700, y = 1250, label = "Classification = Mid-Dominant") + #check
+  geom_vline(xintercept = mean_etopo1_raster, color = "red")
 
-comparison <- plot_grid(raster + theme(legend.position = "none"), polygon + theme(legend.position = "none"), rows = 1, cols = 2)
+comparison <- plot_grid(raster_etopo2 + theme(legend.position = "none"), raster_etopo1 + theme(legend.position = "none"), rows = 1, cols = 2)
 
-comparison_w_legend <- plot_grid(comparison, get_legend(raster), cols = 2, rows = 1, rel_widths = c(8,1))
+comparison_w_legend <- plot_grid(comparison, get_legend(raster_etopo2), cols = 2, rows = 1, rel_widths = c(8,1))
 
-ggsave(comparison_w_legend, filename = "depth_histogram_comparison.pdf", path = here::here("Figures","Supplement"), width = 12, height = 4, units = "in")
+ggsave(comparison_w_legend, filename = "depth_etopo1_etopo2_comparison.pdf", path = here::here("Figures","Supplement"), width = 12, height = 4, units = "in")
 
 ```
 
-Note that there is no change in classification between the two methods.
+Note if there is a change in classification between the two methods.

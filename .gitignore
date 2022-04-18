@@ -7,7 +7,9 @@
 *.tif
 etoposhelf.gri
 etopo_shelf_df.rds
+etopo1_shelf_df.rds
 etopo_shelf_lim.rds
+etopo1_shelf_lim.rds
 DepthShift2.0
 Depth_Shelf_becca.Rmd
 degree_shifts.Rmd
