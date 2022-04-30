@@ -26,6 +26,10 @@ library(psych) #summary statistics
 library(plyr) #round_any
 library(here)
 
+
+```
+
+```{r load data}
 etopo_shelf_df <- readRDS(here::here("raw_data", "etopo_shelf_df.rds"))
 #bring in bathy for shelf regions
 
@@ -253,8 +257,13 @@ for (i in 1:nrow(LME_area_spp_change_stats)) {
 
 setkey(LME_bathy_bydepth_complete_15mbins, lme_name, depth_15s)
 
-#percent change (probably not relevant any more, because initial values are less pertinent)
-LME_bathy_bydepth_complete_15mbins[, percent_change_richness := (original_spp_predicted_levin-data.table::shift(original_spp_predicted_levin, type = "lag"))/data.table::shift(original_spp_predicted_levin, type = "lag"), .(lme_name)]
+#percent change for mean
+
+LME_bathy_bydepth_complete_15mbins[, percent_change_richness_mean := (original_spp_predicted_38-data.table::shift(original_spp_predicted_38, type = "lag"))/data.table::shift(original_spp_predicted_38, type = "lag"), .(lme_name)]
+
+#mean?
+
+mean(LME_bathy_bydepth_complete_15mbins$change_spp_predicted_38, na.rm = T)
 
 saveRDS(LME_area_spp_change_stats, file = "LME_area_spp_change_stats.rds")
 saveRDS(LME_bathy_bydepth_complete_15mbins, here::here("output","LME_bathy_bydepth_complete_15mbins.rds"))

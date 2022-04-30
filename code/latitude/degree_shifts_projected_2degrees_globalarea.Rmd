@@ -128,6 +128,9 @@ shelf_areas[, change_spp_predicted_levin :=  original_spp_predicted_levin -  dat
 
 #percent change
 shelf_areas[, percent_change_richness := (original_spp_predicted_levin-data.table::shift(original_spp_predicted_levin, type = "lag"))/data.table::shift(original_spp_predicted_levin, type = "lag"), .(region,hemisphere)]
+
+shelf_areas[, percent_change_richness_mean := (original_spp_predicted_38-data.table::shift(original_spp_predicted_38, type = "lag"))/data.table::shift(original_spp_predicted_38, type = "lag"), .(region,hemisphere)]
+
 shelf_areas[,spp_per_change_significant := ifelse(percent_change_richness >= 1, "Gain",ifelse(percent_change_richness <= -0.5, "Loss","NA"))]
 
 #new data table with only these values
@@ -165,6 +168,9 @@ shelf_areas[,spp_change_levin_by_reg_hemis := sum(change_spp_predicted_levin, na
 
 #color by direction
 shelf_spp_change_hemis_reg_stats[,change_direction := factor(ifelse(spp_change_levin_by_reg_hemis > 0, "Gain", "Loss"))] 
+
+#mean
+mean(shelf_areas$change_spp_predicted_38, na.rm = T)
 
 #save data table
 saveRDS(shelf_areas, file = here::here("output","2_degree_latitude","shelf_areas.rds"))
