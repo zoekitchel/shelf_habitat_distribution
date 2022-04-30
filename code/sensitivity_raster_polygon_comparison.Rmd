@@ -31,7 +31,7 @@ library(formatR) #to wrap text for markdown
 
 knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE) #wraps text
 
-etopo_shelf_df <- readRDS(file = here::here("raw_data","etopo_shelf_df.rds"))
+etopo_shelf_df <- readRDS(file = here::here("raw_data","ETOPO1","etopo1_shelf_df.rds"))
 #bring in bathymetry data frame for shelf regions
 
 #LMEs
@@ -388,7 +388,7 @@ Alternatively, we convert to polygon for equal area projection and then produce 
   LME_high_arctic.EA <- spTransform(LME_high_arctic.sp, equalareaprojection)
   
 #list of values within polygon
-LME_high_arctic.EA@data$depth <- -(LME_high_arctic.EA@data$z) #creating depth column in m
+LME_high_arctic.EA@data$depth <- -(LME_high_arctic.EA@data$layer) #creating depth column in m
 
 LME_high_arctic.EA@data$area_m <- area(LME_high_arctic.EA, dissolve = T) #calculating area in m^2 of each depth within polygon
 
@@ -515,20 +515,20 @@ Deep Dominant: skew value < -1
 
 #plot for raster
 raster <- raster_areabycell_plot +
-annotate("text", x = 600, y = 1650, label = "LME 66: Canadian High Arctic: Unprojected Raster") +
-  annotate("text", x = 700, y = 1550, label = paste0("Dip Test: ", signif(dip.test_unbiased_raster$statistic,2), " P-value = ", signif(p.value_dip.test_unbiased_raster, 2))) +
-  annotate("text", x = 700, y = 1450, label = paste0("Skew: ", round(skew_dip.test_unbiased_raster,2))) +
-  annotate("text", x = 700, y = 1350, label = paste0("Mean: ",round(mean_unbiased_raster,2), " m")) +
-  annotate("text", x = 700, y = 1250, label = "Classification = Mid-Dominant") +
+annotate("text", x = 400, y = 2500, label = "LME 66: Canadian High Arctic: Unprojected Raster") +
+  annotate("text", x = 500, y = 2250, label = paste0("Dip Test: ", signif(dip.test_unbiased_raster$statistic,2), " P-value = ", signif(p.value_dip.test_unbiased_raster, 2))) +
+  annotate("text", x = 500, y = 2000, label = paste0("Skew: ", round(skew_dip.test_unbiased_raster,2))) +
+  annotate("text", x = 500, y = 1750, label = paste0("Mean: ",round(mean_unbiased_raster,2), " m")) +
+  annotate("text", x = 500, y = 1500, label = "Classification = Mid-Dominant") +
   geom_vline(xintercept = mean_unbiased_raster, color = "red")
 
 #projected polygon
 polygon <- polygon_plot +
-annotate("text", x = 600, y = 1650, label = "LME 66: Canadian High Arctic: Projected Polygon") +
-  annotate("text", x = 700, y = 1550, label = paste0("Dip Test: ", signif(dip.test_polygon$statistic,2), " P-value = ", signif(p.value_dip.test_polygon, 2))) +
-  annotate("text", x = 700, y = 1450, label = paste0("Skew: ", round(skew_dip.test_polygon,2))) +
-  annotate("text", x = 700, y = 1350, label = paste0("Mean: ",round(mean_polygon,2), " m")) +
-  annotate("text", x = 700, y = 1250, label = "Classification = Mid-Dominant") +
+annotate("text", x = 400, y = 2500, label = "LME 66: Canadian High Arctic: Projected Polygon") +
+  annotate("text", x = 500, y = 2250, label = paste0("Dip Test: ", signif(dip.test_polygon$statistic,2), " P-value = ", signif(p.value_dip.test_polygon, 2))) +
+  annotate("text", x = 500, y = 2000, label = paste0("Skew: ", round(skew_dip.test_polygon,2))) +
+  annotate("text", x = 500, y = 1750, label = paste0("Mean: ",round(mean_polygon,2), " m")) +
+  annotate("text", x = 500, y = 1500, label = "Classification = Mid-Dominant") +
   geom_vline(xintercept = mean_polygon, color = "red")
 
 comparison <- plot_grid(raster + theme(legend.position = "none"), polygon + theme(legend.position = "none"), rows = 1, cols = 2)
