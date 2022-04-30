@@ -1,5 +1,45 @@
 To  do:
+
+CODING
 - digital elevation model comparison (GEBCO and ETOPO1)
 - fix text to emphasize habitat less and continental shelf more
 - multiple species area curves
       - 0.175-0.62, with an average of 0.38 (Levin 2009 Supplement)
+- how are classifications different with adjusted skew values?
+    -When classifying depth distributions, I was a little surprised to see skew cutoffs of -1 and 1 used to distinguish Deep Dominant and Shallow-Dominant curves. While I recognize these are quite conservative values representing highly skewed distributions, it might be more reasonable to use lower cutoffs of -0.5 and 0.5, which still represent moderately skewed distributions and provide more suitable boundaries to delineate Mid-Dominant curves (skewness values of -0.5 to 0.5 are typically used to approximate symmetric distributions).
+    -when I use a 0.5- -0.5 cutoff, changes classification of 5 from mid-dominant to shallow dominant
+    
+    
+TEXT
+-In some portions of the manuscript, the changes are described in terms of “shelf area”, which seems like a more accurate depiction of what is being assessed in this study than “available habitat”. The authors do more to acknowledge that shelf area is more akin to potential habitat in the discussion (“Other barriers to successful range shifts”), as many other biotic and abiotic factors determine the realized niches of species, but I think this should be set out more explicitly in the Introduction.
+
+-Perhaps the authors need to also describe how human impacts or other factors can alter the quality or suitability of continental shelf habitat in ways that might make it unusable for species, and mention that their analysis does not take this into account.
+
+-It might be of interest to readers to know if regions of concern and opportunity have high levels of threatened marine taxa currently. It would be particularly troubling if those regions identified as of concern in this study were also characterized as having many species currently threatened due to other factors.
+
+-While I appreciate the potential implications for conservation noted in the final paragraph, I think this can be more thoughtfully expanded and explored. Is the recommendation to establish more MPAs in regions with greater latitudinal contractions? Or where available continental shelf area at deeper depths will be more limiting? Should we ignore areas where species are likely to experience expansions? Greater detail here would help practitioners utilize the important results stemming from this analysis.
+
+Minor comments
+
+L86 – Is there not even a general expectation given global hypsographic patterns, as in https://www.ngdc.noaa.gov/mgg/global/etopo1_surface_histogram.html? Seems like global continental shelf area might decline with depth, at least from -50 to -100 m?
+
+L184-185 – change to “gain of 91 species” and “loss of 116 species”.
+
+L189 – “then shifts 15 <u>m</u> deeper”?
+
+L190-191 – change to “gain of 67 species” and “loss of 89 species”.
+
+L210 – saying “movement deeper onto the continental shelf does not always coincide with a loss of shelf area” implies that there is an assumed relationship of area loss with depth, but in the introduction the authors mention there is no set expectation. This seems a bit contradictory.
+
+###################3
+Reviewer 2: 
+
+Code:
+
+again, comment on single SAR
+
+Text:
+-Line 53:  Unlike Eastern Boundary marine ecosystems, upwelling is not the major physical mechanism for nutrient input in Western Boundary marine ecosystems.
+
+-Introduction:  Would be useful to have some intro text on bathymetric differences between Western Boundary and Easter Boundary shelf regions (wide vs narrow shelf).
+
