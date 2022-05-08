@@ -3,7 +3,7 @@ title: "Change in Spp Richness with 15 m depth shift"
 output: html_notebook
 ---
 
-Calculate change in species  richness with 15 m depth shift. 
+Calculate change in species richness with 15 m depth shift. This code follows bathy_shelf_byLME.Rmd which calculates LME statistics for how area changes over depth. 
 
 
 

@@ -42,7 +42,7 @@ Initiated by Hailey Conrad and Becca Selden in 2018. Completed by Zoë Kitchel, 
   - output/LME_bathy_bydepth_complete_15mbins.rds (change in area and richness for each depth band)
   - output/LME_area_spp_change_stats.rds
   
-1. Follow code/latitude/degree_shifts_projected_2degrees.Rmd to calculate change in area and classification statistics for each coastline with each 2 degree latitude shift. We ran parts of this code on an HPC because the diptest for modality takes quite a bit of memory to run. This code also makes latitude area plots in Figures/Figure3_5/latitude_area_plots.RData, coastline maps in Figures/Figure3_5/latitude_2degree_maps.RData, and percent expansion and contraction plots in Figures/Figure6. See Figures/Figure3_5 for final figure code. This code produces:
+1. Follow code/latitude/degree_shifts_projected_2degrees.Rmd to calculate change in area and classification statistics for each coastline with each 2 degree latitude shift. We ran parts of this code on an HPC because raster ETOPO1 is high resolution and therefore takes quite a bit of memory to run. This code also makes latitude area plots in Figures/Figure3_5/latitude_area_plots.RData, coastline maps in Figures/Figure3_5/latitude_2degree_maps.RData, and percent expansion and contraction plots in Figures/Figure6. See Figures/Figure3_5 for final figure code. This code produces:
 
   - shelf area data tables: output/files_back_from_annotate/eastwest_pacatlind_shelf_areas_2degrees.rds
   - lat versus area mods: output/files_back_from_annotate/eastwest_pacatlind_northsouth_mod.rds

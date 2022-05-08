@@ -5,7 +5,7 @@ output: html_notebook
 
 ##This script is very similar to degree_shifts_projected, but looks at 2˚ shifts instead of 1˚shifts. It calculates area of continental shelf in each 2˚ latitudinal bin. It outputs tables with latitudinal bin versus area that are used for Figures 3-5 and summed changes in area used in Table 1. 
 
-This needs to be run on an HPC because ETOPO1 is so much larger than ETOPO2
+This needs to be run on an HPC because ETOPO1 is so much larger than ETOPO2. 
 
 ```{r setup}
 library(raster)
@@ -13,7 +13,6 @@ library(sf)
 library(ncdf4)
 library(rmapshaper)
 library(tidyverse)
-library(diptest)
 library(moments)
 library(viridis) #colors
 library(data.table)
