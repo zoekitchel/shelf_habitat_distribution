@@ -6,6 +6,8 @@ output: html_notebook
 
 ##This script is very similar to degree_shifts_projected, but looks at 2˚ shifts instead of 1˚shifts. It calculates area of continental shelf in each 2˚ latitudinal bin. It outputs tables with latitudinal bin versus area that are used for Figures 3-5 and summed changes in area used in Table 1. 
 
+This needs to be run on an HPC because ETOPO1 is so much larger than ETOPO2
+
 ```{r setup}
 library(raster)
 library(sf)
@@ -27,9 +29,11 @@ library(rnaturalearthdata)
 library(ggnewscale)
 library(cowplot) #getlegend
 library(here)
+```
 
+```{r load data}
 
-etopo_shelf_df <- readRDS(here::here("raw_data","etopo_shelf_df.rds"))
+etopo_shelf_df <- readRDS(here::here("raw_data","ETOPO1","etopo1_shelf_df.rds"))
 #bring in bathymetry data frame for shelf regions
 
 #LMEs
@@ -55,8 +59,14 @@ Convert bathymetry data frame to raster (this takes a bit of time)
 Note that I am trying to use the [equal area projection](https://www.r-bloggers.com/2018/09/quick-hit-using-the-new-equal-earth-projection-in-r/)
 ```{r bathy to raster}
 
-etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = crs(LME_spdf))
-hist(etopo_shelf_raster$z) #confirms no values below -2000
+#etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = crs(LME_spdf))
+#save because this takes a while
+#saveRDS(etopo_shelf_raster, here::here("raw_data","ETOPO1","etopo1_shelf_raster.rds"))
+
+#or, load if you've already converted
+etopo_shelf_raster <- readRDS(here::here("raw_data","ETOPO1","etopo1_shelf_raster.rds"))
+
+hist(etopo_shelf_raster$layer) #confirms no values below -2000
 #reclassify all values <2000m (this raster is already trimmed) in depth to 1 instead of actual depth (don't need depth for this analysis)
 etopo_shelf_raster <- reclassify(etopo_shelf_raster,cbind(-Inf, Inf, 1))
 
@@ -172,10 +182,10 @@ east_atl_spdf <- LME_spdf[(LME_spdf$LME_NUMBER) %in% east_atl,]
 east_ind_spdf <- east_ind_fao
 
 
-#rotate raster for bathymetry (guided by extent and grid of etoposhelf raster, that's why wacky #s)
-x1 <- crop(etopo_shelf_raster, extent(-180.0167, -0.0167, -90.01667, 90.01667))
-x2 <- crop(etopo_shelf_raster, extent(0, 180.0167, -90.01667, 90.01667))   
-extent(x1) <- c(180.0167, 360.0167, -90.01667 , 90.01667)
+#rotate raster for bathymetry 
+x1 <- crop(etopo_shelf_raster, extent(-180, -1.634817e-10, -90, 90))
+x2 <- crop(etopo_shelf_raster, extent(-1.634817e-10, 180, -90, 90))   
+extent(x1) <- c(180, 359.9999999998, -90 , 90)
 etopo_shelf_raster_180 <- merge(x1, x2)
 
 #for subregions that span 360, we need to change CRS a bit
@@ -235,18 +245,18 @@ Rotate rasters that span pacific ocean (East Pacific and West Pacific)
 
 ```{r rotate rasters that span pacific}
 #east pacific
-#(guided by extent of etoposhelf raster,  that's why wacky #s)
-east_pac_spdf_shift_mask_1 <- crop(east_pac_spdf_shift_mask, extent(-179.9833, -0.0167, -57.51667, 79.01667))
-east_pac_spdf_shift_mask_2 <- crop(east_pac_spdf_shift_mask, extent(0, 180.0167, -57.51667, 79.01667))   
-extent(east_pac_spdf_shift_mask_1) <- c(180.0167, 359.9833, -57.51667, 79.01667)
+#(guided by extent of etoposhelf1 raster,  that's why wacky #s)
+east_pac_spdf_shift_mask_1 <- crop(east_pac_spdf_shift_mask, extent(-180, -1.634817e-10, -57.51667, 79.03333))
+east_pac_spdf_shift_mask_2 <- crop(east_pac_spdf_shift_mask, extent(-1.634817e-10, 180, -57.51667, 79.03333))   
+extent(east_pac_spdf_shift_mask_1) <- c(180, 359.9999999998, -57.51667, 79.03333)
 east_pac_spdf_shift_mask_180 <- merge(east_pac_spdf_shift_mask_1, east_pac_spdf_shift_mask_2)
 
 east_pac_spdf_shift_mask_1s <- reclassify(east_pac_spdf_shift_mask_180, cbind(-Inf, Inf, 1))
 
 #west pacific
-west_pac_spdf_shift_mask_1 <- crop(west_pac_spdf_shift_mask, extent(-179.9833, -0.0167, -47.18333, 82.98333))
-west_pac_spdf_shift_mask_2 <- crop(west_pac_spdf_shift_mask, extent(0, 180.0167, -47.18333, 82.98333))   
-extent(west_pac_spdf_shift_mask_1) <- c(180.0167, 359.9833, -47.18333, 82.98333)
+west_pac_spdf_shift_mask_1 <- crop(west_pac_spdf_shift_mask, extent(-180, -1.634817e-10, -47.2, 82.98333))
+west_pac_spdf_shift_mask_2 <- crop(west_pac_spdf_shift_mask, extent(-1.634817e-10, 180, -47.2, 82.98333))   
+extent(west_pac_spdf_shift_mask_1) <- c(180, 359.9999999998, -47.2, 82.98333)
 west_pac_spdf_shift_mask_180 <- merge(west_pac_spdf_shift_mask_1, west_pac_spdf_shift_mask_2)
 
 west_pac_spdf_shift_mask_1s <- reclassify(west_pac_spdf_shift_mask_180, cbind(-Inf, Inf, 1))
@@ -288,14 +298,55 @@ If these have already been done, load in from file instead of recreating because
 
 #RESAVE THESE
 
-west_pac_shelf_areas <- readRDS("west_pac_shelf_areas_2degrees.rds")
-west_atl_shelf_areas <- readRDS("west_atl_shelf_areas_2degrees.rds")
-west_ind_shelf_areas <- readRDS("west_ind_shelf_areas_2degrees.rds")
-east_pac_shelf_areas <- readRDS("east_pac_shelf_areas_2degrees.rds")
-east_atl_shelf_areas <- readRDS("east_atl_shelf_areas_2degrees.rds")
-east_ind_shelf_areas <- readRDS("east_ind_shelf_areas_2degrees.rds")
+#west_pac_shelf_areas <- readRDS("west_pac_shelf_areas_2degrees.rds")
+#west_atl_shelf_areas <- readRDS("west_atl_shelf_areas_2degrees.rds")
+#west_ind_shelf_areas <- readRDS("west_ind_shelf_areas_2degrees.rds")
+#east_pac_shelf_areas <- readRDS("east_pac_shelf_areas_2degrees.rds")
+#east_atl_shelf_areas <- readRDS("east_atl_shelf_areas_2degrees.rds")
+#east_ind_shelf_areas <- readRDS("east_ind_shelf_areas_2degrees.rds")
 ```
 
+##I'm going to perform all calculations below on annotate for efficiency
+###Need to be saved as rasters
+```{r download to run on annotate}
+writeRaster(west_pac_spdf_mask_full, here::here("output","rasters_to_run_on_annotate","west_pac_spdf_mask_full.grd"))
+writeRaster(east_pac_spdf_shift_mask_1s, here::here("output","rasters_to_run_on_annotate","east_pac_spdf_shift_mask_1s.grd"))
+writeRaster(west_atl_spdf_mask_1s, here::here("output","rasters_to_run_on_annotate","west_atl_spdf_mask_1s.grd"))
+writeRaster(east_atl_spdf_nobuf_mask_1s, here::here("output","rasters_to_run_on_annotate","east_atl_spdf_nobuf_mask_1s.grd"))
+writeRaster(west_ind_spdf_mask_1s, here::here("output","rasters_to_run_on_annotate","west_ind_spdf_mask_1s.grd"))
+writeRaster(east_ind_spdf_mask_1s, here::here("output","rasters_to_run_on_annotate","east_ind_spdf_mask_1s.grd"))
+```
+
+
+Pull back in processed data tables from annotate (HPC)
+```{r pull back in processed data tables from annotate HPC}
+#shelf area data tables
+east_pac_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","east_pac_shelf_areas_2degrees.rds"))
+west_pac_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","west_pac_shelf_areas_2degrees.rds"))
+east_atl_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","east_atl_shelf_areas_2degrees.rds"))
+west_atl_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","west_atl_shelf_areas_2degrees.rds"))
+east_ind_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","east_ind_shelf_areas_2degrees.rds"))
+west_ind_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","west_ind_shelf_areas_2degrees.rds"))
+
+#lat versus area mods from annotate (HPC)
+#pull in north mods
+east_ind_north_mod <- readRDS(here::here("output","files_back_from_annotate","east_ind_north_mod.rds"))
+west_ind_north_mod <- readRDS(here::here("output","files_back_from_annotate","west_ind_north_mod.rds"))
+east_atl_north_mod <- readRDS(here::here("output","files_back_from_annotate","east_atl_north_mod.rds"))
+west_atl_north_mod <- readRDS(here::here("output","files_back_from_annotate","west_atl_north_mod.rds"))
+east_pac_north_mod <- readRDS(here::here("output","files_back_from_annotate","east_pac_north_mod.rds"))
+west_pac_north_mod <- readRDS(here::here("output","files_back_from_annotate","west_pac_north_mod.rds"))
+
+#pull in south mods
+east_ind_south_mod <- readRDS(here::here("output","files_back_from_annotate","east_ind_south_mod.rds"))
+west_ind_south_mod <- readRDS(here::here("output","files_back_from_annotate","west_ind_south_mod.rds"))
+east_atl_south_mod <- readRDS(here::here("output","files_back_from_annotate","east_atl_south_mod.rds"))
+west_atl_south_mod <- readRDS(here::here("output","files_back_from_annotate","west_atl_south_mod.rds"))
+east_pac_south_mod <- readRDS(here::here("output","files_back_from_annotate","east_pac_south_mod.rds"))
+west_pac_south_mod <- readRDS(here::here("output","files_back_from_annotate","west_pac_south_mod.rds"))
+```
+
+##SKIP UNTIL LINE 1546
 
 Western Pacific
 ```{r split raster for western pacific}
@@ -1487,17 +1538,54 @@ east_ind_south_mod <- lm(data = east_ind_shelf_areas[hemisphere == "south"], are
 summary(east_ind_south_mod)
 ```
 
+##Pull back in REG_shelf_areas and REG_north_mod and REG_south_mod from annotate (HPC) analyses (See above)
 
 Plots of latitude versus habitat availability
 
-Include trend lines only for those with significant coefficients between latitude start and area^2
+Include trend lines only for those with significant coefficients between latitude start and area^2 (These are all consistent between Etopo1 and Etopo2)
 NOT:
-- East Indian Southern and Northern
+- East Indian Southern
+- East Indian Northern
 - East Pacific Southern
 - West Indian Southern
 
+East Atlantic North Mod
+latitude_mid   6632.9      970.6   6.834 3.63e-08 ***
+East Atlantic South Mod
+latitude_mid    610.6      221.0   2.763   0.0139 *
+West Atlantic North Mod
+latitude_mid   1131.8      397.7   2.846 0.006953 ** 
+West Atlantic South Mod
+latitude_mid   1984.5      337.9   5.872 3.98e-06 ***
+East Pacific North Mod
+latitude_mid   2345.9      500.6   4.686 3.71e-05 ***
+East Pacific South Mod
+latitude_mid    175.9      104.2   1.688   0.1034 
+West Pacific North Mod
+latitude_mid     5088       1285   3.959 0.000309 ***
+West Pacific South Mod
+latitude_mid    -7285       1134  -6.423 2.29e-06 ***
+East Indian North Mod
+latitude_mid     1308       1208   1.083   0.3071  
+East Indian South Mod
+latitude_mid   -416.6      591.3  -0.704  0.48764 
+West Indian North Mod
+latitude_mid   4027.5      738.2   5.456  0.00011 ***
+West Indian South Mod
+latitude_mid    697.0      411.3   1.694    0.110
+
+
 ```{r plots latitude habitat availability}
 ##east indian
+#add mid latitude
+east_ind_shelf_areas[,latitude_mid := abs((latitude_end+latitude_start)/2)]
+
+#highlight only incidents of contraction or expansion
+east_ind_shelf_areas_highlight <- east_ind_shelf_areas[change_above_2fold != 0,]
+
+#pull model stats
+east_ind_shelf_areas_stats <- table(east_ind_shelf_areas[,.(change_above_2fold,hemisphere)])
+
 #simulate data to plot trendline
 east_ind_north_data <- data.table(latitude_mid = unique(east_ind_shelf_areas[latitude_end>0,]$latitude_mid))
 
@@ -1507,7 +1595,7 @@ east_ind_south_data <- data.table(latitude_mid = unique(east_ind_shelf_areas[lat
 
 east_ind_south_data[,area_1000s := east_ind_south_mod$coefficients[[1]]/1000+east_ind_south_mod$coefficients[[2]]/1000*latitude_mid]
 
-#east indian
+
 (area_latitude_east_ind  <- ggplot() +
 #  geom_line(data = east_ind_north_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") + not significant
 #  geom_line(data = east_ind_south_data, aes(x=latitude_mid, y = area_1000s), color = "gray60", size = 0.8, linetype = "longdash") + not significant
@@ -1523,8 +1611,20 @@ east_ind_south_data[,area_1000s := east_ind_south_mod$coefficients[[1]]/1000+eas
   theme_classic() +
   theme(plot.margin = margin(10, 40, 10, 10)))
 
-  
-##west indian
+############## 
+#####west indian
+##############
+
+
+#add mid latitude
+west_ind_shelf_areas[,latitude_mid := abs((latitude_end+latitude_start)/2)]
+
+#highlight only incidents of contraction or expansion
+west_ind_shelf_areas_highlight <- west_ind_shelf_areas[change_above_2fold != 0,]
+
+#pull model stats
+west_ind_shelf_areas_stats <- table(west_ind_shelf_areas[,.(change_above_2fold,hemisphere)])
+
 west_ind_north_data <- data.table(latitude_mid = unique(west_ind_shelf_areas[latitude_end>0,]$latitude_mid))
 
 west_ind_north_data[,area_1000s := west_ind_north_mod$coefficients[[1]]/1000+west_ind_north_mod$coefficients[[2]]/1000*latitude_mid]
@@ -1548,6 +1648,22 @@ west_ind_south_data[,area_1000s := west_ind_south_mod$coefficients[[1]]/1000+wes
   theme_classic() +
   theme(plot.margin = margin(10, 40, 10, 10)))
 
+
+
+############
+##west atlantic
+############
+##west atlantic
+#add mid latitude
+west_atl_shelf_areas[,latitude_mid := abs((latitude_end+latitude_start)/2)]
+
+#highlight only incidents of contraction or expansion
+west_atl_shelf_areas_highlight <- west_atl_shelf_areas[change_above_2fold != 0,]
+
+#pull model stats
+west_atl_shelf_areas_stats <- table(west_atl_shelf_areas[,.(change_above_2fold,hemisphere)])
+
+
 west_atl_north_data <- data.table(latitude_mid = unique(west_atl_shelf_areas[latitude_end>0,]$latitude_mid))
 
 west_atl_north_data[,area_1000s := west_atl_north_mod$coefficients[[1]]/1000+west_atl_north_mod$coefficients[[2]]/1000*latitude_mid]
@@ -1570,6 +1686,22 @@ area_latitude_west_atl  <- ggplot() +
   coord_flip() +
   theme_classic() +
   theme(plot.margin = margin(10, 40, 10, 10))
+
+
+
+##########
+###east atlantic
+#########
+
+##east atlantic
+#add mid latitude
+east_atl_shelf_areas[,latitude_mid := abs((latitude_end+latitude_start)/2)]
+
+#highlight only incidents of contraction or expansion
+east_atl_shelf_areas_highlight <- east_atl_shelf_areas[change_above_2fold != 0,]
+
+#pull model stats
+east_atl_shelf_areas_stats <- table(east_atl_shelf_areas[,.(change_above_2fold,hemisphere)])
 
   
 east_atl_north_data <- data.table(latitude_mid = unique(east_atl_shelf_areas[latitude_end>0,]$latitude_mid))
@@ -1596,6 +1728,21 @@ area_latitude_east_atl  <- ggplot() +
   theme(plot.margin = margin(10, 40, 10, 10))
 
   
+
+#######
+##east pacific
+#######
+
+#add mid latitude
+east_pac_shelf_areas[,latitude_mid := abs((latitude_end+latitude_start)/2)]
+
+#highlight only incidents of contraction or expansion
+east_pac_shelf_areas_highlight <- east_pac_shelf_areas[change_above_2fold != 0,]
+
+#pull model stats
+east_pac_shelf_areas_stats <- table(east_pac_shelf_areas[,.(change_above_2fold,hemisphere)])
+
+
 east_pac_north_data <- data.table(latitude_mid = unique(east_pac_shelf_areas[latitude_end>0,]$latitude_mid))
 
 east_pac_north_data[,area_1000s := east_pac_north_mod$coefficients[[1]]/1000+east_pac_north_mod$coefficients[[2]]/1000*latitude_mid]
@@ -1619,7 +1766,20 @@ area_latitude_east_pac  <- ggplot() +
   theme_classic() +
   theme(plot.margin = margin(10, 40, 10, 10))
 
-  
+#######
+##west pacific
+#######
+
+#add mid latitude
+west_pac_shelf_areas[,latitude_mid := abs((latitude_end+latitude_start)/2)]
+
+#highlight only incidents of contraction or expansion
+west_pac_shelf_areas_highlight <- west_pac_shelf_areas[change_above_2fold != 0,]
+
+#pull model stats
+west_pac_shelf_areas_stats <- table(west_pac_shelf_areas[,.(change_above_2fold,hemisphere)])
+
+
 west_pac_north_data <- data.table(latitude_mid = unique(west_pac_shelf_areas[latitude_end>0,]$latitude_mid))
 
 west_pac_north_data[,area_1000s := west_pac_north_mod$coefficients[[1]]/1000+west_pac_north_mod$coefficients[[2]]/1000*latitude_mid]
@@ -1960,7 +2120,7 @@ for (i in 1:length(region_names)) {
 region_map_legend <- get_legend(region_maps[[6]])
 
 #save maps in rds
-saveRDS(region_maps, file = here::here("Figures","Figure3_5", "region_maps.rds"))
+save(region_maps, file = here::here("Figures","Figure3_5", "region_maps.RData"))
 #save map legend in rds
 saveRDS(region_map_legend, file = here::here("Figures","Figure3_5", "region_maps_legend.rds"))
 
@@ -1968,82 +2128,11 @@ saveRDS(region_map_legend, file = here::here("Figures","Figure3_5", "region_maps
 save(area_latitude_east_pac, area_latitude_west_pac , area_latitude_east_atl , area_latitude_west_atl , area_latitude_east_ind , area_latitude_west_ind, file = here::here("Figures","Figure3_5", "latitude_2degree_maps.RData"))
 ```
 
-Combining plots
 
-region_maps: 
-"west_pac_spdf_shift", 
-"east_pac_spdf_shift", 
-"west_atl_spdf", 
-"west_ind_spdf", 
-"east_atl_spdf_nobuf", 
-"east_ind_spdf"
+**Plots combined in Figure3_5_code.Rmd
+**Final Summary table code in Table1.Rmd Code
 
-Plots of area versus latitude
-area_latitude_east_pac
-area_latitude_west_pac
-area_latitude_east_atl
-area_latitude_west_atl
-area_latitude_east_ind
-area_latitude_west_ind
-
-**Plots combined in Figure3_5_code.Rmd**
-
-Summary Table of Shifts away from Equator
-
-Save mods from earlier
-```{r save models of how area changes with latitude to plot later}
-area_lat_mods <- save(west_pac_north_mod, east_pac_north_mod, west_atl_north_mod, west_ind_north_mod, east_atl_north_mod, east_ind_north_mod, west_pac_south_mod, east_pac_south_mod, west_atl_south_mod, west_ind_south_mod, east_atl_south_mod, east_ind_south_mod, file = here::here("output","2_degree_latitude","area_lat_models.RData"))
-```
-
-Regional Statistics
-```{r statistics table}
-regional_statistics <- data.table()
-regional_statistics[,region := rep(c("West Pacific", "East Pacific", "West Atlantic", "West Indian", "East Atlantic", "East Indian"),each = 2)][,hemisphere := rep(c("Northern", "Southern"),6)][,contractions := as.numeric(NA)][,expansions := as.numeric(NA)][,coef := as.numeric(NA)][,pvalue := as.numeric(NA)]
-
-shelf_areas <- c("west_pac_shelf_areas", "east_pac_shelf_areas", "west_atl_shelf_areas", "west_ind_shelf_areas", "east_atl_shelf_areas", "east_ind_shelf_areas")
-
-#load in mods if they are not already loaded
-#load(file = here::here("table_outputs","area_lat_mods.RData"))
-
-north_mods <- c("west_pac_north_mod", "east_pac_north_mod", "west_atl_north_mod", "west_ind_north_mod", "east_atl_north_mod", "east_ind_north_mod")
-
-south_mods <- c("west_pac_south_mod", "east_pac_south_mod", "west_atl_south_mod", "west_ind_south_mod", "east_atl_south_mod", "east_ind_south_mod")
-
-for (i in 1:length(shelf_areas)) {
-
-  this_shelf_area <- get(shelf_areas[i])
-    #populate west pacific
-    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Northern", "contractions"] <- round(this_shelf_area[latitude_end > 0 & change_above_2fold == -1,.N]/nrow(this_shelf_area[latitude_end > 0 & !is.na(percent_change)]),4)*100 #northern hemisphere contraction
-    
-    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Southern", "contractions"] <- round(this_shelf_area[latitude_end < 0 & change_above_2fold == -1,.N]/nrow(this_shelf_area[latitude_end < 0 & !is.na(percent_change)]),4)*100 #southern hemisphere contraction
-    
-    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Northern", "expansions"] <- round(this_shelf_area[latitude_end > 0 & change_above_2fold == 1,.N]/nrow(this_shelf_area[latitude_end > 0 & !is.na(percent_change)]),4)*100 #northern hemisphere expansion
-    
-    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Southern", "expansions"] <- round(this_shelf_area[latitude_end < 0 & change_above_2fold == 1,.N]/nrow(this_shelf_area[latitude_end < 0 & !is.na(percent_change)]),4)*100 #southern hemisphere expansion
-    
-    #northern mod
-    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Northern", "coef"] <- round(get(north_mods[i])$coefficients[2],2)
-    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Northern", "pvalue"] <- summary(get(north_mods[i]))$coefficients[,"Pr(>|t|)"][2]
-    
-    #southern mod
-    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Southern", "coef"] <- round(get(south_mods[i])$coefficients[2],2)
-    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Southern", "pvalue"] <- summary(get(south_mods[i]))$coefficients[,"Pr(>|t|)"][2]
-
-}
-
-
-#what about change in area stats?
-shelf_areas <- readRDS(here::here("output","2_degree_latitude","shelf_areas.rds")) #spp richness stats
-
-shelf_areas[,area_change_hemis_reg := sum(area_change, na.rm = T),.(region, hemisphere)]
-
-shelf_areas.unique <- unique(shelf_areas[,.(region, hemisphere, area_change_hemis_reg)])
-
-regional_statistics_final <- regional_statistics[shelf_areas.unique, on = c("region", "hemisphere")]
-
-#save
-fwrite(regional_statistics_final, file = here::here("output","2_degree_latitude","Table1_regional_stats.csv"))
-```
+####Scratch
 
 Save Significant Changes Table
 

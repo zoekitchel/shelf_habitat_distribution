@@ -11,29 +11,42 @@ library(ggplot2)
 library(cowplot)
 library(egg)
 library(mapproj)
+```
 
-west_pac_shelf_areas <- readRDS(here::here("output","2_degree_latitude","west_pac_shelf_areas_2degrees.rds"))
-west_atl_shelf_areas <- readRDS(here::here("output","2_degree_latitude","west_atl_shelf_areas_2degrees.rds"))
-west_ind_shelf_areas <- readRDS(here::here("output","2_degree_latitude","west_ind_shelf_areas_2degrees.rds"))
-east_pac_shelf_areas <- readRDS(here::here("output","2_degree_latitude","east_pac_shelf_areas_2degrees.rds"))
-east_atl_shelf_areas <- readRDS(here::here("output","2_degree_latitude","east_atl_shelf_areas_2degrees.rds"))
-east_ind_shelf_areas <- readRDS(here::here("output","2_degree_latitude","east_ind_shelf_areas_2degrees.rds"))
+Load data (these files created on annotate (HPC))
+```{r load latitude cross area data}
+west_pac_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","west_pac_shelf_areas_2degrees.rds"))
+west_atl_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","west_atl_shelf_areas_2degrees.rds"))
+west_ind_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","west_ind_shelf_areas_2degrees.rds"))
+east_pac_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","east_pac_shelf_areas_2degrees.rds"))
+east_atl_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","east_atl_shelf_areas_2degrees.rds"))
+east_ind_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","east_ind_shelf_areas_2degrees.rds"))
 
-load(here::here("Figures", "Figure3_5","latitude_area_plots.RData")) #CHECK FOR INDIAN
+```
 
-load(here::here("Figures","Figure3_5", "region_maps.RData")) #maps
+```{r load latitude area plots and such}
+load(here::here("Figures", "Figure3_5","latitude_area_plots.RData")) #from degree_shifts_projeected_2degrees.Rmd
 
-load(here::here("Figures","Figure3_5", "latitude_2degree_maps.RData")) #latitude area plots
+load(here::here("Figures","Figure3_5", "region_maps.RData")) #maps from degree_shifts_projeected_2degrees.Rmd
 
-shelf_areas <- readRDS(file = here::here("output","2_degree_latitude","shelf_areas.rds")) #spp richness stats
+load(here::here("Figures","Figure3_5", "latitude_2degree_maps.RData")) #latitude area plots from degree_shifts_projeected_2degrees.Rmd
+
+shelf_areas_fullstats <- readRDS(file = here::here("output","2_degree_latitude","shelf_areas_fullstats.rds")) #spp richness stats from degree_shifts_projeected_2degrees_globalarea.Rmd
+
+#change order of loss gain to allow for correct plotting order
+shelf_areas_fullstats[,spp_change_pos_neg_175_discrete:= factor(spp_change_pos_neg_175_discrete, levels = c("Loss","Gain"))][,spp_change_pos_neg_38_discrete:= factor(spp_change_pos_neg_38_discrete, levels = c("Loss","Gain"))][,spp_change_pos_neg_62_discrete:= factor(spp_change_pos_neg_62_discrete, levels = c("Loss","Gain"))]
 ```
 
 
 #East Atlantic
 ```{r east atlantic plots}
-(east_atlantic_spprichness <- ggplot(data = shelf_areas[region == "East Atlantic"], aes(x=latitude_start, y=change_spp_predicted_levin)) +
-   geom_col(aes(fill=spp_change_pos_neg_levin), alpha = 0.5) +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+#######
+##MINIMUM
+#######
+#min raw value
+(east_atlantic_spprichness_min <- ggplot(data = shelf_areas_fullstats[region == "East Atlantic"], aes(x=latitude_start, y=change_spp_predicted_175)) +
+   geom_col(aes(fill=spp_change_pos_neg_175_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.175", labels = c("Loss", "Gain")) +
     labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
  labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
 #  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
@@ -42,49 +55,155 @@ shelf_areas <- readRDS(file = here::here("output","2_degree_latitude","shelf_are
   coord_flip() +
   theme_classic())
 
-#with 3 levels and error bars
-(east_atlantic_spprichness_errorbars <- ggplot(data = shelf_areas[region == "East Atlantic"], aes(x=latitude_start, y=log_abs_change_spp_predicted_38*spp_change_pos_neg_38)) +
-   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
-  geom_errorbar(aes(ymin=log_abs_change_spp_predicted_175*spp_change_pos_neg_175, ymax=log_abs_change_spp_predicted_62*spp_change_pos_neg_62), size = 0.2, alpha = 0.6)  +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
-    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
- labs(x=paste0("Latitude ","\u00B0","N"), y = expression('log'~Delta~'Species Richness')) +
+#min percent change value
+(east_atlantic_spprichness_min_percentchange <- ggplot(data = shelf_areas_fullstats[region == "East Atlantic"], aes(x=latitude_start, y=percent_change_richness_min*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_175_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.175", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
 #  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
 #  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
   coord_flip() +
   theme_classic())
+
+
+#######
+##MEAN
+#######
+#mean raw value
+(east_atlantic_spprichness_mean <- ggplot(data = shelf_areas_fullstats[region == "East Atlantic"], aes(x=latitude_start, y=change_spp_predicted_38)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.38", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  coord_flip() +
+  theme_classic())
+
+#mean percent change value
+(east_atlantic_spprichness_mean_percentchange <- ggplot(data = shelf_areas_fullstats[region == "East Atlantic"], aes(x=latitude_start, y=percent_change_richness_mean*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.38", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  coord_flip() +
+  theme_classic())
+
+#######
+##MAXIMUM
+#######
+#max raw value
+(east_atlantic_spprichness_max <- ggplot(data = shelf_areas_fullstats[region == "East Atlantic"], aes(x=latitude_start, y=change_spp_predicted_62)) +
+   geom_col(aes(fill=spp_change_pos_neg_62_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.62", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  coord_flip() +
+  theme_classic())
+
+#max percent change value
+(east_atlantic_spprichness_max_percentchange <- ggplot(data = shelf_areas_fullstats[region == "East Atlantic"], aes(x=latitude_start, y=percent_change_richness_max*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_62_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.62", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  coord_flip() +
+  theme_classic())
+
 
 ```
 
 #West Atlantic
 
 ```{r west atlantic plots}
-(west_atlantic_spprichness <- ggplot(data = shelf_areas[region == "West Atlantic"], aes(x=latitude_start, y=change_spp_predicted_levin)) +
-   geom_col(aes(fill=spp_change_pos_neg_levin), alpha = 0.5) +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+#######
+##MINIMUM
+#######
+#min raw value
+(west_atlantic_spprichness_min <- ggplot(data = shelf_areas_fullstats[region == "West Atlantic"], aes(x=latitude_start, y=change_spp_predicted_175)) +
+   geom_col(aes(fill=spp_change_pos_neg_175_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.175", labels = c("Loss", "Gain")) +
     labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
- labs(x=paste0("Latitude ","\u00B0","N"), y =expression(Delta~'Species Richness')) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
 #  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
 #  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
   coord_flip() +
   theme_classic())
 
-direction_spp_richness_change_legend <- get_legend(west_atlantic_spprichness)
+#min percent change value
+(west_atlantic_spprichness_min_percentchange <- ggplot(data = shelf_areas_fullstats[region == "West Atlantic"], aes(x=latitude_start, y=percent_change_richness_min*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_175_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.175", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  coord_flip() +
+  theme_classic())
 
-#with 3 levels and error bars
-(west_atlantic_spprichness_errorbars <- ggplot(data = shelf_areas[region == "West Atlantic"], aes(x=latitude_start, y=log_abs_change_spp_predicted_38*spp_change_pos_neg_38)) +
+
+#######
+##MEAN
+#######
+#mean raw value
+(west_atlantic_spprichness_mean <- ggplot(data = shelf_areas_fullstats[region == "West Atlantic"], aes(x=latitude_start, y=change_spp_predicted_38)) +
    geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
-  geom_errorbar(aes(ymin=log_abs_change_spp_predicted_175*spp_change_pos_neg_175, ymax=log_abs_change_spp_predicted_62*spp_change_pos_neg_62), size = 0.2, alpha = 0.6)  +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.38", labels = c("Loss", "Gain")) +
     labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
- labs(x=paste0("Latitude ","\u00B0","N"), y = expression('log'~Delta~'Species Richness')) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
 #  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
 #  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
   coord_flip() +
   theme_classic())
+
+#mean percent change value
+(west_atlantic_spprichness_mean_percentchange <- ggplot(data = shelf_areas_fullstats[region == "West Atlantic"], aes(x=latitude_start, y=percent_change_richness_mean*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.38", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  coord_flip() +
+  theme_classic())
+
+#######
+##MAXIMUM
+#######
+#max raw value
+(west_atlantic_spprichness_max <- ggplot(data = shelf_areas_fullstats[region == "West Atlantic"], aes(x=latitude_start, y=change_spp_predicted_62)) +
+   geom_col(aes(fill=spp_change_pos_neg_62_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.62", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  coord_flip() +
+  theme_classic())
+
+#max percent change value
+(west_atlantic_spprichness_max_percentchange <- ggplot(data = shelf_areas_fullstats[region == "West Atlantic"], aes(x=latitude_start, y=percent_change_richness_max*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_62_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.62", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  coord_flip() +
+  theme_classic())
+
 
 ```
 
@@ -108,7 +227,7 @@ figure_4_atlantic_full <- egg::ggarrange(region_maps[[3]] +
       guides(color = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
             xlim(x=c(min(west_atl_shelf_areas$latitude_start),max(west_atl_shelf_areas$latitude_start))) +
                                                 scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
-          west_atlantic_spprichness +
+          west_atlantic_spprichness_mean_percentchange +
                            theme(axis.text.y = element_blank(),
                     # axis.ticks.y = element_blank(),
                      axis.title.y = element_blank(),
@@ -130,7 +249,7 @@ figure_4_atlantic_full <- egg::ggarrange(region_maps[[3]] +
                      legend.position = "none",
                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
                                                 scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)),
-          east_atlantic_spprichness +
+          east_atlantic_spprichness_mean_percentchange +
             theme(axis.text.y = element_blank(),
             #    axis.ticks.y = element_blank(),
                 axis.title.y = element_blank(),
@@ -146,122 +265,185 @@ ggsave(figure_4_atlantic_full, path = here::here("Figures", "Figure3_5"), filena
 ggsave(figure_4_atlantic_full, path = here::here("Figures", "Figure3_5"), filename = "Figure4_atlantic_latitude_area_spprichness.jpg", height = 6, width = 10, unit = "in")
 ```
 
-#Atlantic merge three levels
-```{r atlantic merge  three levels}
-figure_4_atlantic_full_threelevels <- egg::ggarrange(region_maps[[3]] + 
-                                                theme(legend.position = "top",
-                                                      axis.title.x = element_blank(),
-                                                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
- coord_equal(ylim = c(-55,85), xlim = c(-180,0)) +
-                                                scale_y_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
-          area_latitude_west_atl + 
-               theme(axis.text.y = element_blank(),
-                    # axis.ticks.y = element_blank(),
-                     axis.title.y = element_blank(),
-                     axis.title.x = element_blank(),
-                     legend.position = "top",
-                    legend.text=element_text(size=10),
-                    legend.title=element_text(size=10),
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-      guides(color = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
-            xlim(x=c(min(west_atl_shelf_areas$latitude_start),max(west_atl_shelf_areas$latitude_start))) +
-                                                scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
-          west_atlantic_spprichness_errorbars +
-                           theme(axis.text.y = element_blank(),
-                    # axis.ticks.y = element_blank(),
-                     axis.title.y = element_blank(),
-                     axis.title.x = element_blank(),
-                    legend.text=element_text(size=10),
-                    legend.title=element_text(size=10),
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
-                legend.position = "top") +
-      guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
-   xlim(x=c(min(west_atl_shelf_areas$latitude_start),max(west_atl_shelf_areas$latitude_start))) +
-                                                scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
- region_maps[[5]] + theme(legend.position = "none",
-                                                                          plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-                                                scale_y_continuous(breaks = c(-40,-20,0,20,40,60,80)) +  coord_equal(ylim = c(-35,81), xlim = c(-20,180)),
-          area_latitude_east_atl + 
-               theme(axis.text.y = element_blank(),
-           #          axis.ticks.y = element_blank(),
-                     axis.title.y = element_blank(),
-                     legend.position = "none",
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-                                                scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)),
-          east_atlantic_spprichness_errorbars +
-            theme(axis.text.y = element_blank(),
-            #    axis.ticks.y = element_blank(),
-                axis.title.y = element_blank(),
-                plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
-                legend.position = "none") +
-                                                 scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)),
- nrow = 2, top = T, bottom = T, widths = c(1,0.7,0.7,1.7,1,1))
-
-
-figure_4_atlantic_full_threelevels
-
-ggsave(figure_4_atlantic_full_threelevels, path = here::here("Figures", "Figure3_5"), filename = "Figure4_atlantic_latitude_area_spprichness_threelevels.pdf", height = 6, width = 10, unit = "in")
-ggsave(figure_4_atlantic_full_threelevels, path = here::here("Figures", "Figure3_5"), filename = "Figure4_atlantic_latitude_area_spprichness_threelevels.jpg", height = 6, width = 10, unit = "in")
-```
 
 #East pacific
 ```{r east pacific plots}
-(east_pacific_spprichness <- ggplot(data = shelf_areas[region == "East Pacific"], aes(x=latitude_start, y=change_spp_predicted_levin)) +
-   geom_col(aes(fill=spp_change_pos_neg_levin), alpha = 0.5) +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+#######
+##MINIMUM
+#######
+#min raw value
+(east_pacific_spprichness_min <- ggplot(data = shelf_areas_fullstats[region == "East Pacific"], aes(x=latitude_start, y=change_spp_predicted_175)) +
+   geom_col(aes(fill=spp_change_pos_neg_175_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.175", labels = c("Loss", "Gain")) +
     labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
  labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
 #  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
 #  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
-  xlim(x=c(min(shelf_areas[region == "East Pacific"]$latitude_start),max(shelf_areas[region == "East Pacific"]$latitude_start))) +
-scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)) +
   coord_flip() +
   theme_classic())
 
-#with 3 levels and error bars
-(east_pacific_spprichness_errorbars <- ggplot(data = shelf_areas[region == "East Pacific"], aes(x=latitude_start, y=log_abs_change_spp_predicted_38*spp_change_pos_neg_38)) +
-   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
-  geom_errorbar(aes(ymin=log_abs_change_spp_predicted_175*spp_change_pos_neg_175, ymax=log_abs_change_spp_predicted_62*spp_change_pos_neg_62), size = 0.2, alpha = 0.6)  +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
-    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
- labs(x=paste0("Latitude ","\u00B0","N"), y = expression('log'~Delta~'Species Richness')) +
+#min percent change value
+(east_pacific_spprichness_min_percentchange <- ggplot(data = shelf_areas_fullstats[region == "East Pacific"], aes(x=latitude_start, y=percent_change_richness_min*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_175_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.175", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
 #  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
 #  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
   coord_flip() +
   theme_classic())
 
+
+#######
+##MEAN
+#######
+#mean raw value
+(east_pacific_spprichness_mean <- ggplot(data = shelf_areas_fullstats[region == "East Pacific"], aes(x=latitude_start, y=change_spp_predicted_38)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.38", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  coord_flip() +
+  theme_classic())
+
+#mean percent change value
+(east_pacific_spprichness_mean_percentchange <- ggplot(data = shelf_areas_fullstats[region == "East Pacific"], aes(x=latitude_start, y=percent_change_richness_mean*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.38", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  coord_flip() +
+  theme_classic())
+
+#######
+##MAXIMUM
+#######
+#max raw value
+(east_pacific_spprichness_max <- ggplot(data = shelf_areas_fullstats[region == "East Pacific"], aes(x=latitude_start, y=change_spp_predicted_62)) +
+   geom_col(aes(fill=spp_change_pos_neg_62_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.62", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  coord_flip() +
+  theme_classic())
+
+#max percent change value
+(east_pacific_spprichness_max_percentchange <- ggplot(data = shelf_areas_fullstats[region == "East Pacific"], aes(x=latitude_start, y=percent_change_richness_max*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_62_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.62", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  coord_flip() +
+  theme_classic())
 ```
 
 #West pacific
 
 ```{r west pacific plots}
-(west_pacific_spprichness <- ggplot(data = shelf_areas[region == "West Pacific"], aes(x=latitude_start, y=change_spp_predicted_levin)) +
-   geom_col(aes(fill=spp_change_pos_neg_levin), alpha = 0.5) +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+
+#######
+##MINIMUM
+#######
+#min raw value
+(west_pacific_spprichness_min <- ggplot(data = shelf_areas_fullstats[region == "West Pacific"], aes(x=latitude_start, y=change_spp_predicted_175)) +
+   geom_col(aes(fill=spp_change_pos_neg_175_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.175", labels = c("Loss", "Gain")) +
     labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
  labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
 #  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
 #  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
-  xlim(x=c(min(shelf_areas[region == "West Pacific"]$latitude_start),max(shelf_areas[region == "West Pacific"]$latitude_start))) +
-                                                 scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)) +
+  xlim(x=c(min(shelf_areas_fullstats[region == "West Pacific"]$latitude_start),max(shelf_areas_fullstats[region == "West Pacific"]$latitude_start))) +
+scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)) +
   coord_flip() +
   theme_classic())
 
-#with 3 levels and error bars
-(west_pacific_spprichness_errorbars <- ggplot(data = shelf_areas[region == "West Pacific"], aes(x=latitude_start, y=log_abs_change_spp_predicted_38*spp_change_pos_neg_38)) +
-   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
-  geom_errorbar(aes(ymin=log_abs_change_spp_predicted_175*spp_change_pos_neg_175, ymax=log_abs_change_spp_predicted_62*spp_change_pos_neg_62), size = 0.2, alpha = 0.6)  +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
-    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
- labs(x=paste0("Latitude ","\u00B0","N"), y = expression('log'~Delta~'Species Richness')) +
+#min percent change value
+(west_pacific_spprichness_min_percentchange <- ggplot(data = shelf_areas_fullstats[region == "West Pacific"], aes(x=latitude_start, y=percent_change_richness_min*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_175_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.175", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
 #  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
 #  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
+  xlim(x=c(min(shelf_areas_fullstats[region == "West Pacific"]$latitude_start),max(shelf_areas_fullstats[region == "West Pacific"]$latitude_start))) +
+scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)) +
   coord_flip() +
   theme_classic())
+
+
+#######
+##MEAN
+#######
+#mean raw value
+(west_pacific_spprichness_mean <- ggplot(data = shelf_areas_fullstats[region == "West Pacific"], aes(x=latitude_start, y=change_spp_predicted_38)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.38", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  xlim(x=c(min(shelf_areas_fullstats[region == "West Pacific"]$latitude_start),max(shelf_areas_fullstats[region == "West Pacific"]$latitude_start))) +
+scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)) +
+  coord_flip() +
+  theme_classic())
+
+#mean percent change value
+(west_pacific_spprichness_mean_percentchange <- ggplot(data = shelf_areas_fullstats[region == "West Pacific"], aes(x=latitude_start, y=percent_change_richness_mean*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.38", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  xlim(x=c(min(shelf_areas_fullstats[region == "West Pacific"]$latitude_start),max(shelf_areas_fullstats[region == "West Pacific"]$latitude_start))) +
+  scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)) +
+  coord_flip() +
+  theme_classic())
+
+#######
+##MAXIMUM
+#######
+#max raw value
+(west_pacific_spprichness_max <- ggplot(data = shelf_areas_fullstats[region == "West Pacific"], aes(x=latitude_start, y=change_spp_predicted_62)) +
+   geom_col(aes(fill=spp_change_pos_neg_62_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.62", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0)  +
+  xlim(x=c(min(shelf_areas_fullstats[region == "West Pacific"]$latitude_start),max(shelf_areas_fullstats[region == "West Pacific"]$latitude_start))) +
+ scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)) +
+  coord_flip() +
+  theme_classic())
+
+#max percent change value
+(west_pacific_spprichness_max_percentchange <- ggplot(data = shelf_areas_fullstats[region == "West Pacific"], aes(x=latitude_start, y=percent_change_richness_max*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_62_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.62", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0)  +
+  xlim(x=c(min(shelf_areas_fullstats[region == "West Pacific"]$latitude_start),max(shelf_areas_fullstats[region == "West Pacific"]$latitude_start))) +
+scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)) +
+  coord_flip() +
+  theme_classic())
+
+
 
 ```
 
@@ -286,7 +468,7 @@ coord_equal(ylim = c(-43, 78), xlim = c(0,210)),
       guides(color = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
             xlim(x=c(min(west_pac_shelf_areas$latitude_start),max(west_pac_shelf_areas$latitude_start))) +
                                                 scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)),
-          west_pacific_spprichness +
+          west_pacific_spprichness_mean_percentchange +
                            theme(axis.text.y = element_blank(),
                     # axis.ticks.y = element_blank(),
                      axis.title.y = element_blank(),
@@ -307,7 +489,7 @@ coord_equal(ylim = c(-43, 78), xlim = c(0,210)),
                      legend.position = "none",
                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
                                                 scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
-          east_pacific_spprichness +
+          east_pacific_spprichness_mean_percentchange +
             theme(axis.text.y = element_blank(),
             #    axis.ticks.y = element_blank(),
                 axis.title.y = element_blank(),
@@ -326,132 +508,215 @@ ggsave(figure_3_pacific_full, path = here::here("Figures", "Figure3_5"), filenam
 
 
 ```
-#Pacific merge 3 levels
 
-```{r pacific merge three levels}
-figure_3_pacific_full_threelevels <- egg::ggarrange(region_maps[[1]] + ylim(c(min(west_pac_shelf_areas$latitude_end),max(west_pac_shelf_areas$latitude_end))) +
-                                                theme(legend.position = "top",
-                                                      legend.title = element_blank(),
-                                                      axis.title.x = element_blank(),
-                                                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-                                          scale_y_continuous(breaks = c(-40,-20,0,20,40,60,80)) +
-coord_equal(ylim = c(-43, 78), xlim = c(0,210)),
-          area_latitude_west_pac + 
-               theme(axis.text.y = element_blank(),
-                    # axis.ticks.y = element_blank(),
-                     axis.title.y = element_blank(),
-                     axis.title.x = element_blank(),
-                     legend.position = "top",
-                    legend.text=element_text(size=10),
-                    legend.title=element_text(size=10),
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-      guides(color = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
-            xlim(x=c(min(west_pac_shelf_areas$latitude_start),max(west_pac_shelf_areas$latitude_start))) +
-                                                scale_x_continuous(breaks = c(-40,-20,0,20,40,60,80)),
-          east_pacific_spprichness_errorbars +
-                           theme(axis.text.y = element_blank(),
-                    # axis.ticks.y = element_blank(),
-                     axis.title.y = element_blank(),
-                     axis.title.x = element_blank(),
-                    legend.text=element_text(size=10),
-                    legend.title=element_text(size=10),
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
-                legend.position = "top") +
-      guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
-   xlim(x=c(min(west_pac_shelf_areas$latitude_start),max(west_pac_shelf_areas$latitude_start))) +
-                                                scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
- region_maps[[2]] + theme(legend.position = "none", plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-                                                scale_y_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)) + coord_equal(ylim = c(-54, 77), xlim = c(160,300)),
-          area_latitude_east_pac + 
-               theme(axis.text.y = element_blank(),
-           #          axis.ticks.y = element_blank(),
-                     axis.title.y = element_blank(),
-                     legend.position = "none",
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-                                                scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
-          east_pacific_spprichness_errorbars +
-            theme(axis.text.y = element_blank(),
-            #    axis.ticks.y = element_blank(),
-                axis.title.y = element_blank(),
-                plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
-                legend.position = "none") +
-                                                 scale_x_continuous(breaks = c(-60,-40,-20,0,20,40,60,80)),
- nrow = 2, top = T, bottom = T, widths = c(1,0.7,0.7,1.7,1,1))
-
-
-figure_3_pacific_full_threelevels
-
-ggsave(figure_3_pacific_full_threelevels, path = here::here("Figures", "Figure3_5"), filename = "Figure3_pacific_latitude_area_spprichness_threelevels.pdf", height = 6, width = 10, unit = "in")
-ggsave(figure_3_pacific_full_threelevels, path = here::here("Figures", "Figure3_5"), filename = "Figure3_pacific_latitude_area_spprichness_threelevels.jpg", height = 6, width = 10, unit = "in")
-
-
-
-
-```
 
 #Indian
+##East Indian
 
-#East indian
 ```{r east indian plots}
 #pull values from maps
 west_ind_map <- ggplot_build(region_maps[[4]])
 east_ind_map <- ggplot_build(region_maps[[6]])
 
-(east_indian_spprichness <- ggplot(data = shelf_areas[region == "East Indian"], aes(x=latitude_start, y=change_spp_predicted_levin)) +
-   geom_col(aes(fill=spp_change_pos_neg_levin), alpha = 0.5) +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+#######
+##MINIMUM
+#######
+#min raw value
+(east_indian_spprichness_min <- ggplot(data = shelf_areas_fullstats[region == "East Indian"], aes(x=latitude_start, y=change_spp_predicted_175)) +
+   geom_col(aes(fill=spp_change_pos_neg_175_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.175", labels = c("Loss", "Gain")) +
     labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
  labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
-  geom_vline(xintercept = 0) +
-  coord_flip() +   
-  scale_x_continuous(breaks = c(-60,-40,-20,0,20)) +
-  theme_classic())
-
-#with 3 levels and error bars
-(east_indian_spprichness_errorbars <- ggplot(data = shelf_areas[region == "East Indian"], aes(x=latitude_start, y=log_abs_change_spp_predicted_38*spp_change_pos_neg_38)) +
-   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
-  geom_errorbar(aes(ymin=log_abs_change_spp_predicted_175*spp_change_pos_neg_175, ymax=log_abs_change_spp_predicted_62*spp_change_pos_neg_62), size = 0.2, alpha = 0.6)  +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
-    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
- labs(x=paste0("Latitude ","\u00B0","N"), y = expression('log'~Delta~'Species Richness')) +
 #  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
 #  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
+  xlim(x=c(min(shelf_areas_fullstats[region == "East Indian"]$latitude_start),max(shelf_areas_fullstats[region == "East Indian"]$latitude_start))) +
+  scale_x_continuous(breaks = c(-60,-40,-20,0,20)) +
   coord_flip() +
   theme_classic())
 
+#min percent change value
+(east_indian_spprichness_min_percentchange <- ggplot(data = shelf_areas_fullstats[region == "East Indian"], aes(x=latitude_start, y=percent_change_richness_min*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_175_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.175", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  xlim(x=c(min(shelf_areas_fullstats[region == "East Indian"]$latitude_start),max(shelf_areas_fullstats[region == "East Indian"]$latitude_start))) +
+  scale_x_continuous(breaks = c(-60,-40,-20,0,20)) +
+  coord_flip() +
+  theme_classic())
+
+
+#######
+##MEAN
+#######
+#mean raw value
+(east_indian_spprichness_mean <- ggplot(data = shelf_areas_fullstats[region == "East Indian"], aes(x=latitude_start, y=change_spp_predicted_38)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.38", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  xlim(x=c(min(shelf_areas_fullstats[region == "East Indian"]$latitude_start),max(shelf_areas_fullstats[region == "East Indian"]$latitude_start))) +
+  scale_x_continuous(breaks = c(-60,-40,-20,0,20)) +
+  coord_flip() +
+  theme_classic())
+
+#mean percent change value
+(east_indian_spprichness_mean_percentchange <- ggplot(data = shelf_areas_fullstats[region == "East Indian"], aes(x=latitude_start, y=percent_change_richness_mean*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.38", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  xlim(x=c(min(shelf_areas_fullstats[region == "East Indian"]$latitude_start),max(shelf_areas_fullstats[region == "East Indian"]$latitude_start))) +
+  scale_x_continuous(breaks = c(-60,-40,-20,0,20)) +
+  coord_flip() +
+  theme_classic())
+
+#######
+##MAXIMUM
+#######
+#max raw value
+(east_indian_spprichness_max <- ggplot(data = shelf_areas_fullstats[region == "East Indian"], aes(x=latitude_start, y=change_spp_predicted_62)) +
+   geom_col(aes(fill=spp_change_pos_neg_62_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.62", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0)  +
+  xlim(x=c(min(shelf_areas_fullstats[region == "East Indian"]$latitude_start),max(shelf_areas_fullstats[region == "East Indian"]$latitude_start))) +
+  scale_x_continuous(breaks = c(-60,-40,-20,0,20)) +
+  coord_flip() +
+  theme_classic())
+
+#max percent change value
+(east_indian_spprichness_max_percentchange <- ggplot(data = shelf_areas_fullstats[region == "East Indian"], aes(x=latitude_start, y=percent_change_richness_max*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_62_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.62", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0)  +
+  xlim(x=c(min(shelf_areas_fullstats[region == "East Indian"]$latitude_start),max(shelf_areas_fullstats[region == "East Indian"]$latitude_start))) +
+  scale_x_continuous(breaks = c(-60,-40,-20,0,20)) +
+  coord_flip() +
+  theme_classic())
 ```
+  
+  
 
 #West indian
 
 ```{r west indian plots}
-(west_indian_spprichness <- ggplot(data = shelf_areas[region == "West Indian"], aes(x=latitude_start, y=change_spp_predicted_levin)) +
-   geom_col(aes(fill=spp_change_pos_neg_levin), alpha = 0.5) +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
+#######
+##MINIMUM
+#######
+#min raw value
+(west_indian_spprichness_min <- ggplot(data = shelf_areas_fullstats[region == "West Indian"], aes(x=latitude_start, y=change_spp_predicted_175)) +
+   geom_col(aes(fill=spp_change_pos_neg_175_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.175", labels = c("Loss", "Gain")) +
     labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
  labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
 #  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
 #  scale_y_continuous(expand = c(0, 0)) +
-  geom_vline(xintercept = 0) + scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)) +
+  geom_vline(xintercept = 0) +
+  xlim(x=c(min(shelf_areas_fullstats[region == "West Indian"]$latitude_start),max(shelf_areas_fullstats[region == "West Indian"]$latitude_start))) +
+  scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)) +
   coord_flip() +
   theme_classic())
 
-#with 3 levels and error bars
-(west_indian_spprichness_errorbars <- ggplot(data = shelf_areas[region == "West Indian"], aes(x=latitude_start, y=log_abs_change_spp_predicted_38*spp_change_pos_neg_38)) +
-   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
-  geom_errorbar(aes(ymin=log_abs_change_spp_predicted_175*spp_change_pos_neg_175, ymax=log_abs_change_spp_predicted_62*spp_change_pos_neg_62), size = 0.2, alpha = 0.6)  +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift", labels = c("Loss", "Gain")) +
-    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
- labs(x=paste0("Latitude ","\u00B0","N"), y = expression('log'~Delta~'Species Richness')) +
+#min percent change value
+(west_indian_spprichness_min_percentchange <- ggplot(data = shelf_areas_fullstats[region == "West Indian"], aes(x=latitude_start, y=percent_change_richness_min*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_175_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.175", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
 #  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
 #  scale_y_continuous(expand = c(0, 0)) +
   geom_vline(xintercept = 0) +
+  xlim(x=c(min(shelf_areas_fullstats[region == "West Indian"]$latitude_start),max(shelf_areas_fullstats[region == "West Indian"]$latitude_start))) +
+  scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)) +
   coord_flip() +
   theme_classic())
 
-```
 
-#indian merge
+#######
+##MEAN
+#######
+#mean raw value
+(west_indian_spprichness_mean <- ggplot(data = shelf_areas_fullstats[region == "West Indian"], aes(x=latitude_start, y=change_spp_predicted_38)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.38", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  xlim(x=c(min(shelf_areas_fullstats[region == "West Indian"]$latitude_start),max(shelf_areas_fullstats[region == "West Indian"]$latitude_start))) +
+  scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)) +
+  coord_flip() +
+  theme_classic())
+
+#mean percent change value
+(west_indian_spprichness_mean_percentchange <- ggplot(data = shelf_areas_fullstats[region == "West Indian"], aes(x=latitude_start, y=percent_change_richness_mean*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.38", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0) +
+  xlim(x=c(min(shelf_areas_fullstats[region == "West Indian"]$latitude_start),max(shelf_areas_fullstats[region == "West Indian"]$latitude_start))) +
+  scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)) +
+  coord_flip() +
+  theme_classic())
+
+#######
+##MAXIMUM
+#######
+#max raw value
+(west_indian_spprichness_max <- ggplot(data = shelf_areas_fullstats[region == "West Indian"], aes(x=latitude_start, y=change_spp_predicted_62)) +
+   geom_col(aes(fill=spp_change_pos_neg_62_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Species Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.62", labels = c("Loss", "Gain")) +
+    labs(x = "Depth  (15 m bins)", y = "Change in Spp Richness") +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression(Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0)  +
+  xlim(x=c(min(shelf_areas_fullstats[region == "West Indian"]$latitude_start),max(shelf_areas_fullstats[region == "West Indian"]$latitude_start))) +
+  scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)) +
+  coord_flip() +
+  theme_classic())
+
+#max percent change value
+(west_indian_spprichness_max_percentchange <- ggplot(data = shelf_areas_fullstats[region == "West Indian"], aes(x=latitude_start, y=percent_change_richness_max*100)) +
+   geom_col(aes(fill=spp_change_pos_neg_62_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = " Percent Richness Change\nWith 2\u00B0 Latitudinal Shift\nz = 0.62", labels = c("Loss", "Gain")) +
+ labs(x=paste0("Latitude ","\u00B0","N"), y = expression('Percent'~Delta~'Species Richness')) +
+#  scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
+#  scale_y_continuous(expand = c(0, 0)) +
+  geom_vline(xintercept = 0)  +
+  xlim(x=c(min(shelf_areas_fullstats[region == "West Indian"]$latitude_start),max(shelf_areas_fullstats[region == "West Indian"]$latitude_start))) +
+  scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)) +
+  coord_flip() +
+  theme_classic())
+```
+  
+
+
+
+
+
+
+
+
+#Indian Ocean merge
+
 ```{r indian merge}
 
 figure_5_indian_full <- egg::ggarrange(region_maps[[4]] + 
@@ -473,7 +738,7 @@ figure_5_indian_full <- egg::ggarrange(region_maps[[4]] +
             xlim(min(west_ind_map$data[[1]]$y), max(west_ind_map$data[[1]]$y)) +
                                                 scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30))  +
    xlim(min(west_ind_map$data[[2]]$y), max(west_ind_map$data[[2]]$y)),
-          west_indian_spprichness +
+          west_indian_spprichness_mean_percentchange +
                            theme(axis.text.y = element_blank(),
                     # axis.ticks.y = element_blank(),
                      axis.title.y = element_blank(),
@@ -495,7 +760,7 @@ figure_5_indian_full <- egg::ggarrange(region_maps[[4]] +
                      legend.position = "none",
                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
                                                 scale_x_continuous(breaks = c(-40,-20,0,20)) + xlim(c(-44,22)),
-          east_indian_spprichness +
+          east_indian_spprichness_mean_percentchange +
             theme(axis.text.y = element_blank(),
             #    axis.ticks.y = element_blank(),
                 axis.title.y = element_blank(),
@@ -512,142 +777,240 @@ ggsave(figure_5_indian_full, path = here::here("Figures", "Figure3_5"), filename
 
 ```
 
-#indian merge for three levels
-```{r indian merge three levels}
+##Species Richness Figures For Supplement
 
-figure_5_indian_full_threelevels <- egg::ggarrange(region_maps[[4]] + 
-                                                theme(legend.position = "top",
-                                                      axis.title.x = element_blank(),
-                                                      plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"))+
-   coord_equal(ylim = c(-38,32), xlim = c(10,83)) +
-                                                scale_y_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)),
-          area_latitude_west_ind + 
-               theme(axis.text.y = element_blank(),
+Pacific Merge Supplement
+
+```{r pacific Merge min mean max for sup}
+figure_3_pacific_full_supplement <- egg::ggarrange(
+  #WEST
+  #min
+          west_pacific_spprichness_min_percentchange +
+                           theme(axis.text.y = element_blank(),
                     # axis.ticks.y = element_blank(),
-                     axis.title.y = element_blank(),
+                    # axis.title.y = element_blank(),
                      axis.title.x = element_blank(),
-                     legend.position = "top",
                     legend.text=element_text(size=10),
                     legend.title=element_text(size=10),
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-      guides(color = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
-            xlim(min(west_ind_map$data[[1]]$y), max(west_ind_map$data[[1]]$y)) +
-                                                scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30))  +
-   xlim(min(west_ind_map$data[[2]]$y), max(west_ind_map$data[[2]]$y)),
-          west_indian_spprichness_errorbars +
+                  #   plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "top") +
+      guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
+        xlab(paste0("West Pacific\n","Latitude ","\u00B0","N")),
+      
+      #mean
+                west_pacific_spprichness_mean_percentchange +
                            theme(axis.text.y = element_blank(),
                     # axis.ticks.y = element_blank(),
                      axis.title.y = element_blank(),
                      axis.title.x = element_blank(),
                     legend.text=element_text(size=10),
                     legend.title=element_text(size=10),
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                   #  plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "top") +
+      guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")),
+
+      #max
+                west_pacific_spprichness_max_percentchange +
+                           theme(axis.text.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     axis.title.x = element_blank(),
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                 #    plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "top") +
+      guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")),
+
+#EAST
+#min
+          east_pacific_spprichness_min_percentchange +
+            theme(axis.text.y = element_blank(),
+            #    axis.ticks.y = element_blank(),
+             #   axis.title.y = element_blank(),
+              #  plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "none") +
+          xlab(paste0("East Pacific\n","Latitude ","\u00B0","N")),
+
+#mean
+          east_pacific_spprichness_mean_percentchange +
+            theme(axis.text.y = element_blank(),
+            #    axis.ticks.y = element_blank(),
+                axis.title.y = element_blank(),
+              #  plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "none"),                                             
+#max
+          east_pacific_spprichness_max_percentchange +
+            theme(axis.text.y = element_blank(),
+            #    axis.ticks.y = element_blank(),
+                axis.title.y = element_blank(),
+              #  plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "none"),
+
+nrow = 2,ncol = 3, top = T, bottom = T, left = T, right = T)
+
+
+figure_3_pacific_full_supplement
+
+ggsave(figure_3_pacific_full_supplement, path = here::here("Figures", "Supplement"), filename = "Figure3_pacific_latitude_area_spprichness_supplement.pdf", height = 10, width = 10, unit = "in")
+ggsave(figure_3_pacific_full_supplement, path = here::here("Figures", "Supplement"), filename = "Figure3_pacific_latitude_area_spprichness_supplement.jpg", height = 10, width = 10, unit = "in")
+
+```
+
+
+Atlantic Merge Supplement
+```{r atlantic Merge min mean max for sup}
+figure_4_atlantic_full_supplement <- egg::ggarrange(
+  #WEST
+  #min
+          west_atlantic_spprichness_min_percentchange +
+                           theme(axis.text.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
+                    # axis.title.y = element_blank(),
+                     axis.title.x = element_blank(),
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                  #   plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "top") +
+      guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
+        xlab(paste0("West Atlantic\n","Latitude ","\u00B0","N")),
+      
+      #mean
+                west_atlantic_spprichness_mean_percentchange +
+                           theme(axis.text.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     axis.title.x = element_blank(),
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                   #  plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "top") +
+      guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")),
+
+      #max
+                west_atlantic_spprichness_max_percentchange +
+                           theme(axis.text.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     axis.title.x = element_blank(),
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                 #    plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "top") +
+      guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")),
+
+#EAST
+#min
+          east_atlantic_spprichness_min_percentchange +
+            theme(axis.text.y = element_blank(),
+            #    axis.ticks.y = element_blank(),
+             #   axis.title.y = element_blank(),
+              #  plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "none") +
+          xlab(paste0("East Atlantic\n","Latitude ","\u00B0","N")),
+
+#mean
+          east_atlantic_spprichness_mean_percentchange +
+            theme(axis.text.y = element_blank(),
+            #    axis.ticks.y = element_blank(),
+                axis.title.y = element_blank(),
+              #  plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "none"),                                             
+#max
+          east_atlantic_spprichness_max_percentchange +
+            theme(axis.text.y = element_blank(),
+            #    axis.ticks.y = element_blank(),
+                axis.title.y = element_blank(),
+              #  plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "none"),
+
+nrow = 2,ncol = 3, top = T, bottom = T, left = T, right = T)
+
+
+figure_4_atlantic_full_supplement
+
+ggsave(figure_4_atlantic_full_supplement, path = here::here("Figures", "Supplement"), filename = "Figure4_atlantic_latitude_area_spprichness_supplement.pdf", height = 10, width = 10, unit = "in")
+ggsave(figure_4_atlantic_full_supplement, path = here::here("Figures", "Supplement"), filename = "Figure4_atlantic_latitude_area_spprichness_supplement.jpg", height = 10, width = 10, unit = "in")
+
+```
+#Indian Merge for Supplement
+```{r indian Merge min mean max for sup}
+figure_5_indian_full_supplement <- egg::ggarrange(
+  #WEST
+  #min
+          west_indian_spprichness_min_percentchange +
+                           theme(axis.text.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
+                    # axis.title.y = element_blank(),
+                     axis.title.x = element_blank(),
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                  #   plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "top") +
+      guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
+                                                scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)) +
+                xlab(paste0("West Indian\n","Latitude ","\u00B0","N")),
+      
+      #mean
+                west_indian_spprichness_mean_percentchange +
+                           theme(axis.text.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     axis.title.x = element_blank(),
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                   #  plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "top") +
+      guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
+                                                scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)),
+      
+      #max
+                west_indian_spprichness_max_percentchange +
+                           theme(axis.text.y = element_blank(),
+                    # axis.ticks.y = element_blank(),
+                     axis.title.y = element_blank(),
+                     axis.title.x = element_blank(),
+                    legend.text=element_text(size=10),
+                    legend.title=element_text(size=10),
+                 #    plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
                 legend.position = "top") +
       guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,direction = "vertical")) +
                                                 scale_x_continuous(breaks = c(-40,-30,-20,-10,0,10,20,30)),
  
- region_maps[[6]] + theme(legend.position = "none",
-                          plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-                                                scale_y_continuous(breaks = c(-40,-20,0,20)) +  coord_equal(ylim = c(-43, 22), xlim = c(74,152)),
-          area_latitude_east_ind + 
-               theme(axis.text.y = element_blank(),
-           #          axis.ticks.y = element_blank(),
-                     axis.title.y = element_blank(),
-                     legend.position = "none",
-                     plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")) +
-                                                scale_x_continuous(breaks = c(-40,-20,0,20)) + xlim(c(-44,22)),
-          west_indian_spprichness_errorbars +
+#EAST
+#min
+          east_indian_spprichness_min_percentchange +
+            theme(axis.text.y = element_blank(),
+            #    axis.ticks.y = element_blank(),
+             #   axis.title.y = element_blank(),
+              #  plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "none") +
+          xlab(paste0("East Indian\n","Latitude ","\u00B0","N")) +
+                                                 scale_x_continuous(breaks = c(-60,-40,-20,0,20)) + xlim(c(-44,22)),
+
+#mean
+          east_indian_spprichness_mean_percentchange +
             theme(axis.text.y = element_blank(),
             #    axis.ticks.y = element_blank(),
                 axis.title.y = element_blank(),
-                plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+              #  plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
+                legend.position = "none") +                                              scale_x_continuous(breaks = c(-60,-40,-20,0,20)) + xlim(c(-44,22)),
+
+#max
+          east_indian_spprichness_max_percentchange +
+            theme(axis.text.y = element_blank(),
+            #    axis.ticks.y = element_blank(),
+                axis.title.y = element_blank(),
+              #  plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm"),
                 legend.position = "none") +
                                                  scale_x_continuous(breaks = c(-60,-40,-20,0,20)) + xlim(c(-44,22)),
- nrow = 2, top = T, bottom = T, left = T, right = T)
+
+nrow = 2,ncol = 3, top = T, bottom = T, left = T, right = T)
 
 
-figure_5_indian_full_threelevels
+figure_5_indian_full_supplement
 
-ggsave(figure_5_indian_full_threelevels, path = here::here("Figures", "Figure3_5"), filename = "Figure5_indian_latitude_area_spprichness_threelevels.pdf", height = 6, width = 10, unit = "in")
-ggsave(figure_5_indian_full_threelevels, path = here::here("Figures", "Figure3_5"), filename = "Figure5_indian_latitude_area_spprichness_threelevels.jpg", height = 6, width = 10, unit = "in")
+ggsave(figure_5_indian_full_supplement, path = here::here("Figures", "Supplement"), filename = "Figure5_indian_latitude_area_spprichness_supplement.pdf", height = 10, width = 10, unit = "in")
+ggsave(figure_5_indian_full_supplement, path = here::here("Figures", "Supplement"), filename = "Figure5_indian_latitude_area_spprichness_supplement.jpg", height = 10, width = 10, unit = "in")
 
 ```
 
-
-
-
-
-
-
-
-
-
-
-#what if we tried a second y axes instead (I think I'm going to scrap this alternative attempt)
-```{r}
-#west atlantic
-
-area_latitude_west_atl_2axes  <- ggplot() +
-  geom_area(data = shelf_areas[region == "West Atlantic"], aes(x=latitude_mid, y=original_spp_predicted_levin), fill = "azure3") +
-  geom_line(data = west_atl_north_data, aes(x=latitude_mid, y = area_1000s), color = "white", size = 0.8, linetype = "longdash") +
-  geom_line(data = west_atl_south_data, aes(x=-latitude_mid, y = area_1000s), color = "white", size = 0.8, linetype = "longdash") +
-  geom_point(data = west_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) + 
-  geom_line(data = west_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
-  geom_rug(data = west_atl_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
- labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
-  scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Associated Change\nin Shelf Area", labels = c("Contraction", "Expansion")) +
-  #annotate("text", x = 80, y = 120000, label = "Western Atlantic Ocean") +
-  geom_vline(xintercept = 0) +
-  scale_y_continuous(
-    #expand = c(0, 0),
-    # Add a second axis and specify its features
-    sec.axis = sec_axis(trans = ~., name=paste0(expression(delta)," Species Richness"))) +
-    scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
-  coord_flip() +
-  theme_classic() +
-  theme(plot.margin = margin(10, 10, 10, 10), 
-        axis.title.x.top = element_text(color = "azure4", face = "bold"),
-        axis.text.x.top = element_text(color = "azure4", face = "bold"))
-```
-
-```{r}
-#east atlantic
-
-(area_latitude_east_atl_2axes  <- ggplot() +
-  geom_area(data = shelf_areas[region == "East Atlantic"], aes(x=latitude_mid, y=original_spp_predicted_levin), fill = "azure3") +
-  geom_line(data = east_atl_north_data, aes(x=latitude_mid, y = area_1000s), color = "orange4", size = 0.8, linetype = "longdash") +
-  geom_line(data = east_atl_south_data, aes(x=-latitude_mid, y = area_1000s), color = "orange4", size = 0.8, linetype = "longdash") +
-  geom_point(data = east_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), shape =18, size = 0.7) + 
-  geom_line(data = east_atl_shelf_areas, aes(x=latitude_start, y=area_1000s), size = 0.7) +
-  geom_rug(data = east_atl_shelf_areas_highlight, aes(x = latitude_start, color = as.factor(change_above_2fold))) +
- labs(x=paste0("Latitude ","\u00B0","E"), y = expression(paste("Area (1000s of ", km^{2},")"))) +
-  scale_color_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Associated Change\nin Shelf Area", labels = c("Contraction", "Expansion")) +
-  #annotate("text", x = 80, y = 120000, label = "eastern Atlantic Ocean") +
-  geom_vline(xintercept = 0) +
-#  xlim(min(east_atl_shelf_areas$latitude_end), max(east_atl_shelf_areas$latitude_end)) +
-  scale_y_continuous(
-#    expand = c(0, 0),
-    # Add a second axis and specify its features
-    sec.axis = sec_axis(trans = ~., name=paste0(expression(delta)," Species Richness")),
-     limits = c(0,max(east_atl_shelf_areas$area_1000s))) +
-    scale_x_continuous(expand = c(0, 0)) + #gets rid of gap
-  coord_flip() +
-  theme_classic() +
-# ylim(0,max(east_atl_shelf_areas$area_1000s)) +
-  theme(plot.margin = margin(10, 10, 10, 10), 
-        axis.title.x.top = element_text(color = "azure4", face = "bold"),
-        axis.text.x.top = element_text(color = "azure4", face = "bold")))
-
-#add map
-
-east_atlantic_overlay <- egg::ggarrange(region_maps[[5]] + theme(plot.margin = unit(c(0.1,0.1,0.1,0.1),"cm")),
-          area_latitude_east_atl_2axes, bottom = T, ncol = 2, nrow = 1)
-```
-
-#East Pacific
-
-#West Pacific
-
-#East Indian
-
-#West Indian

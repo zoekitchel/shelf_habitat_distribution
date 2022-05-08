@@ -1,0 +1,203 @@
+---
+title: "Compiled Plots: Maps & Classified Depth by Area"
+output: html_notebook
+---
+
+```{r setup}
+library(ggplot2)
+library(data.table)
+library(raster)
+library(rgdal)
+library(rgeos)
+library(gridExtra)
+```
+
+Load Data
+```{r load data}
+#LMEs
+LME_spdf <- readOGR(here::here("raw_data/LME66/LMEs66.shp"))
+
+#keep Antarctica and the arctic
+LME_poles <- LME_spdf[LME_spdf$LME_NUMBER == 61 | LME_spdf$LME_NUMBER == 64,]
+
+
+#get rid of Antarctica and the arctic
+LME_spdf <- LME_spdf[LME_spdf$LME_NUMBER != 61 & LME_spdf$LME_NUMBER != 64,]
+
+#LME stats and classifications
+LME_bathy_statistics_full <- readRDS(here::here("output","LME_bathy_statistics_full.rds"))
+
+#raster
+etopo1_shelf_raster <- raster(here::here("output","intermediate_data","etopo1_shelf_raster.gri"))
+
+```
+
+Plot 
+```{r}
+#plot map, plot hypsometric curve, plot histogram
+
+#reorder LME_spdf by LME # 
+LME_spdf_ordered <- LME_spdf[order(LME_spdf$LME_NUMBER),]
+
+
+lme_maps <- vector("list", length = nrow(LME_spdf_ordered))
+lme_areaplots <- vector("list", length = nrow(LME_spdf_ordered))
+lme_areaplots_classified <- vector("list", length = nrow(LME_spdf_ordered))
+
+for (i in 1:nrow(LME_bathy_statistics_full)) {
+  #subset
+   LME_single <- LME_spdf_ordered[i,]
+  
+  #clip raster to LME
+  LME_extent <- crop(etopo1_shelf_raster, extent(LME_single))
+  
+  
+  #which areas of raster fall within borders?
+  LME_mask <- mask(LME_extent, LME_single)
+  
+  rm(LME_extent)
+  
+  #convert to df for plotting
+    # First, to a SpatialPointsDataFrame
+    LME_points <- rasterToPoints(LME_mask, spatial = TRUE)
+    
+  #project points to help with better plotting
+ #   LME_points <- spTransform(LME_points, CRS())
+    
+    # Then to a 'conventional' dataframe
+    LME_dt  <- data.table(data.frame(LME_points))
+  
+  #keep depth positive  
+  LME_dt[,depth := -(layer)]
+  
+  LME_dt$x_shift <- ifelse(
+    max(LME_dt$x)-min(LME_dt$x) > 200 & LME_dt$x >0,
+    LME_dt$x - 360,
+    LME_dt$x)
+  
+  #size of raster  
+  #get sizes of all cells in raster [km2]
+    cell_size<-area(LME_mask, na.rm=TRUE, weights=FALSE)
+    #delete NAs from vector of all raster cells
+    ##NAs lie outside of the rastered region, can thus be omitted
+    cell_size<-cell_size[!is.na(cell_size)]
+    #compute area [km2] of all cells in geo_raster
+    bathy_raster_area <- sum(cell_size)
+    
+  #To get a polygon that surrounds cells that are not NA
+  
+    # make all values the same.
+    r <- reclassify(LME_mask, cbind(-Inf, Inf, 1))
+    
+    # convert to polygons (you need to have package 'rgeos' installed for this to work)
+    pp <- rasterToPolygons(r, dissolve=TRUE) #longer step 11:59-12:04
+    
+    rm(r)
+    
+    LME_reduced_df <- fortify(pp)
+    
+    rm(pp)
+    
+    LME_reduced_df$long_shift <- ifelse(
+    max(LME_reduced_df$long)-min(LME_reduced_df$long) > 200 & LME_reduced_df$long >0,
+    LME_reduced_df$long - 360,
+    LME_reduced_df$long)
+  
+  lme_maps[[i]] <- ggplot(LME_dt,aes(x = x_shift, y = y, fill = depth)) +
+    geom_tile() +
+    scale_fill_gradientn(
+  colours=c("tomato","#f98f3e","#f9be3e","#E3E247", "#46AF78", "#3B5088","#592f83","#420d54", "#420d54"),
+  breaks = c(min(LME_dt$depth),
+                    50,
+                    100,
+                    200,
+                    300,
+                    400,
+                     500,
+                     500,
+                     max(LME_dt$depth))) +
+    theme_classic() +
+      labs(x = paste0("Longitude ","\u00B0","E"), y = paste0("Latitude ","\u00B0","N"), fill = "Depth (m)") +
+    guides(fill = guide_colorbar(reverse = T)) +
+  #  geom_path(data = LME_reduced_df, aes(x = long_shift, y = lat, group = group), color = "black") +
+    labs(title = paste0("LME ", LME_bathy_statistics_full[i,lme_number], "\n", LME_bathy_statistics_full[i,lme_name])) + #switch direction of / for annotate
+    theme(plot.title = element_text(hjust=0.5, size = 11, face = "bold"))
+  
+  
+    #list of values within raster
+  LME_bathy_depth_list <- getValues(LME_mask)
+  LME_bathy_depth_list <- LME_bathy_depth_list[!is.na(LME_bathy_depth_list)]
+  
+  LME_bathy_depth_list_pos <- -1*LME_bathy_depth_list #make all depth values positive
+  
+  rm(LME_bathy_depth_list)
+  
+  #assign specific cell size values and depth values to each grid cell
+  cell_size_cell_value <- data.table(cell_size = cell_size, depth = LME_bathy_depth_list_pos)
+  
+  #sum area across cells with same depth
+  cell_size_cell_value[,sum_area := sum(cell_size), by = depth]
+
+  #reduce to frequency table
+  freq_table_raster <- unique(cell_size_cell_value, by = c("depth", "sum_area"))
+
+  freq_table_raster[,cell_size := NULL] #remove cell size column
+  
+  max_y <- max(freq_table_raster$sum_area)
+    
+  #plot
+  lme_areaplots_classified[[i]] <- ggplot(data = freq_table_raster, aes(x = depth, y = sum_area, fill = depth)) +
+    geom_col(width = 5) +
+#    geom_smooth(method = "gam", se = F, color = "black", size = 1) +
+    theme_classic() +
+    labs(x = "Depth (m)", y = expression(paste("Area (", km^{2},")")), fill = "Depth (m)") +
+    scale_y_continuous(expand = c(0, 0)) +
+    scale_x_continuous(expand = c(0,0)) +
+    scale_fill_gradientn(
+  colours=c("tomato","#f98f3e","#f9be3e","#E3E247", "#46AF78", "#3B5088","#592f83","#420d54", "#420d54"),
+  breaks = c(min(freq_table_raster$depth),
+                    50,
+                    100,
+                    200,
+                    300,
+                    400,
+                     500,
+                     500,
+                     max(freq_table_raster$depth))) +
+    guides(position = "bottom", fill = guide_colorbar(reverse = T)) +
+#add classification info and text
+    geom_vline(xintercept = LME_bathy_statistics_full[i,mean_depth], color = "red", linetype = "dashed") +
+    annotate("text", x=Inf, y = max_y+3*max_y/20, hjust=1, label = paste0("\nLME ", LME_bathy_statistics_full[i,lme_number]), fontface = "bold", size = 2) +
+    annotate("text", x = Inf, y = max_y+1*max_y/20, hjust = 1, label = paste0(LME_bathy_statistics_full[i,lme_name]), fontface = "bold", size = 2) +
+    annotate("text", x =  Inf, y = max_y, hjust = 1, label = paste0(LME_bathy_statistics_full[i,region]," Ocean"), size = 2) +
+        annotate("text", x=Inf, y = max_y-max_y/20, hjust=1, label = paste0("Classification: ", LME_bathy_statistics_full[i,type]), size = 2) +
+    annotate("text", x=Inf, y = max_y-2*max_y/20, hjust=1, label = paste0("Dip Test: ", signif(LME_bathy_statistics_full[i,dip_test],2), " P-value = ", signif(LME_bathy_statistics_full[i,dip_p_value], 2)), size = 2) +
+    annotate("text", x=Inf, y = max_y-3*max_y/20, hjust=1, label = paste0("Skew: ", round(LME_bathy_statistics_full[i,skew],2)), size = 2) +
+    annotate("text", x=Inf, y = max_y-4*max_y/20, hjust=1, label = paste0("Mean: ",round(LME_bathy_statistics_full[i,mean_depth],2), " m"), size = 2) +
+    theme(axis.title = element_text(size = 8), axis.text = element_text(size = 6),
+            legend.title = element_text(size = 8),
+            legend.text = element_text(size = 6)) +
+    guides(shape = guide_legend(override.aes = list(size = 4)))
+  
+  rm(LME_mask, LME_points, cell_size, LME_bathy_depth_list_pos)
+  
+  print(i)
+  
+  gc()
+
+}
+```
+
+Save!
+```{r save}
+#save to rds
+saveRDS(lme_areaplots_classified, here::here("output","compiled_plots","arranged_areaplots_classified.rds"))
+saveRDS(lme_maps, here::here("output","compiled_plots","lme_maps.rds"))
+
+
+#plots to pdf
+ggsave("arranged_maps.pdf", path = here::here("Figures","compiled_plots"), marrangeGrob(lme_maps_full, ncol=2, nrow = 3), width = 8.5, height = 11, unit = "in")
+
+ggsave(filename = "arranged_areaplots_classified.pdf", path = here::here("Figures","compiled_plots"), plot =  marrangeGrob(grobs = lme_areaplots_classified_full, ncol=2, nrow = 3), width = 8.5, height = 11, unit = "in")
+```
+

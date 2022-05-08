@@ -22,8 +22,8 @@ library(ggridges) #allows for gradient in density plot
 library(psych) #summary statistics
 library(gridExtra)
 
-etopo_shelf_df <- readRDS(here::here("raw_data/etopo_shelf_df.rds"))
-#bring in bathy for shelf regions
+#etopo1_shelf_df <- readRDS(here::here("raw_data/ETOPO1/etopo1_shelf_df.rds"))
+#bring in bathy for shelf regions (just pull in raster below)
 
 #LMEs
 LME_spdf <- readOGR(here::here("raw_data/LME66/LMEs66.shp"))
@@ -35,10 +35,6 @@ LME_poles <- LME_spdf[LME_spdf$LME_NUMBER == 61 | LME_spdf$LME_NUMBER == 64,]
 #get rid of Antarctica and the arctic
 LME_spdf <- LME_spdf[LME_spdf$LME_NUMBER != 61 & LME_spdf$LME_NUMBER != 64,]
 
-
-#equal area projection
-eaproj <- CRS("+proj=laea")
-LME_spdf.EA <- spTransform(LME_spdf, eaproj)
 
 
 ```
@@ -56,29 +52,33 @@ center@coords[2]
 
 Make bathy layer into raster (I should see if this is different if I use equal area projection (To Do))
 ```{r rasterize}
-proj <- crs(LME_spdf)
-etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = proj)
+#proj <- crs(LME_spdf)
+#etopo1_shelf_raster <- rasterFromXYZ(etopo1_shelf_df, crs = proj)
+
+#just pull in raster that you saved
+etopo1_shelf_raster <- raster(here::here("output","intermediate_data","etopo1_shelf_raster.gri"))
 
 
 #make figure of shelves
-  #png("etopo_shelf_bathy.png", height=5, width=7, units="in", res=300)
-  #plot(etopo_shelf_raster)
+  #png("etopo1_shelf_bathy.png", height=5, width=7, units="in", res=300)
+  #plot(etopo1_shelf_raster)
   #dev.off()
 
 ```
 
 Depth distribution
 ```{r depth distribution}
-mean(etopo_shelf_raster$z)
-hist(etopo_shelf_raster$z)
+mean(etopo1_shelf_raster$z)
+hist(etopo1_shelf_raster$z)
 
-cellStats(etopo_shelf_raster, stat = 'mean')
-hist(etopo_shelf_raster)
+cellStats(etopo1_shelf_raster, stat = 'mean')
+hist(etopo1_shelf_raster)
 ```
+
 Depth distribution for Antarctica and Arctic specifically
 ```{r Antarctic & Arctic}
 #crop bathy layer to LME subset
-bathy_arctic_extent <- crop(etopo_shelf_raster, extent(LME_poles[2,]))
+bathy_arctic_extent <- crop(etopo1_shelf_raster, extent(LME_poles[2,]))
 
 #which areas of raster fall within borders?
 bathy_arctic_mask <- mask(bathy_arctic_extent, LME_poles[2,])
@@ -121,7 +121,7 @@ Clip raster to each individual polygon
 
 ```{r clip raster to polygon}
 #crop bathy layer to LME subset
-bathy_baltic_extent <- crop(etopo_shelf_raster, extent(LME_baltic))
+bathy_baltic_extent <- crop(etopo1_shelf_raster, extent(LME_baltic))
 
 #which areas of raster fall within borders?
 bathy_baltic_mask <- mask(bathy_baltic_extent, LME_baltic)
@@ -192,7 +192,7 @@ LME_datatable <- LME_spdf@data
 LME_aleutian <- LME_spdf[LME_spdf$LME_NUMBER == 65,]
 
 #crop bathy layer to LME subset
-bathy_aleutian_extent <- crop(etopo_shelf_raster, extent(LME_aleutian))
+bathy_aleutian_extent <- crop(etopo1_shelf_raster, extent(LME_aleutian))
 
 #which areas of raster fall within borders?
 bathy_aleutian_mask <- mask(bathy_aleutian_extent, LME_aleutian)
@@ -373,6 +373,12 @@ plot +
   geom_vline(xintercept = mean, color = "red")
 ```
 --------
+#This takes too long on local machine, so instead I ran on annotate (HPC). Skip to 585.
+
+```{r pull LME_bathy statistics from annotate}
+
+LME_bathy_statistics <- readRDS("~/Documents/grad_school/Rutgers/Repositories/shelf_habitat_distribution/output/files_back_from_annotate/LME_bathy_statistics.rds")
+```
 
 Now we have the methods down, so let's make a loop!!
 
@@ -403,7 +409,7 @@ for (i in 1:nrow(LME_bathy_statistics)) {
   LME_bathy_statistics[i, "center_latitude"] <- centroid@coords[2]
   
   #clip raster to LME
-  LME_extent <- crop(etopo_shelf_raster, extent(LME_single))
+  LME_extent <- crop(etopo1_shelf_raster, extent(LME_single))
   
   #which areas of raster fall within borders?
   LME_mask <- mask(LME_extent, LME_single)
@@ -419,7 +425,7 @@ for (i in 1:nrow(LME_bathy_statistics)) {
     LME_dt  <- data.table(data.frame(LME_points))
   
   #keep depth positive  
-  LME_dt[,depth := -(z)]
+  LME_dt[,depth := -(layer)]
   
   LME_dt$x_shift <- ifelse(
     max(LME_dt$x)-min(LME_dt$x) > 200 & LME_dt$x >0,
@@ -443,7 +449,7 @@ for (i in 1:nrow(LME_bathy_statistics)) {
     r <- reclassify(LME_mask, cbind(-Inf, Inf, 1))
     
     # convert to polygons (you need to have package 'rgeos' installed for this to work)
-    pp <- rasterToPolygons(r, dissolve=TRUE) #long step
+    pp <- rasterToPolygons(r, dissolve=TRUE) #longer step
     
     LME_reduced_df <- fortify(pp)
     
@@ -461,8 +467,9 @@ for (i in 1:nrow(LME_bathy_statistics)) {
   lme_maps[[i]] <- ggplot(LME_dt,aes(x = x_shift, y = y, fill = depth)) +
     geom_tile() +
     scale_fill_gradientn(
-  colours=c("#f98f3e","#f9be3e","#E3E247", "#46AF78", "#3B5088","#592f83","#420d54", "#420d54"),
+  colours=c("tomato","#f98f3e","#f9be3e","#E3E247", "#46AF78", "#3B5088","#592f83","#420d54", "#420d54"),
   breaks = c(min(LME_dt$depth),
+                    50,
                     100,
                     200,
                     300,
@@ -474,7 +481,7 @@ for (i in 1:nrow(LME_bathy_statistics)) {
       labs(x = paste0("Longitude ","\u00B0","E"), y = paste0("Latitude ","\u00B0","N"), fill = "Depth (m)") +
     guides(fill = guide_colorbar(reverse = T)) +
   #  geom_path(data = LME_reduced_df, aes(x = long_shift, y = lat, group = group), color = "black") +
-    labs(title = paste0("LME ", LME_bathy_statistics[i,lme_number], "/n", LME_bathy_statistics[i,lme_name])) + #switch direction of / for annotate
+    labs(title = paste0("LME ", LME_bathy_statistics[i,lme_number], "\n", LME_bathy_statistics[i,lme_name])) + #switch direction of / for annotate
     theme(plot.title = element_text(hjust=0.5, size = 11, face = "bold"))
   
   
@@ -482,9 +489,9 @@ for (i in 1:nrow(LME_bathy_statistics)) {
   LME_bathy_depth_list <- getValues(LME_mask)
   LME_bathy_depth_list <- LME_bathy_depth_list[!is.na(LME_bathy_depth_list)]
   
-  LME_bathy_depth_list_pos <- -1*LME_bathy_depth_list
+  LME_bathy_depth_list_pos <- -1*LME_bathy_depth_list #make all depth values positive
   
-  #assign specific values to each grid cell
+  #assign specific cell size values and depth values to each grid cell
   cell_size_cell_value <- data.table(cell_size = cell_size, depth = LME_bathy_depth_list_pos)
   
   #sum area across cells with same depth
@@ -499,12 +506,12 @@ for (i in 1:nrow(LME_bathy_statistics)) {
   #generate vector of values for modality calculation with diptest package
   freq_table_raster[,prop_area :=  sum_area/sum(sum_area)] #calculate proportional area
 
-  freq_table_raster[,area_rounddown := round(prop_area * 1000000, 0)] #three sig figs should be enough
+  freq_table_raster[,area_rounddown := round(prop_area * 1000000, 0)] #five sig figs should be enough
 
   #empty vector
   LME_data_vector <- vector()
 
-  #populate vector where each depth is counted the same # of times as area_rounddown
+  #populate vector where each depth is counted the same # of times as area_rounddown (proportional number of times that depth is present in raster)
     for (j in 1:nrow(freq_table_raster)){
     add <- rep(freq_table_raster[j,depth], freq_table_raster[j,area_rounddown])
     LME_data_vector <- append(LME_data_vector, add, after = length(LME_data_vector))
@@ -521,8 +528,9 @@ for (i in 1:nrow(LME_bathy_statistics)) {
     scale_y_continuous(expand = c(0, 0)) +
     scale_x_continuous(expand = c(0,0)) +
     scale_fill_gradientn(
-  colours=c("#f98f3e","#f9be3e","#E3E247", "#46AF78", "#3B5088","#592f83","#420d54", "#420d54"),
+  colours=c("tomato","#f98f3e","#f9be3e","#E3E247", "#46AF78", "#3B5088","#592f83","#420d54", "#420d54"),
   breaks = c(min(freq_table_raster$depth),
+                    50,
                     100,
                     200,
                     300,
@@ -532,15 +540,18 @@ for (i in 1:nrow(LME_bathy_statistics)) {
                      max(freq_table_raster$depth))) +
     guides(position = "bottom", fill = guide_colorbar(reverse = T))
   
-  #uniformity
+  #uniformity (here I'm using list of cell depths assuming all cells are the same size. This isn't ideal, but okay for just this test because cell size doesn't actually vary much)
   ks_test <- ks.test(LME_bathy_depth_list_pos, "punif", min(LME_bathy_depth_list_pos), max(LME_bathy_depth_list_pos))
+  
   LME_bathy_statistics[i,"ks_test_pvalue"] <- ks_test$p.value
+  
+  #Since the p-value is less than .05, we reject the null hypothesis. We have sufficient evidence to say that the sample data does not come from uniform distribution
   
   #unimodality
   #Computes Hartigans’ dip test statistic for testing unimodality, and additionally the modal interval.
   
    diptest <- dip.test(LME_data_vector, simulate.p.value = TRUE, B = 2000)
-#this takes a while, probably more than 30 minutes
+#this takes a while, probably more than 30 minutes, started at 2:39
   LME_bathy_statistics[i,"dip_test"] <- diptest$statistic[1]
   p.value <- diptest$p.value
   LME_bathy_statistics[i,"dip_p_value"] <- p.value
@@ -572,6 +583,7 @@ saveRDS(lme_maps, here::here("output","compiled_plots","lme_maps.rds"))
 ggsave("arranged_maps.pdf", path = here::here("Figures","compiled_plots"), marrangeGrob(lme_maps, ncol=2, nrow = 3), width = 8.5, height = 11, unit = "in")
 ggsave("arranged_areaplots.pdf", path = here::here("Figures","compiled_plots"), marrangeGrob(grobs = lme_areaplots, ncol=2, nrow = 3), width = 8.5, height = 11, unit = "in")
 ```
+
 Associate LME with region
 
 - keep in mind, LME 1 (1&6) and 54 (1&6) and 65 (1&6) appear in multiple
@@ -597,8 +609,6 @@ arctic <- c(64) #excluding
 
 #LME_bathy_statistics[,region := ifelse(lme_number %in% west_pac, "west_pac",ifelse(lme_number %in% east_pac, #"east_pac", ifelse(lme_number %in% west_atl, "west_atl", ifelse(lme_number %in% west_ind, "west_ind", #ifelse(lme_number %in% east_atl, "east_atl", ifelse(lme_number %in% east_ind, "east_ind", ifelse(lme_number #%in% east_west_pac, "east_west_pac", ifelse(lme_number %in% east_pac_west_atl, "east_pac_west_atl", #"none"))))))))]
 
-#if you need to pull it in
-LME_bathy_statistics <- readRDS(here::here("output","LME_bathy_statistics.rds"))
 
 LME_bathy_statistics[,region := ifelse(lme_number %in% pacific, "Pacific", ifelse(lme_number %in% atlantic, "Atlantic", ifelse(lme_number %in% indian, "Indian", ifelse(lme_number %in% antarctica, "Antarctica", "Arctic"))))]
 
@@ -644,12 +654,11 @@ LME_bathy_statistics[,type := ifelse(uniform == T, "Uniform",
                                            ifelse(shallow_dominant == T, "Shallow Dominant",
                                                   ifelse(mid_dominant == T, "Mid Dominant", "none")))))][,lme_name2 := lme_name]
 
-write.csv(LME_bathy_statistics,here::here("output", "LME_bathy_statistics.csv"))
-saveRDS(LME_bathy_statistics, here::here("output","LME_bathy_statistics_full.rds"))
+LME_bathy_statistics_full <- LME_bathy_statistics
 
-#if already loaded
-  #LME_bathy_statistics <- readRDS(here::here("output","LME_bathy_statistics_full.rds")) 
-  #lme_areaplots <- readRDS(here::here("output","compiled_plots","lme_areaplots.rds"))
+write.csv(LME_bathy_statistics_full,here::here("output", "LME_bathy_statistics_full.csv"))
+saveRDS(LME_bathy_statistics_full, here::here("output","LME_bathy_statistics_full.rds"))
+
 ```
 
 Now that we have classified distributions, let's make final plots
@@ -686,10 +695,10 @@ saveRDS(lme_areaplots_classified, here::here("output","compiled_plots","arranged
 ggsave(filename = "arranged_areaplots_classified.pdf", path = here::here("Figures","compiled_plots"), plot =  marrangeGrob(grobs = lme_areaplots_classified, ncol=2, nrow = 3), width = 8.5, height = 11, unit = "in")
 ```
 
-#Testing alternative skew value per reviewer request
+##Testing alternative skew value per reviewer request
 
 ```{r expanded data frame alt skew}
-LME_bathy_statistics_altskew <- LME_bathy_statistics
+LME_bathy_statistics_altskew <- LME_bathy_statistics_full
 
 LME_bathy_statistics_altskew[, skew_descriptor := ifelse(abs(skew) > 1, "high_skew", ifelse(abs(skew) < 0.5, "symmetric", "mod_skew"))]
 
@@ -759,6 +768,7 @@ ggsave(filename = "arranged_areaplots_classified_altskew.pdf", path = here::here
 ```
 
 
+Scratch
 ############
 
 

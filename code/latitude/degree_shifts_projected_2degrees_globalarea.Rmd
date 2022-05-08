@@ -3,6 +3,8 @@ title: "2˚ Shifts global area change analysis"
 output: html_notebook
 ---
 
+#This code loads in latitude versus area data tables from annotate HPC and adds in calculations for changes in species richness based on SAR from Levin et al. 2009. It does not output figures, which you can find in Figure3_5 code.
+
 ```{r setup}
 library(raster)
 library(sf)
@@ -22,12 +24,16 @@ library(SpaDES)
 library(rnaturalearth)
 library(rnaturalearthdata)
 
-west_pac_shelf_areas <- readRDS(here::here("output","2_degree_latitude","west_pac_shelf_areas_2degrees.rds"))
-west_atl_shelf_areas <- readRDS(here::here("output","2_degree_latitude","west_atl_shelf_areas_2degrees.rds"))
-west_ind_shelf_areas <- readRDS(here::here("output","2_degree_latitude","west_ind_shelf_areas_2degrees.rds"))
-east_pac_shelf_areas <- readRDS(here::here("output","2_degree_latitude","east_pac_shelf_areas_2degrees.rds"))
-east_atl_shelf_areas <- readRDS(here::here("output","2_degree_latitude","east_atl_shelf_areas_2degrees.rds"))
-east_ind_shelf_areas <- readRDS(here::here("output","2_degree_latitude","east_ind_shelf_areas_2degrees.rds"))
+```
+
+Load data (these files created on annotate (HPC))
+```{r load data}
+west_pac_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","west_pac_shelf_areas_2degrees.rds"))
+west_atl_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","west_atl_shelf_areas_2degrees.rds"))
+west_ind_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","west_ind_shelf_areas_2degrees.rds"))
+east_pac_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","east_pac_shelf_areas_2degrees.rds"))
+east_atl_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","east_atl_shelf_areas_2degrees.rds"))
+east_ind_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","east_ind_shelf_areas_2degrees.rds"))
 
 ```
 
@@ -131,10 +137,14 @@ shelf_areas[, percent_change_richness := (original_spp_predicted_levin-data.tabl
 
 shelf_areas[, percent_change_richness_mean := (original_spp_predicted_38-data.table::shift(original_spp_predicted_38, type = "lag"))/data.table::shift(original_spp_predicted_38, type = "lag"), .(region,hemisphere)]
 
-shelf_areas[,spp_per_change_significant := ifelse(percent_change_richness >= 1, "Gain",ifelse(percent_change_richness <= -0.5, "Loss","NA"))]
+shelf_areas[, percent_change_richness_min := (original_spp_predicted_175-data.table::shift(original_spp_predicted_175, type = "lag"))/data.table::shift(original_spp_predicted_175, type = "lag"), .(region,hemisphere)]
+
+shelf_areas[, percent_change_richness_max := (original_spp_predicted_62-data.table::shift(original_spp_predicted_62, type = "lag"))/data.table::shift(original_spp_predicted_62, type = "lag"), .(region,hemisphere)]
+
+shelf_areas[,spp_per_change_significant_mean := ifelse(percent_change_richness_mean >= 1, "Gain",ifelse(percent_change_richness_mean <= -0.5, "Loss","NA"))]
 
 #new data table with only these values
-shelf_areas_highlight <- shelf_areas[spp_per_change_significant == "Gain" | spp_per_change_significant == "Loss"]
+shelf_areas_highlight_mean <- shelf_areas[spp_per_change_significant_mean == "Gain" | spp_per_change_significant_mean == "Loss"]
 
 #color code by direction of spp gain or loss
 shelf_areas[, spp_change_pos_neg_meixler := ifelse(change_spp_predicted_meixler > 0, "Positive","Negative")]
@@ -148,13 +158,6 @@ shelf_areas[, spp_change_pos_neg_62 := ifelse(change_spp_predicted_62 > 0, 1,-1)
 shelf_areas[, spp_change_pos_neg_175_discrete := ifelse(change_spp_predicted_175 > 0, "Gain","Loss")]
 shelf_areas[, spp_change_pos_neg_38_discrete := ifelse(change_spp_predicted_38 > 0, "Gain","Loss")]
 shelf_areas[, spp_change_pos_neg_62_discrete := ifelse(change_spp_predicted_62 > 0, "Gain","Loss")]
-
-
-#log abs for plotting (possible to see all three values on one plot), add one so no neg values
-
-shelf_areas[, log_abs_change_spp_predicted_175 := log(abs(change_spp_predicted_175) + 1)]
-shelf_areas[, log_abs_change_spp_predicted_38 := log(abs(change_spp_predicted_38) + 1)]
-shelf_areas[, log_abs_change_spp_predicted_62 := log(abs(change_spp_predicted_62) + 1)]
 
 #full stats for spp change
 shelf_areas[,spp_change_levin_by_reg := sum(change_spp_predicted_levin, na.rm = T), region]
@@ -172,43 +175,50 @@ shelf_spp_change_hemis_reg_stats[,change_direction := factor(ifelse(spp_change_l
 #mean
 mean(shelf_areas$change_spp_predicted_38, na.rm = T)
 
+
+shelf_areas_fullstats <- shelf_areas
+
 #save data table
-saveRDS(shelf_areas, file = here::here("output","2_degree_latitude","shelf_areas.rds"))
+saveRDS(shelf_areas_fullstats, file = here::here("output","2_degree_latitude","shelf_areas_fullstats.rds"))
   
 ```
 
-Figure for spp richness per latitude
-```{r spp richness per latitude}
-(spp_change_latitude  <- ggplot(data = shelf_areas, aes(x=latitude_mid, y=original_spp_predicted_levin)) +
-   geom_area(fill = "azure3") +
- labs(x=paste0("Latitude ","\u00B0","E"), y = "Species Richness") +
-  geom_vline(xintercept = 0) +
-  geom_hline(yintercept = 0) +
-  coord_flip() +
-  theme_classic() +
-   facet_wrap(~region, scales = "free"))
+How well correlated are percent changes across z values?
+```{r percent change across z}
+cor(shelf_areas_fullstats[,.(percent_change_richness_min, percent_change_richness_mean, percent_change_richness_max)], use = "complete.obs")
 ```
 
-Mark 50% loss or 200% gain of species (this isn't useful)
-```{r gain loss of substantial # of species}
-(spp_change_latitude  <- ggplot() +
-   geom_area(data = shelf_areas, aes(x=latitude_mid, y = original_spp_predicted_levin), fill = "azure3") +
-   geom_rug(data = shelf_areas_highlight, aes(x=latitude_mid, color = spp_per_change_significant)) +
- labs(x=paste0("Latitude ","\u00B0","E"), y = "Species Richness") +
-  geom_vline(xintercept = 0) +
-  geom_hline(yintercept = 0) +
-  coord_flip() +
-  theme_classic() +
-   facet_wrap(~region, scales = "free"))
+How well correlated are species gains and losses across z values?
+```{r percent change across z}
+cor(shelf_areas_fullstats[,.(change_spp_predicted_175, change_spp_predicted_38, change_spp_predicted_62)], use = "complete.obs")
 ```
-
 
 Figure for spp richness change by latitude
 ```{r spp change lat}
-(spp_change_latitude  <- ggplot(data = shelf_areas) +
-  geom_col(aes(x=latitude_end, y=change_spp_predicted_levin, fill = change_dir)) +
+(spp_change_latitude_min  <- ggplot(data = shelf_areas) +
+  geom_col(aes(x=latitude_end, y=change_spp_predicted_175, fill = change_dir)) +
  labs(x=paste0("Latitude ","\u00B0","E"), y = "Change in Richness\nwith 2\u00B0 Shift") +
-     scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Direction of\nRichness Change\nWith 2\u00B0 Shift", labels = c("Negative", "Positive")) +
+     scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Direction of\nRichness Change\nWith 2\u00B0 Shift\nz=0.175", labels = c("Negative", "Positive")) +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) +
+  coord_flip() +
+  theme_classic() +
+   facet_wrap(~region, scales = "free"))
+
+(spp_change_latitude_mean  <- ggplot(data = shelf_areas) +
+  geom_col(aes(x=latitude_end, y=change_spp_predicted_38, fill = change_dir)) +
+ labs(x=paste0("Latitude ","\u00B0","E"), y = "Change in Richness\nwith 2\u00B0 Shift") +
+     scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Direction of\nRichness Change\nWith 2\u00B0 Shift\nz=0.38", labels = c("Negative", "Positive")) +
+  geom_vline(xintercept = 0) +
+  geom_hline(yintercept = 0) +
+  coord_flip() +
+  theme_classic() +
+   facet_wrap(~region, scales = "free"))
+
+(spp_change_latitude_max  <- ggplot(data = shelf_areas) +
+  geom_col(aes(x=latitude_end, y=change_spp_predicted_62, fill = change_dir)) +
+ labs(x=paste0("Latitude ","\u00B0","E"), y = "Change in Richness\nwith 2\u00B0 Shift") +
+     scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Direction of\nRichness Change\nWith 2\u00B0 Shift\nz=0.62", labels = c("Negative", "Positive")) +
   geom_vline(xintercept = 0) +
   geom_hline(yintercept = 0) +
   coord_flip() +
@@ -216,6 +226,8 @@ Figure for spp richness change by latitude
    facet_wrap(~region, scales = "free"))
 ```
 
+
+###SCRATCH
 
 Plots instead of tables?
 ```{r plot spp change}
@@ -253,6 +265,7 @@ plot_grid(change_area_reg_hemis, change_spp_reg_hemis, labels = c("a.","b."))
 #ggsave(height = 4, width = 10, file = "spp_area_change_Levin2009.jpg")
 
 ```
+
 What if instead of this type of plot, we do a bar chart ordered by value?
 ```{r}
 #merge two columns
@@ -274,9 +287,6 @@ scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Change in Ric
 save(ordered_loss_gain_bycoastline, file = "ordered_loss_gain_bycoastline.RData")
 
 ```
-
-
-######scratch
 
 Species Area Curves
 
