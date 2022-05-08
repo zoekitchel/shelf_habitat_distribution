@@ -10,6 +10,8 @@ etopo_shelf_df.rds
 etopo1_shelf_df.rds
 etopo_shelf_lim.rds
 etopo1_shelf_lim.rds
+etopo1_shelf_raster.rds
+*.gri
 DepthShift2.0
 Depth_Shelf_becca.Rmd
 degree_shifts.Rmd

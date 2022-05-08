@@ -1,0 +1,98 @@
+---
+title: "Pull z values from beta distribution"
+output: html_notebook
+---
+
+In this script, I will develop a distribution from which I can draw z values for S=CA^r.
+
+I use this distribution to calculate # of species for each latitudinal band and each depth band. I will take 1000 samples for z values, and therefore calculate S 1000 times. I will set C to 1.  
+
+Beta: The standard beta distribution is defined on the interval (0,1), but you can take a linear transformation of a standard beta distributed variable to obtain values between any (min, max).
+
+```{r setup}
+library(data.table)
+```
+
+Min = 0.175, Max = 0.62 z values for fish (Levin et al. 2009)
+
+```{r generalized beta function}
+rgbeta <- function(n, mean, var, min = 0, max = 1)
+{
+  dmin <- mean - min
+  dmax <- max - mean
+
+  if (dmin <= 0 || dmax <= 0)
+  {
+    stop(paste("mean must be between min =", min, "and max =", max)) 
+  }
+
+  if (var >= dmin * dmax)
+  {
+    stop(paste("var must be less than (mean - min) * (max - mean) =", dmin * dmax))
+  }
+
+  # mean and variance of the standard beta distributed variable
+  mx <- (mean - min) / (max - min)
+  vx <- var / (max - min)^2
+
+  # find the corresponding alpha-beta parameterization
+  a <- ((1 - mx) / vx - 1 / mx) * mx^2
+  b <- a * (1 / mx - 1)
+
+  # generate standard beta observations and transform
+  x <- rbeta(n, a, b)
+  y <- (max - min) * x + min
+
+  return(y)
+}
+
+set.seed(1)
+
+n <- 100000
+y <- rgbeta(n, mean = 0.38, var = 0.005, min = 0.175, max = 0.62)
+d <- density(y)
+
+plot(d)
+
+sapply(list(mean, sd, min, max), function(f) f(y))
+#[1] 0.38023533 0.07089441 0.18356567 0.60187645
+```
+Then, calculate Change in Richness using each of these values to develop a distribution
+
+S = C * A^z (z is pulled from this distribution 1000 times)
+
+Sample 1000 times
+```{r}
+set.seed(4)
+random_z_1000 <- sample(y, 1000, replace = T)
+hist(random_z_1000, 200)
+```
+Going from random z values to SAR
+```{r going from random z values to SAR }
+Area <- sample(10000:300000, 100)
+  
+z_values <- random_z_1000
+
+Depth <- seq(from=15,to = 1500, by = 15)
+
+Depth_Area_Key <- data.table(Area = Area, Depth = Depth)
+  
+SAR_random_z <- data.table(expand.grid(Area, random_z_1000))
+
+colnames(SAR_random_z) <- c("Area","random_z")
+
+#set order
+setkey(SAR_random_z,Area)
+
+SAR_random_z[,Richness := Area^random_z]
+
+SAR_random_z_depth <- SAR_random_z[Depth_Area_Key, on = "Area"]
+
+ggplot(SAR_random_z_depth, aes(x = Depth, y = Richness, group = Depth)) +
+  geom_boxplot(size = 0.1, outlier.size = 0.1) +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, size = 6))
+
+
+```
+

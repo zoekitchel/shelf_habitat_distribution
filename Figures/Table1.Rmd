@@ -1,0 +1,85 @@
+---
+title: "Table 1 Code"
+output: html_notebook
+---
+
+```{r setup}
+library(data.table)
+```
+
+Pull in mods of latitude versus area
+```{r pull in mods run on annotate}
+#shelf area data tables
+east_pac_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","east_pac_shelf_areas_2degrees.rds"))
+west_pac_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","west_pac_shelf_areas_2degrees.rds"))
+east_atl_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","east_atl_shelf_areas_2degrees.rds"))
+west_atl_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","west_atl_shelf_areas_2degrees.rds"))
+east_ind_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","east_ind_shelf_areas_2degrees.rds"))
+west_ind_shelf_areas <- readRDS(here::here("output","files_back_from_annotate","west_ind_shelf_areas_2degrees.rds"))
+
+#lat versus area mods from annotate (HPC)
+#pull in north mods
+east_ind_north_mod <- readRDS(here::here("output","files_back_from_annotate","east_ind_north_mod.rds"))
+west_ind_north_mod <- readRDS(here::here("output","files_back_from_annotate","west_ind_north_mod.rds"))
+east_atl_north_mod <- readRDS(here::here("output","files_back_from_annotate","east_atl_north_mod.rds"))
+west_atl_north_mod <- readRDS(here::here("output","files_back_from_annotate","west_atl_north_mod.rds"))
+east_pac_north_mod <- readRDS(here::here("output","files_back_from_annotate","east_pac_north_mod.rds"))
+west_pac_north_mod <- readRDS(here::here("output","files_back_from_annotate","west_pac_north_mod.rds"))
+
+#pull in south mods
+east_ind_south_mod <- readRDS(here::here("output","files_back_from_annotate","east_ind_south_mod.rds"))
+west_ind_south_mod <- readRDS(here::here("output","files_back_from_annotate","west_ind_south_mod.rds"))
+east_atl_south_mod <- readRDS(here::here("output","files_back_from_annotate","east_atl_south_mod.rds"))
+west_atl_south_mod <- readRDS(here::here("output","files_back_from_annotate","west_atl_south_mod.rds"))
+east_pac_south_mod <- readRDS(here::here("output","files_back_from_annotate","east_pac_south_mod.rds"))
+west_pac_south_mod <- readRDS(here::here("output","files_back_from_annotate","west_pac_south_mod.rds"))
+```
+
+
+Regional Statistics
+```{r statistics table}
+regional_statistics <- data.table()
+regional_statistics[,region := rep(c("West Pacific", "East Pacific", "West Atlantic", "West Indian", "East Atlantic", "East Indian"),each = 2)][,hemisphere := rep(c("Northern", "Southern"),6)][,contractions := as.numeric(NA)][,expansions := as.numeric(NA)][,coef := as.numeric(NA)][,pvalue := as.numeric(NA)]
+
+shelf_areas <- c("west_pac_shelf_areas", "east_pac_shelf_areas", "west_atl_shelf_areas", "west_ind_shelf_areas", "east_atl_shelf_areas", "east_ind_shelf_areas")
+
+north_mods <- c("west_pac_north_mod", "east_pac_north_mod", "west_atl_north_mod", "west_ind_north_mod", "east_atl_north_mod", "east_ind_north_mod")
+
+south_mods <- c("west_pac_south_mod", "east_pac_south_mod", "west_atl_south_mod", "west_ind_south_mod", "east_atl_south_mod", "east_ind_south_mod")
+
+for (i in 1:length(shelf_areas)) {
+
+  this_shelf_area <- get(shelf_areas[i])
+    #populate west pacific
+    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Northern", "contractions"] <- round(this_shelf_area[latitude_end > 0 & change_above_2fold == -1,.N]/nrow(this_shelf_area[latitude_end > 0 & !is.na(percent_change)]),4)*100 #northern hemisphere contraction
+    
+    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Southern", "contractions"] <- round(this_shelf_area[latitude_end < 0 & change_above_2fold == -1,.N]/nrow(this_shelf_area[latitude_end < 0 & !is.na(percent_change)]),4)*100 #southern hemisphere contraction
+    
+    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Northern", "expansions"] <- round(this_shelf_area[latitude_end > 0 & change_above_2fold == 1,.N]/nrow(this_shelf_area[latitude_end > 0 & !is.na(percent_change)]),4)*100 #northern hemisphere expansion
+    
+    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Southern", "expansions"] <- round(this_shelf_area[latitude_end < 0 & change_above_2fold == 1,.N]/nrow(this_shelf_area[latitude_end < 0 & !is.na(percent_change)]),4)*100 #southern hemisphere expansion
+    
+    #northern mod
+    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Northern", "coef"] <- round(get(north_mods[i])$coefficients[2],2)
+    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Northern", "pvalue"] <- summary(get(north_mods[i]))$coefficients[,"Pr(>|t|)"][2]
+    
+    #southern mod
+    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Southern", "coef"] <- round(get(south_mods[i])$coefficients[2],2)
+    regional_statistics[region == unique(regional_statistics[,region])[i] & hemisphere == "Southern", "pvalue"] <- summary(get(south_mods[i]))$coefficients[,"Pr(>|t|)"][2]
+
+}
+
+
+#what about change in area stats?
+shelf_areas_fullstats <- readRDS(here::here("output","2_degree_latitude","shelf_areas_fullstats.rds")) #spp richness stats
+
+shelf_areas_fullstats[,area_change_hemis_reg := sum(area_change, na.rm = T),.(region, hemisphere)]
+
+shelf_areas_fullstats.unique <- unique(shelf_areas_fullstats[,.(region, hemisphere, area_change_hemis_reg)])
+
+regional_statistics_final <- regional_statistics[shelf_areas_fullstats.unique, on = c("region", "hemisphere")]
+
+#save
+fwrite(regional_statistics_final, file = here::here("output","2_degree_latitude","Table1_regional_stats.csv"))
+```
+

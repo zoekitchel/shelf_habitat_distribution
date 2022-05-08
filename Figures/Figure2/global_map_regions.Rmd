@@ -16,7 +16,7 @@ library(viridis)
 library(here)
 
 
-LME_bathy_statistics <- readRDS(here::here("output", "LME_bathy_statistics_42922_full.rds"))
+LME_bathy_statistics <- readRDS(here::here("output", "LME_bathy_statistics_full.rds"))
 LME_spdf <- readOGR(here::here("raw_data","LME66","LMEs66.shp"))
 LME_spdf_working <- LME_spdf[LME_spdf$LME_NUMBER != 61 & LME_spdf$LME_NUMBER != 64,]
 
@@ -99,9 +99,9 @@ table(LME_bathy_statistics$type)/nrow(LME_bathy_statistics)
 #mid dominant
 6/64
 #multimodal
-44/64
+46/64
 #shallow dominant
-14/64
+12/64
 ```
 
 ```{r global map}
@@ -111,7 +111,7 @@ LME_spdf_working_proj.dt[,type:=factor(type, levels = c("Shallow Dominant", "Mul
 
 (global_LME_classification_map <- ggplot() + 
   geom_polygon(data = LME_spdf_working_proj.dt, aes(x = long, y = lat, group = group, fill = as.factor(type)), color = "darkslategrey", size = 0.03, alpha = 0.7) +
-  scale_fill_manual(values = c("#4A9B7D","#3D4F88", "#FAA23D"), labels = c("Shallow Dominant: 22%", "Multimodal: 69%", "Mid Dominant: 9%")) +
+  scale_fill_manual(values = c("#4A9B7D","#3D4F88", "#FAA23D"), labels = c("Shallow Dominant: 19%", "Multimodal: 72%", "Mid Dominant: 9%")) +
        # add projected countries
     geom_polygon(data = Country.DT, 
                  aes(x = long, y = lat, group = group), 
@@ -147,11 +147,11 @@ table(LME_bathy_statistics_altskew$type)
 table(LME_bathy_statistics_altskew$type)/nrow(LME_bathy_statistics_altskew)
 
 #mid dominant
-1/64
+3/64
 #multimodal
-44/64
+46/64
 #shallow dominant
-19/64
+15/64
 
 
 #type labels
@@ -159,7 +159,7 @@ LME_spdf_working_proj_altskew.dt[,type_altskew:=factor(type, levels = c("Shallow
 
 (global_LME_classification_map_altskew <- ggplot() + 
   geom_polygon(data = LME_spdf_working_proj_altskew.dt, aes(x = long, y = lat, group = group, fill = as.factor(type_altskew)), color = "darkslategrey", size = 0.03, alpha = 0.7) +
-  scale_fill_manual(values = c("#4A9B7D","#3D4F88", "#FAA23D"), labels = c("Shallow Dominant: 30%", "Multimodal: 69%", "Mid Dominant: 1%")) +
+  scale_fill_manual(values = c("#4A9B7D","#3D4F88", "#FAA23D"), labels = c("Shallow Dominant: 23%", "Multimodal: 72%", "Mid Dominant: 5%")) +
        # add projected countries
     geom_polygon(data = Country.DT, 
                  aes(x = long, y = lat, group = group), 

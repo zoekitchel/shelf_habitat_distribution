@@ -6,6 +6,7 @@ output: html_notebook
 Calculate change in species  richness with 15 m depth shift. 
 
 
+
 ```{r setup}
 library(raster)
 library(rgdal)
@@ -27,10 +28,12 @@ library(plyr) #round_any
 library(here)
 
 
+
 ```
 
-```{r load data}
-etopo_shelf_df <- readRDS(here::here("raw_data", "etopo_shelf_df.rds"))
+Pull in Data (updated with etopo1 on April 26, 2022)
+```{r pull in data}
+etopo1_shelf_df <- readRDS(here::here("raw_data","ETOPO1", "etopo1_shelf_df.rds"))
 #bring in bathy for shelf regions
 
 #LMEs
@@ -40,36 +43,40 @@ LME_spdf <- readOGR(here::here("raw_data","LME66","LMEs66.shp"))
 #get rid of Antarctica and the arctic
 LME_spdf <- LME_spdf[LME_spdf$LME_NUMBER != 61 & LME_spdf$LME_NUMBER != 64,]
 
-#equal area projection
-eaproj <- CRS("+proj=laea")
-LME_spdf.EA <- spTransform(LME_spdf, eaproj)
-
-
 ```
+
 
 Make bathy layer into raster 
 
 ```{r rasterize}
 proj <- crs(LME_spdf)
-etopo_shelf_raster <- rasterFromXYZ(etopo_shelf_df, crs = proj)
+etopo1_shelf_raster <- rasterFromXYZ(etopo1_shelf_df, crs = proj)
 
+#to skip this time consuming step later
+writeRaster(etopo1_shelf_raster, filename = here::here("output","intermediate_data","etopo1_shelf_raster.grd"))
+
+etopo1_shelf_raster <- raster(here::here("output","intermediate_data","etopo1_shelf_raster.gri"))
+
+
+rm(etopo1_shelf_df)
 
 #make figure of shelves
   #png("etopo_shelf_bathy.png", height=5, width=7, units="in", res=300)
-  #plot(etopo_shelf_raster)
+  #plot(etopo1_shelf_raster)
   #dev.off()
 
 ```
 
 Depth distribution
 ```{r depth distribution}
-mean(etopo_shelf_raster$z)
-hist(etopo_shelf_raster$z)
+mean(etopo1_shelf_raster$layer)
+hist(etopo1_shelf_raster$layer)
 
-cellStats(etopo_shelf_raster, stat = 'mean')
-hist(etopo_shelf_raster)
+cellStats(etopo1_shelf_raster, stat = 'mean')
+hist(etopo1_shelf_raster)
 ```
 
+#Check why California has more depths than it did in the past
 
 Calculate change in area and change in species richness for each LME
 
@@ -95,10 +102,10 @@ change_spp_predicted_levin = numeric(),
 change_spp_predicted_175 = numeric(),
 change_spp_predicted_38 = numeric(),
 change_spp_predicted_62 = numeric(),
-log_abs_change_spp_predicted_levin = numeric(),
-log_abs_change_spp_predicted_175 = numeric(),
-log_abs_change_spp_predicted_38 = numeric(),
-log_abs_change_spp_predicted_62 = numeric(),
+percent_change_richness_levin = numeric(),
+percent_change_richness_175 = numeric(),
+percent_change_richness_38 = numeric(),
+percent_change_richness_62 = numeric(),
 spp_change_pos_neg_levin = numeric(),
 spp_change_pos_neg_175 = numeric(),
 spp_change_pos_neg_38 = numeric(),
@@ -112,7 +119,9 @@ lme_name = character())
 
 lme_spp_change_plots <- vector("list", length = nrow(LME_spdf))
 lme_spp_count_area_sum_plots <- vector("list", length = nrow(LME_spdf))
-lme_spp_count_area_change_3levels <- vector("list", length = nrow(LME_spdf))
+lme_spp_count_area_change_min <- vector("list", length = nrow(LME_spdf))
+lme_spp_count_area_change_mean <- vector("list", length = nrow(LME_spdf))
+lme_spp_count_area_change_max <- vector("list", length = nrow(LME_spdf))
 
 for (i in 1:nrow(LME_area_spp_change_stats)) {
   LME_single <- LME_spdf_ordered[i,]
@@ -120,7 +129,7 @@ for (i in 1:nrow(LME_area_spp_change_stats)) {
   LME_area_spp_change_stats[i, "lme_number"] <- LME_single$LME_NUMBER
   
   #clip raster to LME
-  LME_extent <- crop(etopo_shelf_raster, extent(LME_single))
+  LME_extent <- crop(etopo1_shelf_raster, extent(LME_single))
   
   #which areas of raster fall within borders?
   LME_mask <- mask(LME_extent, LME_single)
@@ -133,7 +142,7 @@ for (i in 1:nrow(LME_area_spp_change_stats)) {
     LME_dt  <- data.table(data.frame(LME_points))
   
   #keep depth positive  
-  LME_dt[,depth := -(z)]
+  LME_dt[,depth := -(layer)]
   
   #if it spans dateline, shift  coordinates to allow for plotting
   LME_dt$x_shift <- ifelse(
@@ -199,17 +208,20 @@ for (i in 1:nrow(LME_area_spp_change_stats)) {
               change_spp_predicted_38 :=  original_spp_predicted_38 -  data.table::shift(original_spp_predicted_38, n = 1, type = "lag")][,
               change_spp_predicted_62 :=  original_spp_predicted_62 -  data.table::shift(original_spp_predicted_62, n = 1, type = "lag")] #change in species from previous bin to this bin
   
-  #calculate log of absolute value for plotting (adding 1 to avoid negatives)
-    LME_bathy_bydepth_complete_15mbins_single[, log_abs_change_spp_predicted_levin :=  log(abs(change_spp_predicted_levin)+1)][,
-              log_abs_change_spp_predicted_175 :=  log(abs(change_spp_predicted_175)+1)][,
-              log_abs_change_spp_predicted_38 :=  log(abs(change_spp_predicted_38)+1)][,
-              log_abs_change_spp_predicted_62 :=  log(abs(change_spp_predicted_62)+1)]
+#add reference LME number and name
+LME_bathy_bydepth_complete_15mbins_single[, lme_number := LME_single$LME_NUMBER][, lme_name := LME_single$LME_NAME]
+
+#percent change
+LME_bathy_bydepth_complete_15mbins_single[, percent_change_richness_levin := (original_spp_predicted_levin-data.table::shift(original_spp_predicted_levin, type = "lag"))/data.table::shift(original_spp_predicted_levin, type = "lag"), .(lme_name)]
+
+LME_bathy_bydepth_complete_15mbins_single[, percent_change_richness_175 := (original_spp_predicted_175-data.table::shift(original_spp_predicted_175, type = "lag"))/data.table::shift(original_spp_predicted_175, type = "lag"), .(lme_name)]
+
+LME_bathy_bydepth_complete_15mbins_single[, percent_change_richness_38 := (original_spp_predicted_38-data.table::shift(original_spp_predicted_38, type = "lag"))/data.table::shift(original_spp_predicted_38, type = "lag"), .(lme_name)]
+
+LME_bathy_bydepth_complete_15mbins_single[, percent_change_richness_62 := (original_spp_predicted_62-data.table::shift(original_spp_predicted_62, type = "lag"))/data.table::shift(original_spp_predicted_62, type = "lag"), .(lme_name)]
 
   #for coloring
   LME_bathy_bydepth_complete_15mbins_single[, spp_change_pos_neg_levin := ifelse(change_spp_predicted_levin > 0, 1,-1)][,spp_change_pos_neg_175 := ifelse(change_spp_predicted_175 > 0, 1,-1)][, spp_change_pos_neg_38 := ifelse(change_spp_predicted_38 > 0, 1,-1)][, spp_change_pos_neg_62 := ifelse(change_spp_predicted_62 > 0, 1,-1)][, spp_change_pos_neg_levin_discrete := ifelse(change_spp_predicted_levin > 0, "Gain","Loss")][,spp_change_pos_neg_175_discrete := ifelse(change_spp_predicted_175 > 0, "Gain","Loss")][, spp_change_pos_neg_38_discrete := ifelse(change_spp_predicted_38 > 0, "Gain","Loss")][, spp_change_pos_neg_62_discrete := ifelse(change_spp_predicted_62 > 0, "Gain","Loss")]
-  
-  #add reference LME number and name
-  LME_bathy_bydepth_complete_15mbins_single[, lme_number := LME_single$LME_NUMBER][, lme_name := LME_single$LME_NAME]
   
   #add to overall summary data table
   LME_bathy_bydepth_complete_15mbins <- rbind(LME_bathy_bydepth_complete_15mbins, LME_bathy_bydepth_complete_15mbins_single)
@@ -220,13 +232,12 @@ for (i in 1:nrow(LME_area_spp_change_stats)) {
   #summed change in spp richness
   LME_area_spp_change_stats[i, "total_spp_change"] <- sum(LME_bathy_bydepth_complete_15mbins_single$change_spp_predicted_levin, na.rm = T)
 
-
   #plot change in spp
   #spp by depth plot
   lme_spp_count_area_sum_plots[[i]] <- ggplot(data = LME_bathy_bydepth_complete_15mbins_single, aes(x = depth_15s)) +
     geom_col(aes(y = change_spp_predicted_levin, fill=spp_change_pos_neg_levin_discrete), alpha = 0.5) +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = paste0("LME: ", LME_area_spp_change_stats[i, "lme_number"],"\n", LME_area_spp_change_stats[[i, "lme_name"]],"\n\nRichness Change with\n15m Depth Shift"), breaks = c(1,-1), labels = c("Gain", "Loss")) +
-    labs(x = "Depth  (15 m bins)", y = expression(Delta~'Species Richness')) +
+    scale_fill_viridis_d(option = "A", begin = 0.7, end = 0.3, name = paste0("LME: ", LME_area_spp_change_stats[i, "lme_number"],"\n", LME_area_spp_change_stats[[i, "lme_name"]],"\n\nRichness Change with\n15m Depth Shift"), breaks = c(1,-1), labels = c("Gain", "Loss")) +
+    labs(x = "Depth  (15 m bins)", y = expression(Delta~'Species Richness'), title = paste0("LME ",LME_area_spp_change_stats[i,lme_number],": ",LME_area_spp_change_stats[i,lme_name])) +
 #    geom_hline(yintercept = 0) +
     theme_classic() +
     scale_x_continuous(expand = c(0,0)) +
@@ -235,12 +246,37 @@ for (i in 1:nrow(LME_area_spp_change_stats)) {
                legend.text = element_text(size = 4), 
                 legend.key.size = unit(.5,'cm'))
   
-  #plot containing distribution of 3 options for z value
-  lme_spp_count_area_change_3levels[[i]] <- ggplot(data = LME_bathy_bydepth_complete_15mbins_single, aes(x = depth_15s)) +
-    geom_col(aes(y = log_abs_change_spp_predicted_38*spp_change_pos_neg_38, fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
-      geom_errorbar(aes(ymin=log_abs_change_spp_predicted_175*spp_change_pos_neg_175, ymax=log_abs_change_spp_predicted_62*spp_change_pos_neg_62), size = 0.2, alpha = 0.6)  +
-    scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = paste0("LME: ", LME_area_spp_change_stats[i, "lme_number"],"\n", LME_area_spp_change_stats[[i, "lme_name"]],"\n\nRichness Change with\n15m Depth Shift"), breaks = c("Gain","Loss"), labels = c("Gain", "Loss")) +
-    labs(x = "Depth  (15 m bins)", y = expression('log'~Delta~'Species Richness+1'),")") +
+  #plots for min, mean, and max 
+  lme_spp_count_area_change_min[[i]] <- ggplot(data = LME_bathy_bydepth_complete_15mbins_single, aes(x = depth_15s)) +
+    geom_col(aes(y = percent_change_richness_175*100, fill=spp_change_pos_neg_175_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.7, end = 0.3, name = paste0("LME: ", LME_area_spp_change_stats[i, "lme_number"],"\n", LME_area_spp_change_stats[[i, "lme_name"]],"\n\nPercent Richness Change with\n15m Depth Shift"), breaks = c("Gain","Loss"), labels = c("Gain", "Loss")) +
+    labs(x = "Depth  (15 m bins)", y = expression('Percent'~Delta~'Species Richness z = 0.175'), title = paste0("LME ",LME_area_spp_change_stats[i,lme_number],": ",LME_area_spp_change_stats[i,lme_name])) +
+#    geom_hline(yintercept = 0) +
+    theme_classic() +
+    scale_x_continuous(expand = c(0,0)) +
+    scale_y_continuous(expand = c(0,0)) +
+    theme(legend.title = element_text(size = 4), 
+               legend.text = element_text(size = 4), 
+                legend.key.size = unit(.5,'cm'))
+  
+  #plot containing distribution of mean z value
+  lme_spp_count_area_change_mean[[i]] <- ggplot(data = LME_bathy_bydepth_complete_15mbins_single, aes(x = depth_15s)) +
+    geom_col(aes(y = percent_change_richness_38*100, fill=spp_change_pos_neg_38_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.7, end = 0.3, name = paste0("LME: ", LME_area_spp_change_stats[i, "lme_number"],"\n", LME_area_spp_change_stats[[i, "lme_name"]],"\n\nPercent Richness Change with\n15m Depth Shift"), breaks = c("Gain","Loss"), labels = c("Gain", "Loss")) +
+    labs(x = "Depth  (15 m bins)", y = expression('Percent'~Delta~'Species Richness z = 0.38'), title = paste0("LME ",LME_area_spp_change_stats[i,lme_number],": ",LME_area_spp_change_stats[i,lme_name])) +
+#    geom_hline(yintercept = 0) +
+    theme_classic() +
+    scale_x_continuous(expand = c(0,0)) +
+    scale_y_continuous(expand = c(0,0)) +
+    theme(legend.title = element_text(size = 4), 
+               legend.text = element_text(size = 4), 
+                legend.key.size = unit(.5,'cm'))
+  
+  #plot containing distribution of max z value
+  lme_spp_count_area_change_max[[i]] <- ggplot(data = LME_bathy_bydepth_complete_15mbins_single, aes(x = depth_15s)) +
+    geom_col(aes(y = percent_change_richness_62*100, fill=spp_change_pos_neg_62_discrete), alpha = 0.5) +
+    scale_fill_viridis_d(option = "A", begin = 0.7, end = 0.3, name = paste0("LME: ", LME_area_spp_change_stats[i, "lme_number"],"\n", LME_area_spp_change_stats[[i, "lme_name"]],"\n\nPercent Richness Change with\n15m Depth Shift"), breaks = c("Gain","Loss"), labels = c("Gain", "Loss")) +
+    labs(x = "Depth  (15 m bins)", y = expression('Percent'~Delta~'Species Richness z = 0.62'), title = paste0("LME ",LME_area_spp_change_stats[i,lme_number],": ",LME_area_spp_change_stats[i,lme_name])) +
 #    geom_hline(yintercept = 0) +
     theme_classic() +
     scale_x_continuous(expand = c(0,0)) +
@@ -255,27 +291,30 @@ for (i in 1:nrow(LME_area_spp_change_stats)) {
 
 }
 
-setkey(LME_bathy_bydepth_complete_15mbins, lme_name, depth_15s)
-
-#percent change for mean
-
-LME_bathy_bydepth_complete_15mbins[, percent_change_richness_mean := (original_spp_predicted_38-data.table::shift(original_spp_predicted_38, type = "lag"))/data.table::shift(original_spp_predicted_38, type = "lag"), .(lme_name)]
-
-#mean?
-
-mean(LME_bathy_bydepth_complete_15mbins$change_spp_predicted_38, na.rm = T)
 
 saveRDS(LME_area_spp_change_stats, file = "LME_area_spp_change_stats.rds")
 saveRDS(LME_bathy_bydepth_complete_15mbins, here::here("output","LME_bathy_bydepth_complete_15mbins.rds"))
 #LME_area_spp_change_stats <- readRDS("LME_area_spp_change_stats.rds")
 #LME_bathy_bydepth_complete_15mbins <- readRDS(here::here("table_outputs","LME_bathy_bydepth_complete_15mbins.rds"))
 saveRDS(lme_spp_count_area_sum_plots, file = here::here("output","compiled_plots","lme_spp_count_area_sum_plots.rds"))
-saveRDS(lme_spp_count_area_change_3levels, file = here::here("output","compiled_plots", "lme_spp_count_area_change_3levels.rds"))
+saveRDS(lme_spp_count_area_change_min, file = here::here("output","compiled_plots", "lme_spp_count_area_change_min.rds"))
+saveRDS(lme_spp_count_area_change_mean, file = here::here("output","compiled_plots", "lme_spp_count_area_change_mean.rds"))
+saveRDS(lme_spp_count_area_change_max, file = here::here("output","compiled_plots", "lme_spp_count_area_change_max.rds"))
+
 #to pull in
-lme_spp_count_area_sum_plots <- readRDS(file = here::here("output","compiled_plots","lme_spp_count_area_sum_plots.rds"))
+#lme_spp_count_area_sum_plots <- readRDS(file = here::here("output","compiled_plots","lme_spp_count_area_sum_plots.rds"))
+
 #plots to pdf
 ggsave(path = here::here("Figures","compiled_plots"), filename = "arranged_LME_sppchange.pdf", marrangeGrob(lme_spp_count_area_sum_plots, ncol=2, nrow = 3), width = 8.5, height = 11, unit = "in")
-ggsave(path = here::here("Figures","compiled_plots"), filename = "arranged_LME_sppchange_multiple_z_values.pdf", marrangeGrob(lme_spp_count_area_change_3levels, ncol = 2, nrow = 3), width = 8.5, height = 11, unit = "in")
+
+#min
+ggsave(path = here::here("Figures","compiled_plots"), filename = "arranged_LME_sppchange_multiple_min.pdf", marrangeGrob(lme_spp_count_area_change_min, ncol = 2, nrow = 3), width = 8.5, height = 11, unit = "in")
+
+#mean
+ggsave(path = here::here("Figures","compiled_plots"), filename = "arranged_LME_sppchange_multiple_mean.pdf", marrangeGrob(lme_spp_count_area_change_mean, ncol = 2, nrow = 3), width = 8.5, height = 11, unit = "in")
+
+#max
+ggsave(path = here::here("Figures","compiled_plots"), filename = "arranged_LME_sppchange_multiple_max.pdf", marrangeGrob(lme_spp_count_area_change_max, ncol = 2, nrow = 3), width = 8.5, height = 11, unit = "in")
 
 ```
 
@@ -295,8 +334,18 @@ dummy_legend_depth_richness_plot <- ggplot(data = LME_bathy_bydepth_complete_15m
 saveRDS(dummy_legend_depth_richness_plot, here::here("Figures","Figure1","dummy_legend_richness_plot.rds"))
 ```
 
+Correlations between 0.175,  0.38,  and 0.62
+```{r}
+cor(LME_bathy_bydepth_complete_15mbins[,.(percent_change_richness_175, percent_change_richness_38, percent_change_richness_62)], use = "complete.obs")
+```
 
-Instead of change in spp richness, I will just try plotting overall richness for each 15 m depth bin
+
+#SCRATCH###############
+
+
+##Instead of change in spp richness, I will just try plotting overall richness for each 15 m depth bin
+
+#skip for now
 ```{r richness each 15 m depth bin}
 
 #reorder LME_spdf by LME # 
@@ -316,7 +365,7 @@ for (i in 1:nrow(LME_area_spp_richness_stats)) {
   LME_area_spp_richness_stats[i, "lme_number"] <- LME_single$LME_NUMBER
   
   #clip raster to LME
-  LME_extent <- crop(etopo_shelf_raster, extent(LME_single))
+  LME_extent <- crop(etopo1_shelf_raster, extent(LME_single))
   
   #which areas of raster fall within borders?
   LME_mask <- mask(LME_extent, LME_single)
@@ -329,7 +378,7 @@ for (i in 1:nrow(LME_area_spp_richness_stats)) {
     LME_dt  <- data.table(data.frame(LME_points))
   
   #keep depth positive  
-  LME_dt[,depth := -(z)]
+  LME_dt[,depth := -(layer)]
   
   LME_dt$x_shift <- ifelse(
     max(LME_dt$x)-min(LME_dt$x) > 200 & LME_dt$x >0,
