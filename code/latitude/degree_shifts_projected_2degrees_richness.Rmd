@@ -284,8 +284,6 @@ scale_fill_viridis_d(option = "A", begin = 0.3, end = 0.7, name = "Change in Ric
   geom_hline(yintercept = 0, size = 0.3) +
   theme(axis.text.x = element_text(angle = 90, size = 10, hjust = 1, vjust = 0.5), legend.title = element_blank()))
 
-save(ordered_loss_gain_bycoastline, file = "ordered_loss_gain_bycoastline.RData")
-
 ```
 
 Species Area Curves

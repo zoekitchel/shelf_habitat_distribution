@@ -14,7 +14,6 @@ library(sf)
 library(ncdf4)
 library(rmapshaper)
 library(tidyverse)
-library(diptest)
 library(moments)
 library(viridis) #colors
 library(data.table)

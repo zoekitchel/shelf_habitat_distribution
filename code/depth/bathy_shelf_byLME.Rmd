@@ -3,6 +3,16 @@ title: "Starting with Bathy for Shelves"
 output: html_notebook
 ---
 
+This code produces LME_bathy_statistics.rds which lists LME name, number & and statistics about that LME including:
+- skew
+- modality
+- diptest
+- mid-depth
+- total area
+- classification
+
+The diptest requires a Monte Carlo simulation, and therefore takes a while to run. Therefore, we ran this on a HPC. 
+
 ```{r setup}
 library(raster)
 library(rgdal)
@@ -25,7 +35,7 @@ library(gridExtra)
 #etopo1_shelf_df <- readRDS(here::here("raw_data/ETOPO1/etopo1_shelf_df.rds"))
 #bring in bathy for shelf regions (just pull in raster below)
 
-#LMEs
+#LMEs: http://lme.edc.uri.edu/index.php/digital-data/113-lme-polygon-boundaries
 LME_spdf <- readOGR(here::here("raw_data/LME66/LMEs66.shp"))
 
 #keep Antarctica and the arctic
@@ -372,8 +382,10 @@ plot +
   annotate("text", x = 300, y = 3400, label = paste0("Mean: ",round(mean,2), " m")) +
   geom_vline(xintercept = mean, color = "red")
 ```
+
 --------
-#This takes too long on local machine, so instead I ran on annotate (HPC). Skip to 585.
+##Now we have the methods down, so let's make a loop!!
+This takes too long on local machine, so instead I ran on annotate (HPC). Skip to 585.
 
 ```{r pull LME_bathy statistics from annotate}
 

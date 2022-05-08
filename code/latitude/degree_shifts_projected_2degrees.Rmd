@@ -3,7 +3,6 @@ title: "Continental Shelf Habitat 2˚ Latitudinal Shifts"
 output: html_notebook
 ---
 
-
 ##This script is very similar to degree_shifts_projected, but looks at 2˚ shifts instead of 1˚shifts. It calculates area of continental shelf in each 2˚ latitudinal bin. It outputs tables with latitudinal bin versus area that are used for Figures 3-5 and summed changes in area used in Table 1. 
 
 This needs to be run on an HPC because ETOPO1 is so much larger than ETOPO2
@@ -293,18 +292,6 @@ Returns the area of the geometry in the units of the current projection. By defi
 
 Now, we will split each coastline raster into latitudinal bins of 2˚
 
-If these have already been done, load in from file instead of recreating because that takes some time.
-```{r load in from files}
-
-#RESAVE THESE
-
-#west_pac_shelf_areas <- readRDS("west_pac_shelf_areas_2degrees.rds")
-#west_atl_shelf_areas <- readRDS("west_atl_shelf_areas_2degrees.rds")
-#west_ind_shelf_areas <- readRDS("west_ind_shelf_areas_2degrees.rds")
-#east_pac_shelf_areas <- readRDS("east_pac_shelf_areas_2degrees.rds")
-#east_atl_shelf_areas <- readRDS("east_atl_shelf_areas_2degrees.rds")
-#east_ind_shelf_areas <- readRDS("east_ind_shelf_areas_2degrees.rds")
-```
 
 ##I'm going to perform all calculations below on annotate for efficiency
 ###Need to be saved as rasters
@@ -2124,7 +2111,7 @@ save(region_maps, file = here::here("Figures","Figure3_5", "region_maps.RData"))
 #save map legend in rds
 saveRDS(region_map_legend, file = here::here("Figures","Figure3_5", "region_maps_legend.rds"))
 
-#save all area versus latitude plots 
+#save all area maps
 save(area_latitude_east_pac, area_latitude_west_pac , area_latitude_east_atl , area_latitude_west_atl , area_latitude_east_ind , area_latitude_west_ind, file = here::here("Figures","Figure3_5", "latitude_2degree_maps.RData"))
 ```
 

@@ -1,0 +1,179 @@
+---
+title: "Depth_Shelf"
+author: "Professor Becca Selden edited by Zoë Kitchel"
+date: "5/20/2020; 10/27/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(raster)
+library(rgdal)
+library(sf)
+library(ncdf4)
+library(rmapshaper)
+library(tidyverse)
+library(data.table)
+```
+
+### Read in ETOPO1
+Source: https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO1/data/bedrock/cell_registered/netcdf/
+Even on my computer, this was just such a huge file that many of the operations I tried below were SUPER slow, so I think I am advocating for keeping ETOPO2 for now, and see if reviewers want the higher resolution. Zoë agrees, but repulls below for reviewers. 
+
+###Read in ETOPO1
+```{r etopo1, eval=F}
+
+ETOPO1 <- raster("shelf_habitat_distribution/alternative_DEM/ETOPO1_Bed_c_gdal.grd", 
+  crs="+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0 ")
+
+
+```
+
+### Read in ETOPO2
+```{r etopo2}
+etopo2 <- raster("DepthShift2.0/Data/ETOPO2v2g_f4.nc")
+```
+
+
+### Restrict to depths less than 2000 for etopo2
+```{r etopo2 deeper than 0 but  less than 2000}
+#raster with everything below 0
+etopo2_10000 <- etopo2
+etopo2_10000[etopo2_10000 > 0] <- NA
+
+etopo2[etopo2 > 0] <- NA
+etopo2[etopo2< -2000] <- NA
+
+
+```
+
+###Restrict to depths less than 2000 for etopo1
+```{r etopo1 deeper than 0 but  less than 2000}
+#shapefile with everything below 0
+ETOPO1_10000 <- ETOPO1
+ETOPO1_10000[ETOPO1_10000 > 0] <- NA
+
+#delete any values above 0 (above sea level) or below -2000
+ETOPO1[ETOPO1 > 0] <- NA
+ETOPO1[ETOPO1< -2000] <- NA
+#png("shelf_habitat_distribution/figures/ETOPO1_bathy_2000m.png", height=5, width=7, units="in", res=300)
+#plot(ETOPO1)
+#dev.off()
+
+
+```
+
+### Convert etopo2 to dataframe
+```{r etopo df}
+#etopo_df <- as.data.frame(etopo2, xy=TRUE)
+```
+
+### Read in Continental Shelf Data
+Source:https://www.bluehabitats.org/?page_id=58
+```{r shelf}
+shelf <- readOGR("shelf_habitat_distribution/raw_data/Shelf_BlueHabitats/Shelf.shp")
+#readOGR: rgdal: reads OGR vector maps into spatial objects
+
+shelf_tv <- read_sf("Shelf_BlueHabitats/Shelf.shp")
+#read_sf read simple features from file or database, or retrieve layer names and their geometry types (essentially metadata)
+
+
+shelf_simp <- ms_simplify(shelf_tv, keep=0.05) #keep 5% of the vertices
+#uses mapshaper to simplify polygons
+
+shelf_buffer <- st_buffer(shelf_simp, dist=0.3, endCapStyle="ROUND")
+#computes a buffer around each geometry, 0.3 = buffer distance
+
+
+ggplot(shelf_simp) + 
+  geom_sf(fill="black", col="gray") +
+  theme_bw()
+```
+
+
+
+### Crop ETOPO to continental shelf
+
+```{r etopo2 crop}
+etopo_shelf <- mask(etopo2, shelf_simp) #raster of depth on continental shelf
+
+etopo_shelf_10000 <- mask(etopo2_10000, shelf_simp)
+
+summary(etopo_shelf)
+cellStats(etopo_shelf, function(i, ...) sum(!is.na(i)))
+summary(etopo_shelf_10000)
+cellStats(etopo_shelf_10000, function(i, ...) sum(!is.na(i)))
+
+depth_over_2000 <- cellStats(etopo_shelf_10000, function(i, ...) sum(!is.na(i)))-cellStats(etopo_shelf, function(i, ...) sum(!is.na(i))) #number of cells in shelf shape file that have depths >2000
+
+#percent of total
+depth_over_2000/cellStats(etopo_shelf_10000, function(i, ...) sum(!is.na(i)))*100
+
+
+writeRaster(etopo_shelf, "etoposhelf.grd")
+
+etopo_df <- as.data.frame(etopo2, xy=T)
+
+
+etopo_shelf_df <- as.data.frame(etopo_shelf, xy=T)
+
+etopo_shelf_lim <- subset(etopo_shelf_df, !(is.na(layer)))
+
+
+
+png("hist_shelfdepth.png", height=8, width=5, units="in", res=300)
+par(mfrow=c(2,1))
+hist(etopo_df$z, main="ETOPO less than 2000m")
+hist(etopo_shelf_lim$z, main="ETOPO masked by shelf polygons")
+dev.off()
+
+png("shelfpts.png", height=5, width=7, units="in", res=300)
+plot(y ~ x, etopo_shelf_lim, cex=0.01)
+dev.off()
+
+saveRDS(etopo_shelf_lim, here::here("raw_data","etopo_shelf_lim.rds"))
+saveRDS(etopo_shelf_df, here::here("raw_data","etopo_shelf_df.rds"))
+```
+
+Again with ETOPO1 (these first two steps take a long time)
+```{r etopo1 crop}
+ETOPO1_shelf <- mask(ETOPO1, shelf) #raster of depth on continental shelf
+
+ETOPO1_shelf_10000 <- mask(ETOPO1_10000, shelf)
+
+summary(ETOPO1_shelf)
+cellStats(ETOPO1_shelf, function(i, ...) sum(!is.na(i)))
+summary(ETOPO1_shelf_10000)
+cellStats(ETOPO1_shelf_10000, function(i, ...) sum(!is.na(i)))
+
+depth_over_2000 <- cellStats(ETOPO1_shelf_10000, function(i, ...) sum(!is.na(i)))-cellStats(ETOPO1_shelf, function(i, ...) sum(!is.na(i))) #number of cells in shelf shape file that have depths >2000
+
+#percent of total
+depth_over_2000/cellStats(ETOPO1_shelf_10000, function(i, ...) sum(!is.na(i)))*100
+
+
+writeRaster(ETOPO1_shelf, "shelf_habitat_distribution/alternative_DEM/etopo1shelf.grd")
+
+ETOPO1_df <- as.data.frame(ETOPO1, xy=T)
+
+
+ETOPO1_shelf_df <- as.data.frame(ETOPO1_shelf, xy=T)
+
+ETOPO1_shelf_lim <- subset(ETOPO1_shelf_df, !(is.na(layer)))
+
+
+
+png("shelf_habitat_distribution/alternative_DEM/hist_shelfdepth_etopo1.png", height=8, width=5, units="in", res=300)
+par(mfrow=c(2,1))
+hist(ETOPO1_df$layer, main="ETOPO less than 2000m")
+hist(ETOPO1_shelf_lim$layer, main="ETOPO masked by shelf polygons")
+dev.off()
+
+png("shelfpts_etopo1.png", height=5, width=7, units="in", res=300)
+plot(y ~ x, ETOPO1_shelf_lim, cex=0.01)
+dev.off()
+
+saveRDS(ETOPO1_shelf_lim, "shelf_habitat_distribution/alternative_DEM/etopo1_shelf_lim.rds")
+saveRDS(ETOPO1_shelf_df, "shelf_habitat_distribution/alternative_DEM/etopo1_shelf_df.rds")
+```
+
