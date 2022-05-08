@@ -1,1 +1,2 @@
 load("/Users/zoekitchel/Documents/grad_school/Rutgers/Repositories/shelf_habitat_distribution/output/LME_bathy_statistics_42922_full.rds")
+load("/Users/zoekitchel/Documents/grad_school/Rutgers/Repositories/shelf_habitat_distribution/output/LME_bathy_bydepth_complete_15mbins.rds")
