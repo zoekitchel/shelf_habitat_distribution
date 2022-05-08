@@ -10,6 +10,8 @@ etopo_shelf_df.rds
 etopo1_shelf_df.rds
 etopo_shelf_lim.rds
 etopo1_shelf_lim.rds
+etopo1_shelf_raster.rds
+*.gri
 DepthShift2.0
 Depth_Shelf_becca.Rmd
 degree_shifts.Rmd
@@ -17,3 +19,5 @@ degree_shifts.nb.html
 hist_shelfdepth.png
 shelfpts.png
 Figures/Figure3_5/region_maps.rds
+.DS_Store
+Figures/compiled_plots/arranged_maps.pdf
