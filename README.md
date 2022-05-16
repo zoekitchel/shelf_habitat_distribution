@@ -18,6 +18,7 @@ Initiated by Hailey Conrad and Becca Selden in 2018. Completed by Zoë Kitchel, 
 - raw_data
     - this is where raw data is housed and pulled from
     - includes raw LME, FAO, and bathymetry data  (ETOPO1 (current version used in analyses), ETOPO2 (earlier versions))
+    - note that some files are in the .gitignore file because they are too large for github, but they are available on Box at this link: https://rutgers.box.com/s/8n9mm5f0j3s9yo5s4zexbbqkg09otvr9
     
 ###How to reproduce analyses
     
