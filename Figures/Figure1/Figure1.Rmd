@@ -103,7 +103,7 @@ figure1_map_hyp_richness <- plot_grid(lme_maps[[4]] + ylab(paste0("Latitude ","\
           lme_spp_count_area_change_mean[[21]] +  theme(legend.position = "none", axis.title.y = element_blank()),
           lme_spp_count_area_change_mean[[29]] +  theme(legend.position = "none", axis.title.y = element_blank()),
           ncol = 3, nrow = 3, 
-          labels = c("Shallow Dominant","Multimodal","Mid Dominant","","","","","",""), 
+          labels = c("  Shallow Dominant","       Multimodal","     Mid Dominant","","","","","",""), 
           hjust = -0.5, label_size = 14, label_fontface = "bold", 
           align = "hv",
           rel_heights = c(8,8,8,2,2,2,4,4,4))
@@ -113,5 +113,6 @@ figure1_map_hyp_rich.legend <- plot_grid(figure1_map_hyp_richness, get_legend(lm
 
 ggsave(figure1_map_hyp_rich.legend, height = 13, width = 9, unit = "in", path = here::here("Figures","Figure1"), filename = "figure1_map_hyp_rich.legend.jpg")
 ggsave(figure1_map_hyp_rich.legend, height = 13, width = 9, unit = "in", path = here::here("Figures","Figure1"), filename = "figure1_map_hyp_rich.legend.pdf")
+ggsave(figure1_map_hyp_rich.legend, height = 13, width = 9, unit = "in", path = here::here("Figures","Figure1"), filename = "figure1_map_hyp_rich.legend.eps")
 ```
 
