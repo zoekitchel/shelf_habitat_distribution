@@ -17,7 +17,7 @@ Initiated by Hailey Conrad and Becca Selden in 2018. Completed by Zoë Kitchel, 
     - data objects in rds, RData, or CSV format output by code
 - raw_data
     - this is where raw data is housed and pulled from
-    - includes raw LME, FAO, and bathymetry data  (ETOPO1 (current version used in analyses), ETOPO2 (earlier versions))
+    - includes raw LME, FAO, and bathymetry data  (ETOPO1 (current version used in analyses), ETOPO2 (earlier versions)); raw data can be downloaded from the source sites using links below, or from the following Zenodo repository: 10.5281/zenodo.6557756
     
 ###How to reproduce analyses
     
