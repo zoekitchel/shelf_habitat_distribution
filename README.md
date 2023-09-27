@@ -1,11 +1,11 @@
-# shelf_habitat_distribution
+### shelf_habitat_distribution
 How does continental shelf habitat availability change as species shift deeper and/or to higher latitudes?
 
 [Kitchel, Z. J., Conrad, H. M., Selden, R. L., & Pinsky, M. L. (2022). The role of continental shelf bathymetry in shaping marine range shifts in the face of climate change. Global Change Biology, 28, 5185–5199. https://doi.org/10.1111/gcb.16276](https://onlinelibrary.wiley.com/doi/full/10.1111/gcb.16276).
 
 Inspired by [Elsen, P., Tingley, M. Global mountain topography and the fate of montane species under climate change. Nature Clim Change 5, 772–776 (2015). https://doi.org/10.1038/nclimate2656](https://www.nature.com/articles/nclimate2656?WT.ec_id=NCLIMATE-201508&spMailingID=49170365&spUserID=ODkwMTM2NjQyMAS2&spJobID=723112964&spReportId=NzIzMTEyOTY0S0)
 
-###Repository Folder Guide
+### Repository Folder Guide
 
 - code
     - Most code is housed in this folder (exceptions are mostly found in Figure folder)
@@ -20,7 +20,7 @@ Inspired by [Elsen, P., Tingley, M. Global mountain topography and the fate of m
     - includes raw LME, FAO, and bathymetry data  (ETOPO1 (current version used in analyses), ETOPO2 (earlier versions)); raw data can be downloaded from the source sites using links below, or from the following Zenodo repository: 10.5281/zenodo.6557756
     - note that some files are in the .gitignore file because they are too large for github, but they are available on Box at this link: https://rutgers.box.com/s/8n9mm5f0j3s9yo5s4zexbbqkg09otvr9
     
-###How to reproduce analyses
+### How to reproduce analyses
     
 1. Download ETOPO1 raster in .grd format from here: https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO1/data/bedrock/cell_registered/netcdf/
 1. Download continental shelf shapefile in .shp format from here: https://www.bluehabitats.org/?page_id=58
