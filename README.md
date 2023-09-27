@@ -1,10 +1,9 @@
 # shelf_habitat_distribution
 How does continental shelf habitat availability change as species shift deeper and/or to higher latitudes?
 
-Somewhat inspired by Elsen and Tingley 2015 https://www.nature.com/articles/nclimate2656?WT.ec_id=NCLIMATE-201508&spMailingID=49170365&spUserID=ODkwMTM2NjQyMAS2&spJobID=723112964&spReportId=NzIzMTEyOTY0S0
-
-Initiated by Hailey Conrad and Becca Selden in 2018. Completed by Zoë Kitchel, and submitted to GCB January 2022. Resubmitted with major revisions to GCB May 2022. Published in GCB 2022 as:
 [Kitchel, Z. J., Conrad, H. M., Selden, R. L., & Pinsky, M. L. (2022). The role of continental shelf bathymetry in shaping marine range shifts in the face of climate change. Global Change Biology, 28, 5185–5199. https://doi.org/10.1111/gcb.16276](https://onlinelibrary.wiley.com/doi/full/10.1111/gcb.16276).
+
+Inspired by [Elsen, P., Tingley, M. Global mountain topography and the fate of montane species under climate change. Nature Clim Change 5, 772–776 (2015). https://doi.org/10.1038/nclimate2656](https://www.nature.com/articles/nclimate2656?WT.ec_id=NCLIMATE-201508&spMailingID=49170365&spUserID=ODkwMTM2NjQyMAS2&spJobID=723112964&spReportId=NzIzMTEyOTY0S0)
 
 ###Repository Folder Guide
 
